@@ -227,7 +227,7 @@ html,body{height:100%;background:var(--bg);color:var(--fg);font-family:var(--fon
 // ============================
 const BASE = window.location.origin;
 const API = BASE + '/api';
-let API_KEY = localStorage.getItem('blun-api-key') || '';
+// Session-based auth — no API key needed
 
 const NAV_ITEMS = [
   {id:'overview', label:'Overview', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>'},
@@ -251,10 +251,10 @@ let state = {
 // ============================
 // API HELPERS
 // ============================
-function headers() { return {'Content-Type':'application/json','x-blun-key': API_KEY}; }
+function headers() { return {'Content-Type':'application/json','x-blun-key': ''}; }
 
 async function api(path, opts) {
-  const r = await fetch(API + path, Object.assign({headers: headers()}, opts || {}));
+  const r = await fetch(API + path, Object.assign({headers: headers(), credentials: 'include'}, opts || {}));
   if (r.status === 401) { promptApiKey(); throw new Error('Unauthorized'); }
   if (!r.ok) throw new Error(r.status + ' ' + r.statusText);
   return r.json();
@@ -263,7 +263,7 @@ async function apiPost(path, body) { return api(path, {method:'POST', body:JSON.
 async function apiPatch(path, body) { return api(path, {method:'PATCH', body:JSON.stringify(body)}); }
 async function apiDelete(path) { return api(path, {method:'DELETE'}); }
 
-function promptApiKey() {
+function promptApiKey() { window.location.href = "/login"; return;
   const k = prompt('Enter BLUN API Key:');
   if (k) { API_KEY = k; localStorage.setItem('blun-api-key', k); }
 }
