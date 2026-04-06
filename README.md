@@ -39,7 +39,7 @@ sudo -u postgres psql -f src/models/schema.sql
 npm start
 ```
 
-The dashboard is at `http://localhost:3200/dashboard`.
+The dashboard is at `https://blun.ai/dashboard (or http://YOUR_IP:3200/dashboard)`.
 
 ## Features
 
