@@ -6,7 +6,7 @@ var knowledgeBase = [
     de: "BLUN ist ein Open-Source AI-Agent-Framework. Damit kannst du KI-Agenten mit Skills, Tools und Multi-Modell-Unterstuetzung erstellen und orchestrieren. Self-hosted, Privacy-first, aus Oesterreich." },
   { keywords: ["price", "pricing", "cost", "plan", "preis", "kosten", "free", "gratis", "kostenlos"],
     category: "pricing",
-    en: "BLUN is open source and free to self-host. We offer managed hosting plans starting at EUR 29/month with included compute credits. Enterprise plans with SLA are available on request.",
+    en: "BLUN is open source and free to self-host. We offer managed hosting plans : Free (3 assistants, 2 local AI models), Pro $20/month (unlimited assistants, all models), Max $100/month (everything unlimited). Enterprise plans with SLA are available on request.",
     de: "BLUN ist Open Source und kostenlos zum Selbst-Hosten. Managed-Hosting-Plaene starten ab EUR 29/Monat mit inkludierten Compute-Credits. Enterprise-Plaene mit SLA auf Anfrage." },
   { keywords: ["feature", "features", "funktion", "funktionen", "can", "kann", "what can"],
     category: "features",

@@ -8,7 +8,7 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#0a0a0a;color:#e5e5e5;font-family:'Inter',system-ui,-apple-system,sans-serif;min-height:100vh}
-a{color:#f59e0b;text-decoration:none}
+a{color:#3b82f6;text-decoration:none}
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:1rem 2rem;border-bottom:1px solid #1a1a1a}
 .topbar h1{font-size:1.25rem;font-weight:700;color:#fff}
 .topbar a{font-size:.875rem;color:#a3a3a3}.topbar a:hover{color:#fff}
@@ -16,14 +16,14 @@ a{color:#f59e0b;text-decoration:none}
 h2{font-size:1.5rem;font-weight:700;color:#fff;margin-bottom:.5rem}
 .subtitle{color:#737373;margin-bottom:2rem;font-size:.875rem}
 .current-plan{background:#141414;border:1px solid #262626;border-radius:12px;padding:1.5rem;margin-bottom:2rem;display:flex;align-items:center;justify-content:space-between}
-.current-plan .plan-name{font-size:1.125rem;font-weight:600;color:#f59e0b}
+.current-plan .plan-name{font-size:1.125rem;font-weight:600;color:#3b82f6}
 .current-plan .plan-info{color:#a3a3a3;font-size:.8rem;margin-top:.25rem}
-.badge{display:inline-block;padding:.25rem .75rem;border-radius:20px;font-size:.75rem;font-weight:600;background:#292524;color:#f59e0b}
+.badge{display:inline-block;padding:.25rem .75rem;border-radius:20px;font-size:.75rem;font-weight:600;background:#292524;color:#3b82f6}
 .plans-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:1rem;margin-bottom:2.5rem}
 .plan-card{background:#141414;border:1px solid #262626;border-radius:12px;padding:1.5rem;transition:border-color .2s;cursor:pointer}
 .plan-card:hover{border-color:#404040}
-.plan-card.active{border-color:#f59e0b}
-.plan-card.selected{border-color:#f59e0b;box-shadow:0 0 0 2px rgba(245,158,11,0.3)}
+.plan-card.active{border-color:#3b82f6}
+.plan-card.selected{border-color:#3b82f6;box-shadow:0 0 0 2px rgba(59,130,246,0.3)}
 .plan-card h3{font-size:1rem;font-weight:600;color:#fff;margin-bottom:.25rem}
 .plan-card .price{font-size:1.75rem;font-weight:700;color:#fff;margin:.75rem 0}
 .plan-card .price span{font-size:.875rem;font-weight:400;color:#737373}
@@ -33,7 +33,7 @@ h2{font-size:1.5rem;font-weight:700;color:#fff;margin-bottom:.5rem}
 .plan-card li.no::before{content:'\2717';color:#525252}
 .plan-card li.no{color:#525252}
 .btn{display:inline-block;padding:.625rem 1.25rem;text-align:center;border-radius:8px;font-size:.8rem;font-weight:600;border:none;cursor:pointer;transition:all .2s}
-.btn-primary{background:#f59e0b;color:#0a0a0a}.btn-primary:hover{background:#d97706}
+.btn-primary{background:#3b82f6;color:#0a0a0a}.btn-primary:hover{background:#2563eb}
 .btn-outline{background:transparent;border:1px solid #404040;color:#a3a3a3}.btn-outline:hover{border-color:#737373;color:#fff}
 .btn-current{background:#262626;color:#737373;cursor:default}
 .btn-danger{background:transparent;border:1px solid #7f1d1d;color:#ef4444}.btn-danger:hover{background:#7f1d1d;color:#fff}
@@ -43,7 +43,7 @@ h2{font-size:1.5rem;font-weight:700;color:#fff;margin-bottom:.5rem}
 table{width:100%;border-collapse:collapse}
 th{text-align:left;font-size:.75rem;color:#737373;font-weight:500;padding:.75rem;border-bottom:1px solid #262626}
 td{padding:.75rem;font-size:.8rem;color:#a3a3a3;border-bottom:1px solid #1a1a1a}
-.status-paid{color:#22c55e}.status-pending{color:#f59e0b}.status-failed{color:#ef4444}
+.status-paid{color:#22c55e}.status-pending{color:#3b82f6}.status-failed{color:#ef4444}
 .empty{text-align:center;padding:2rem;color:#525252;font-size:.875rem}
 .usage-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:2rem}
 .usage-card{background:#141414;border:1px solid #262626;border-radius:8px;padding:1rem}
@@ -219,7 +219,7 @@ async function selectPlan(plan) {
     var appearance = {
       theme: 'night',
       variables: {
-        colorPrimary: '#f59e0b',
+        colorPrimary: '#3b82f6',
         colorBackground: '#1a1a1a',
         colorText: '#e5e5e5',
         colorDanger: '#ef4444',
@@ -229,10 +229,10 @@ async function selectPlan(plan) {
       },
       rules: {
         '.Input': { border: '1px solid #404040', backgroundColor: '#0a0a0a' },
-        '.Input:focus': { border: '1px solid #f59e0b', boxShadow: '0 0 0 1px #f59e0b' },
+        '.Input:focus': { border: '1px solid #3b82f6', boxShadow: '0 0 0 1px #3b82f6' },
         '.Label': { color: '#a3a3a3' },
         '.Tab': { border: '1px solid #404040', backgroundColor: '#141414' },
-        '.Tab--selected': { border: '1px solid #f59e0b', backgroundColor: '#1a1a1a' },
+        '.Tab--selected': { border: '1px solid #3b82f6', backgroundColor: '#1a1a1a' },
         '.Tab:hover': { border: '1px solid #525252' }
       }
     };

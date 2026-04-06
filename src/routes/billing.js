@@ -75,7 +75,7 @@ router.post('/api/create-subscription', authenticate, requireAuth, async functio
       return res.status(400).json({ error: 'Invalid plan. Use pro or team.' });
     }
 
-    var priceId = plan === 'pro' ? process.env.STRIPE_PRO_PRICE_ID : process.env.STRIPE_TEAM_PRICE_ID;
+    var priceId = plan === 'pro' ? process.env.STRIPE_PRO_PRICE_ID : process.env.STRIPE_MAX_PRICE_ID;
 
     // Get or create Stripe customer
     var subResult = await pool.query(
@@ -187,7 +187,7 @@ router.post('/checkout', authenticate, requireAuth, async function(req, res) {
       return res.status(400).json({ error: 'Invalid plan. Use pro or team.' });
     }
 
-    var priceId = plan === 'pro' ? process.env.STRIPE_PRO_PRICE_ID : process.env.STRIPE_TEAM_PRICE_ID;
+    var priceId = plan === 'pro' ? process.env.STRIPE_PRO_PRICE_ID : process.env.STRIPE_MAX_PRICE_ID;
 
     var subResult = await pool.query(
       'SELECT stripe_customer_id FROM subscriptions WHERE user_id = $1 AND stripe_customer_id IS NOT NULL LIMIT 1',
@@ -307,7 +307,7 @@ router.post('/webhook', async function(req, res) {
         if (sub.items && sub.items.data && sub.items.data[0]) {
           var pid = sub.items.data[0].price.id;
           if (pid === process.env.STRIPE_PRO_PRICE_ID) newPlan = 'pro';
-          else if (pid === process.env.STRIPE_TEAM_PRICE_ID) newPlan = 'team';
+          else if (pid === process.env.STRIPE_MAX_PRICE_ID) newPlan = 'team';
         }
         var updateQ = 'UPDATE subscriptions SET status=$1, updated_at=NOW() WHERE stripe_subscription_id=$2';
         var updateV = [sub.status, sub.id];

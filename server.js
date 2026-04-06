@@ -36,6 +36,7 @@ const canvasRoutes = require("./src/routes/canvas");
 const supportChatRoutes = require("./src/routes/support-chat");
 const websitesRoutes = require("./src/routes/websites");
 const softwareRoutes = require("./src/routes/software");
+const modelsRoutes = require("./src/routes/models");
 const { startAllBots, activeBots } = require("./src/channels/telegram");
 
 const PORT = parseInt(process.env.BLUN_PORT || "3200", 10);
@@ -63,14 +64,19 @@ app.use(express.json({ limit: "10mb" }));
 app.use(morgan("short"));
 app.use(cookieParser());
 
-// Auth middleware
+// Auth middleware — accept cookie session OR x-blun-key header
 app.use("/api", function (req, res, next) {
   if (req.path === "/health" || req.path === "/admin/health") return next();
+  // Check API key first (for programmatic access)
   var key = req.headers["x-blun-key"];
-  if (!key || key !== API_KEY) {
-    return res.status(401).json({ error: "Invalid or missing API key. Set x-blun-key header." });
-  }
-  next();
+  if (key && key === API_KEY) return next();
+  // Otherwise use session-based auth
+  authenticate(req, res, function () {
+    if (!req.user) {
+      return res.status(401).json({ error: "Authentication required. Send x-blun-key header or login." });
+    }
+    next();
+  });
 });
 
 app.use("/auth", authRoutes);
@@ -80,6 +86,7 @@ app.use("/privacy", privacyRoutes);
 app.use("/canvas", authenticate, canvasRoutes);
 app.use("/websites", websitesRoutes);
 app.use("/software", softwareRoutes);
+app.use("/api/models", modelsRoutes);
 app.use("/support", supportChatRoutes);
 app.get("/support-widget.js", function(req, res) { res.sendFile(__dirname + "/dashboard/support-widget.js"); });
 
@@ -134,6 +141,7 @@ app.get("/login", function (req, res) {
 
 app.get("/dashboard/websites", authenticate, function (req, res) { if (!req.user) return res.redirect("/login"); res.sendFile(path.join(__dirname, "dashboard", "websites.html")); });
 app.get("/dashboard/software", authenticate, function (req, res) { if (!req.user) return res.redirect("/login"); res.sendFile(path.join(__dirname, "dashboard", "software.html")); });
+app.get("/dashboard/models", authenticate, function (req, res) { if (!req.user) return res.redirect("/login"); res.sendFile(path.join(__dirname, "dashboard", "models.html")); });
 app.get("/dashboard", authenticate, function (req, res) {
   if (!req.user) return res.redirect("/login");
   res.sendFile(path.join(__dirname, "dashboard", "index.html"));
@@ -149,7 +157,7 @@ app.get("/", function (req, res) {
       api: "/api",
       chat: "/api/chat",
       admin: "/api/admin",
-      websocket: "ws://localhost:" + PORT + "?role=dashboard",
+      websocket: "wss://blun.ai?role=dashboard",
       health: "/api/admin/health",
     },
   });

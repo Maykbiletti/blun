@@ -8,7 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--primary:#f59e0b;--bg:#0a0a0a;--card:#1a1a1a;--border:rgba(255,255,255,.06);--text:#ffffff;--muted:#a1a1aa;--danger:#ef4444;--success:#22c55e}
+:root{--primary:#3b82f6;--bg:#0a0a0a;--card:#1a1a1a;--border:rgba(255,255,255,.06);--text:#ffffff;--muted:#a1a1aa;--danger:#ef4444;--success:#22c55e}
 body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
 a{color:var(--primary);text-decoration:none}
 
@@ -42,7 +42,7 @@ a{color:var(--primary);text-decoration:none}
 /* Sites grid */
 .sites-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:20px}
 .site-card{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;transition:border-color .2s}
-.site-card:hover{border-color:rgba(245,158,11,.3)}
+.site-card:hover{border-color:rgba(59,130,246,.3)}
 .site-card-preview{height:180px;background:#111;position:relative;overflow:hidden}
 .site-card-preview iframe{width:200%;height:200%;transform:scale(.5);transform-origin:top left;border:none;pointer-events:none}
 .site-card-body{padding:20px}
@@ -89,7 +89,7 @@ a{color:var(--primary);text-decoration:none}
 .preview-container{background:#111;border-radius:10px;overflow:hidden;border:1px solid var(--border);margin-bottom:20px}
 .preview-bar{display:flex;align-items:center;gap:8px;padding:10px 16px;background:rgba(255,255,255,.03);border-bottom:1px solid var(--border)}
 .preview-dot{width:10px;height:10px;border-radius:50%}
-.preview-dot.r{background:#ef4444}.preview-dot.y{background:#f59e0b}.preview-dot.g{background:#22c55e}
+.preview-dot.r{background:#ef4444}.preview-dot.y{background:#3b82f6}.preview-dot.g{background:#22c55e}
 .preview-iframe{width:100%;height:400px;border:none}
 
 /* Detail panel */
@@ -112,7 +112,7 @@ a{color:var(--primary);text-decoration:none}
 
 /* Domain */
 .domain-box{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:20px}
-.dns-record{font-family:monospace;background:rgba(245,158,11,.08);padding:12px 16px;border-radius:8px;font-size:.85rem;margin-top:12px}
+.dns-record{font-family:monospace;background:rgba(59,130,246,.08);padding:12px 16px;border-radius:8px;font-size:.85rem;margin-top:12px}
 
 /* Loading */
 .loading{display:flex;align-items:center;justify-content:center;padding:60px}
