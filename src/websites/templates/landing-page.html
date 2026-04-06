@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{siteName}}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family={{font}}:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--primary:{{primary}};--bg:{{background}};--card:{{card}};--text:{{textColor}};--muted:{{muted}}}
+body{font-family:'{{font}}',sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+a{color:var(--primary);text-decoration:none}
+.container{max-width:1100px;margin:0 auto;padding:0 24px}
+/* Hero */
+.hero{min-height:90vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:80px 24px}
+.hero h1{font-size:clamp(2.5rem,6vw,4.5rem);font-weight:700;letter-spacing:-0.03em;margin-bottom:20px}
+.hero p{font-size:1.25rem;color:var(--muted);max-width:600px;margin:0 auto 40px}
+.btn{display:inline-block;padding:14px 36px;background:var(--primary);color:#000;font-weight:600;border-radius:8px;font-size:1rem;transition:opacity .2s}
+.btn:hover{opacity:.85}
+/* Features */
+.features{padding:100px 0}
+.features h2{text-align:center;font-size:2rem;font-weight:600;margin-bottom:60px;letter-spacing:-0.02em}
+.features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px}
+.feature-card{background:var(--card);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:32px}
+.feature-card h3{font-size:1.125rem;font-weight:600;margin-bottom:8px}
+.feature-card p{color:var(--muted);font-size:.95rem}
+/* CTA */
+.cta-section{padding:100px 0;text-align:center;border-top:1px solid rgba(255,255,255,.06)}
+.cta-section h2{font-size:2rem;font-weight:600;margin-bottom:16px}
+.cta-section p{color:var(--muted);margin-bottom:40px;font-size:1.1rem}
+/* Footer */
+footer{padding:40px 0;text-align:center;color:var(--muted);font-size:.85rem;border-top:1px solid rgba(255,255,255,.06)}
+</style>
+</head>
+<body>
+<script>var SECTIONS = {{sectionsJSON}};</script>
+
+<section class="hero" id="hero">
+  <div>
+    <h1 id="hero-headline"></h1>
+    <p id="hero-sub"></p>
+    <a class="btn" id="hero-cta" href="#features"></a>
+  </div>
+</section>
+
+<section class="features container" id="features">
+  <h2 id="features-title"></h2>
+  <div class="features-grid" id="features-grid"></div>
+</section>
+
+<section class="cta-section" id="cta">
+  <div class="container">
+    <h2 id="cta-title"></h2>
+    <p id="cta-desc"></p>
+    <a class="btn" id="cta-btn" href="#"></a>
+  </div>
+</section>
+
+<footer><div class="container" id="footer-text"></div></footer>
+
+<script>
+(function(){
+  var s = SECTIONS;
+  if(s.hero){
+    document.getElementById('hero-headline').textContent = s.hero.headline || '';
+    document.getElementById('hero-sub').textContent = s.hero.subheadline || '';
+    var cta = document.getElementById('hero-cta');
+    cta.textContent = s.hero.cta_text || 'Get Started';
+    cta.href = s.hero.cta_url || '#';
+  }
+  if(s.features){
+    document.getElementById('features-title').textContent = s.features.title || 'Features';
+    var grid = document.getElementById('features-grid');
+    (s.features.items||[]).forEach(function(f){
+      var d = document.createElement('div'); d.className='feature-card';
+      d.innerHTML='<h3>'+f.title+'</h3><p>'+f.description+'</p>';
+      grid.appendChild(d);
+    });
+  }
+  if(s.cta){
+    document.getElementById('cta-title').textContent = s.cta.title || '';
+    document.getElementById('cta-desc').textContent = s.cta.description || '';
+    var btn = document.getElementById('cta-btn');
+    btn.textContent = s.cta.button_text || 'Get Started';
+    btn.href = s.cta.button_url || '#';
+  }
+  if(s.footer) document.getElementById('footer-text').textContent = s.footer.text || '';
+})();
+</script>
+</body>
+</html>

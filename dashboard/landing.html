@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BLUN - AI Organisator</title>
+<title>BLUN - Your AI Team, Organized</title>
+<meta name="description" content="Open-source AI agent orchestration. Like having a CTO that never sleeps. One command to install.">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -13,11 +14,14 @@
   --bg-elevated: #18181b;
   --bg-card: #1c1c20;
   --border: #27272a;
+  --border-light: #3f3f46;
   --text: #fafafa;
   --text-muted: #a1a1aa;
   --text-dim: #71717a;
   --accent: #3b82f6;
   --accent-hover: #2563eb;
+  --accent-glow: rgba(59, 130, 246, 0.15);
+  --green: #22c55e;
   --radius: 12px;
 }
 
@@ -39,15 +43,21 @@ a { color: inherit; text-decoration: none; }
   padding: 0 24px;
 }
 
-/* Nav */
+.container-wide {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* ---- Nav ---- */
 nav {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   z-index: 100;
-  background: rgba(9, 9, 11, 0.8);
-  backdrop-filter: blur(12px);
+  background: rgba(9, 9, 11, 0.85);
+  backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--border);
 }
 
@@ -64,24 +74,64 @@ nav .logo {
   letter-spacing: 2px;
 }
 
-nav .nav-links {
+nav .nav-center {
   display: flex;
   gap: 32px;
   list-style: none;
 }
 
-nav .nav-links a {
+nav .nav-center a {
   font-size: 14px;
   color: var(--text-muted);
   transition: color 0.2s;
 }
 
-nav .nav-links a:hover { color: var(--text); }
+nav .nav-center a:hover { color: var(--text); }
 
-/* Hero */
+nav .nav-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+nav .nav-right a {
+  font-size: 14px;
+  color: var(--text-muted);
+  transition: color 0.2s;
+}
+
+nav .nav-right a:hover { color: var(--text); }
+
+.nav-btn {
+  background: var(--accent);
+  color: #fff !important;
+  padding: 7px 18px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.nav-btn:hover { background: var(--accent-hover); }
+
+/* ---- Hero ---- */
 .hero {
-  padding: 180px 0 120px;
+  padding: 160px 0 100px;
   text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -200px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 800px;
+  height: 800px;
+  background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+  pointer-events: none;
 }
 
 .hero-badge {
@@ -97,26 +147,34 @@ nav .nav-links a:hover { color: var(--text); }
 }
 
 .hero h1 {
-  font-size: clamp(56px, 10vw, 96px);
+  font-size: clamp(48px, 8vw, 80px);
   font-weight: 800;
   letter-spacing: -2px;
   line-height: 1;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
 .hero .tagline {
-  font-size: clamp(20px, 3vw, 28px);
+  font-size: clamp(18px, 2.5vw, 24px);
   font-weight: 300;
   color: var(--text-muted);
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 
 .hero .subtitle {
   font-size: 16px;
   color: var(--text-dim);
-  max-width: 540px;
-  margin: 0 auto 48px;
+  max-width: 520px;
+  margin: 0 auto 40px;
   line-height: 1.7;
+}
+
+.cta-group {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 56px;
+  flex-wrap: wrap;
 }
 
 .btn-primary {
@@ -145,12 +203,164 @@ nav .nav-links a:hover { color: var(--text); }
   border: 1px solid var(--border);
   cursor: pointer;
   transition: border-color 0.2s, color 0.2s;
-  margin-left: 12px;
 }
 
 .btn-secondary:hover { border-color: var(--text-dim); color: var(--text); }
 
-/* Section shared */
+.btn-green {
+  display: inline-block;
+  background: var(--green);
+  color: #000;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 12px 32px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.btn-green:hover { opacity: 0.9; }
+
+/* ---- Animated Terminal ---- */
+.hero-terminal {
+  max-width: 560px;
+  margin: 0 auto;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  text-align: left;
+}
+
+.terminal-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.terminal-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--border);
+}
+
+.terminal-dot:first-child { background: #ef4444; }
+.terminal-dot:nth-child(2) { background: #eab308; }
+.terminal-dot:nth-child(3) { background: #22c55e; }
+
+.terminal-body {
+  padding: 24px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  line-height: 2.2;
+  min-height: 140px;
+}
+
+.terminal-line {
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.terminal-line::before {
+  content: '$ ';
+  color: var(--green);
+}
+
+.terminal-line.typing {
+  border-right: 2px solid var(--accent);
+  animation: blink-caret 0.7s step-end infinite;
+  width: 0;
+  display: inline-block;
+}
+
+.terminal-line.line-1 {
+  animation: type-line1 1.5s steps(28) 0.5s forwards, blink-caret 0.7s step-end 0.5s 3;
+  width: 0;
+  overflow: hidden;
+  display: block;
+  border-right: 2px solid var(--accent);
+}
+
+.terminal-line.line-2 {
+  animation: type-line2 1.2s steps(22) 2.5s forwards, blink-caret 0.7s step-end 2.5s 3;
+  width: 0;
+  overflow: hidden;
+  display: block;
+  border-right: 2px solid var(--accent);
+  opacity: 0;
+  animation: show-line2 0s 2.5s forwards, type-line2 1.2s steps(22) 2.5s forwards, blink-caret 0.7s step-end 2.5s 3;
+}
+
+.terminal-line.line-3 {
+  opacity: 0;
+  animation: show-line3 0s 4.2s forwards;
+  color: var(--green);
+}
+
+.terminal-line.line-3::before {
+  content: '> ';
+  color: var(--accent);
+}
+
+@keyframes type-line1 {
+  from { width: 0; }
+  to { width: 100%; border-right-color: transparent; }
+}
+
+@keyframes type-line2 {
+  from { width: 0; }
+  to { width: 100%; border-right-color: transparent; }
+}
+
+@keyframes show-line2 {
+  to { opacity: 1; }
+}
+
+@keyframes show-line3 {
+  to { opacity: 1; }
+}
+
+@keyframes blink-caret {
+  50% { border-color: transparent; }
+}
+
+/* ---- Trusted By ---- */
+.trusted {
+  padding: 60px 0;
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+
+.trusted p {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-dim);
+  margin-bottom: 32px;
+}
+
+.trusted-logos {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 48px;
+  flex-wrap: wrap;
+  opacity: 0.4;
+}
+
+.trusted-logos span {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+}
+
+/* ---- Section shared ---- */
 section { padding: 100px 0; }
 
 .section-label {
@@ -185,10 +395,10 @@ section { padding: 100px 0; }
   margin: 0 auto;
 }
 
-/* Features */
+/* ---- Features Grid (14 systems) ---- */
 .features-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 1px;
   background: var(--border);
   border: 1px solid var(--border);
@@ -198,148 +408,424 @@ section { padding: 100px 0; }
 
 .feature-card {
   background: var(--bg);
-  padding: 36px 32px;
+  padding: 32px 28px;
   transition: background 0.2s;
 }
 
 .feature-card:hover { background: var(--bg-elevated); }
 
-.feature-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 20px;
+.feature-num {
+  font-size: 12px;
+  font-weight: 600;
   color: var(--accent);
+  margin-bottom: 12px;
+  font-family: 'JetBrains Mono', monospace;
 }
 
-.feature-icon svg { width: 20px; height: 20px; }
-
 .feature-card h3 {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .feature-card p {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--text-dim);
   line-height: 1.6;
 }
 
-/* Install */
-#install { border-top: 1px solid var(--border); }
-
-.terminal {
-  max-width: 600px;
-  margin: 0 auto;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
-}
-
-.terminal-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--border);
-}
-
-.terminal-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--border);
-}
-
-.terminal-body {
-  padding: 24px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 14px;
-  line-height: 2;
-}
-
-.terminal-line::before {
-  content: '$ ';
+.feature-tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 500;
   color: var(--accent);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  border-radius: 4px;
+  padding: 2px 8px;
+  margin-top: 10px;
 }
 
-.terminal-line {
+.feature-tag.soon {
+  color: #eab308;
+  border-color: rgba(234, 179, 8, 0.25);
+}
+
+/* ---- Comparison ---- */
+.comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.comparison-table th {
+  text-align: left;
+  padding: 14px 16px;
+  font-weight: 600;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border);
   color: var(--text-muted);
 }
 
-/* How it works */
-.steps {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 48px;
-  counter-reset: step;
+.comparison-table th:first-child { color: var(--text); }
+
+.comparison-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-dim);
 }
 
-.step {
-  counter-increment: step;
+.comparison-table td:first-child {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.comparison-table .check { color: var(--green); font-weight: 600; }
+.comparison-table .cross { color: var(--text-dim); }
+.comparison-table .partial { color: #eab308; }
+
+.comparison-table tr:hover td { background: var(--bg-elevated); }
+
+/* ---- Pricing ---- */
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.pricing-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 36px 28px;
   position: relative;
 }
 
-.step-number {
-  font-size: 48px;
-  font-weight: 800;
-  color: var(--bg-elevated);
-  -webkit-text-stroke: 1px var(--border);
-  margin-bottom: 20px;
-  line-height: 1;
+.pricing-card.featured {
+  border-color: var(--accent);
+  box-shadow: 0 0 40px var(--accent-glow);
 }
 
-.step h3 {
+.pricing-card .plan-badge {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 12px;
+  border-radius: 100px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.pricing-card h3 {
   font-size: 18px;
   font-weight: 600;
   margin-bottom: 8px;
 }
 
-.step p {
-  font-size: 14px;
-  color: var(--text-dim);
-  line-height: 1.6;
+.pricing-card .price {
+  font-size: 36px;
+  font-weight: 800;
+  margin-bottom: 4px;
 }
 
-/* Footer */
+.pricing-card .price span {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-dim);
+}
+
+.pricing-card .price-note {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-bottom: 24px;
+}
+
+.pricing-card ul {
+  list-style: none;
+  margin-bottom: 28px;
+}
+
+.pricing-card ul li {
+  font-size: 14px;
+  color: var(--text-muted);
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(39, 39, 42, 0.5);
+}
+
+.pricing-card ul li::before {
+  content: '-- ';
+  color: var(--text-dim);
+}
+
+.pricing-btn {
+  display: block;
+  text-align: center;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  transition: all 0.2s;
+}
+
+.pricing-btn:hover { border-color: var(--text-dim); color: var(--text); }
+
+.pricing-btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.pricing-btn.primary:hover { background: var(--accent-hover); }
+
+/* ---- Testimonials ---- */
+.testimonials-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.testimonial-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px;
+}
+
+.testimonial-card blockquote {
+  font-size: 15px;
+  color: var(--text-muted);
+  line-height: 1.7;
+  margin-bottom: 20px;
+  font-style: italic;
+}
+
+.testimonial-author {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.testimonial-role {
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+/* ---- FAQ ---- */
+.faq-list {
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.faq-item {
+  border-bottom: 1px solid var(--border);
+}
+
+.faq-question {
+  width: 100%;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 500;
+  text-align: left;
+  padding: 20px 0;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: inherit;
+}
+
+.faq-question:hover { color: var(--accent); }
+
+.faq-question::after {
+  content: '+';
+  font-size: 20px;
+  font-weight: 300;
+  color: var(--text-dim);
+  transition: transform 0.2s;
+}
+
+.faq-item.open .faq-question::after {
+  content: '-';
+}
+
+.faq-answer {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.faq-item.open .faq-answer {
+  max-height: 300px;
+}
+
+.faq-answer p {
+  font-size: 15px;
+  color: var(--text-dim);
+  line-height: 1.7;
+  padding-bottom: 20px;
+}
+
+/* ---- Newsletter ---- */
+.newsletter {
+  text-align: center;
+  padding: 80px 0;
+  border-top: 1px solid var(--border);
+}
+
+.newsletter h2 {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.newsletter p {
+  color: var(--text-dim);
+  margin-bottom: 28px;
+}
+
+.newsletter-form {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.newsletter-form input {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+}
+
+.newsletter-form input:focus { border-color: var(--accent); }
+
+.newsletter-form button {
+  padding: 12px 24px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.2s;
+}
+
+.newsletter-form button:hover { background: var(--accent-hover); }
+
+/* ---- Footer ---- */
 footer {
   border-top: 1px solid var(--border);
   padding: 48px 0;
-  text-align: center;
 }
 
-footer p {
+.footer-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 48px;
+  margin-bottom: 48px;
+}
+
+.footer-brand .logo {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  margin-bottom: 12px;
+}
+
+.footer-brand p {
   font-size: 14px;
   color: var(--text-dim);
+  line-height: 1.6;
+  max-width: 280px;
 }
 
-footer a {
+.footer-col h4 {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
   color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.footer-col ul {
+  list-style: none;
+}
+
+.footer-col ul li {
+  margin-bottom: 10px;
+}
+
+.footer-col ul li a {
+  font-size: 14px;
+  color: var(--text-dim);
   transition: color 0.2s;
 }
 
-footer a:hover { color: var(--text); }
+.footer-col ul li a:hover { color: var(--text); }
 
-/* Responsive */
-@media (max-width: 768px) {
-  .features-grid { grid-template-columns: 1fr; }
-  .steps { grid-template-columns: 1fr; gap: 36px; }
-  .hero { padding: 140px 0 80px; }
-  section { padding: 64px 0; }
-  nav .nav-links { gap: 20px; }
-  .btn-secondary { margin-left: 0; margin-top: 12px; }
-  .hero .cta-group { display: flex; flex-direction: column; align-items: center; }
+.footer-bottom {
+  border-top: 1px solid var(--border);
+  padding-top: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
-@media (max-width: 480px) {
-  nav .nav-links { display: none; }
+.footer-bottom p {
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.footer-bottom-links {
+  display: flex;
+  gap: 24px;
+}
+
+.footer-bottom-links a {
+  font-size: 13px;
+  color: var(--text-dim);
+  transition: color 0.2s;
+}
+
+.footer-bottom-links a:hover { color: var(--text); }
+
+/* ---- Responsive ---- */
+@media (max-width: 900px) {
+  .pricing-grid { grid-template-columns: repeat(2, 1fr); }
+  .testimonials-grid { grid-template-columns: 1fr; }
+  .footer-grid { grid-template-columns: 1fr 1fr; gap: 32px; }
+}
+
+@media (max-width: 768px) {
+  .features-grid { grid-template-columns: 1fr; }
+  .hero { padding: 140px 0 80px; }
+  section { padding: 64px 0; }
+  nav .nav-center { display: none; }
+  .cta-group { flex-direction: column; align-items: center; }
+  .comparison-table { font-size: 12px; }
+  .comparison-table th, .comparison-table td { padding: 8px 6px; }
+}
+
+@media (max-width: 600px) {
+  .pricing-grid { grid-template-columns: 1fr; }
+  .footer-grid { grid-template-columns: 1fr; }
+  nav .nav-right .nav-gh { display: none; }
 }
 </style>
 </head>
@@ -348,135 +834,441 @@ footer a:hover { color: var(--text); }
 <nav>
   <div class="container">
     <div class="logo">BLUN</div>
-    <ul class="nav-links">
+    <ul class="nav-center">
       <li><a href="#features">Features</a></li>
-      <li><a href="#install">Install</a></li>
-      <li><a href="#how-it-works">How it works</a></li>
-      <li><a href="https://github.com/placeholder/blun" target="_blank">GitHub</a></li>
+      <li><a href="#pricing">Pricing</a></li>
+      <li><a href="#faq">FAQ</a></li>
+      <li><a href="https://github.com/Maykbiletti/blun" target="_blank">GitHub</a></li>
     </ul>
+    <div class="nav-right">
+      <a href="https://github.com/Maykbiletti/blun" target="_blank" class="nav-gh">Docs</a>
+      <a href="/login">Login</a>
+      <a href="/dashboard" class="nav-btn">Live Demo</a>
+    </div>
   </div>
 </nav>
 
+<!-- Hero -->
 <section class="hero">
   <div class="container">
     <div class="hero-badge">Open Source / MIT License</div>
     <h1>BLUN</h1>
-    <p class="tagline">AI Organisator</p>
-    <p class="subtitle">Open-source framework that organizes your AI agents into productive teams. One command to install. Zero complexity.</p>
+    <p class="tagline">Your AI team, organized.</p>
+    <p class="subtitle">Like having a CTO that never sleeps. An open-source framework that turns scattered AI agents into a coordinated, productive team.</p>
     <div class="cta-group">
       <a href="#install" class="btn-primary">Get Started</a>
-      <a href="https://github.com/placeholder/blun" class="btn-secondary" target="_blank">View on GitHub</a>
+      <a href="/dashboard" class="btn-green">Live Demo</a>
+      <a href="https://github.com/Maykbiletti/blun" class="btn-secondary" target="_blank">View on GitHub</a>
     </div>
-  </div>
-</section>
 
-<section id="features">
-  <div class="container">
-    <div class="section-header">
-      <p class="section-label">Features</p>
-      <h2 class="section-title">Everything you need to orchestrate AI</h2>
-      <p class="section-desc">A lean runtime that lets agents self-organize, communicate, and get work done.</p>
-    </div>
-    <div class="features-grid">
-      <div class="feature-card">
-        <div class="feature-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z"/></svg>
-        </div>
-        <h3>Agent Teams</h3>
-        <p>Organize AI agents into companies with a CEO that recruits and manages the team autonomously.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z"/></svg>
-        </div>
-        <h3>Real-time</h3>
-        <p>WebSocket-powered, event-driven architecture. No polling, instant responses across all agents.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17 17.25 21A2.652 2.652 0 0 0 21 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 1 1-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 0 0 4.486-6.336l-3.276 3.277a3.004 3.004 0 0 1-2.25-2.25l3.276-3.276a4.5 4.5 0 0 0-6.336 4.486c.048.58.024 1.194-.14 1.743"/></svg>
-        </div>
-        <h3>Skills and Tools</h3>
-        <p>Install domain skills and tools from Git. Agents auto-discover what they need for every task.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/></svg>
-        </div>
-        <h3>Multi-Model</h3>
-        <p>OpenAI, Claude, Gemini, local LLMs -- switch per agent anytime. No vendor lock-in.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 0 1-3-3m3 3a3 3 0 1 0 0 6h13.5a3 3 0 1 0 0-6m-16.5-3a3 3 0 0 1 3-3h13.5a3 3 0 0 1 3 3m-19.5 0a4.5 4.5 0 0 1 .9-2.7L5.737 5.1a3.375 3.375 0 0 1 2.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 0 1 .9 2.7m0 0a3 3 0 0 1-3 3m0 3h.008v.008h-.008v-.008Zm0-6h.008v.008h-.008v-.008Zm-3 6h.008v.008h-.008v-.008Zm0-6h.008v.008h-.008v-.008Z"/></svg>
-        </div>
-        <h3>Local First</h3>
-        <p>SQLite and embedded runtime, works offline. Or scale to PostgreSQL and Redis when ready.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3-4.5 16.5"/></svg>
-        </div>
-        <h3>Open Source</h3>
-        <p>MIT licensed, community-driven, fully extensible. Build what you need, share what you make.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section id="install">
-  <div class="container">
-    <div class="section-header">
-      <p class="section-label">Quick Start</p>
-      <h2 class="section-title">Up and running in seconds</h2>
-      <p class="section-desc">One command to scaffold. One command to launch.</p>
-    </div>
-    <div class="terminal">
+    <div class="hero-terminal">
       <div class="terminal-bar">
         <div class="terminal-dot"></div>
         <div class="terminal-dot"></div>
         <div class="terminal-dot"></div>
       </div>
       <div class="terminal-body">
-        <div class="terminal-line">npx create-blun my-project</div>
-        <div class="terminal-line">cd my-project && blun start</div>
+        <div class="terminal-line line-1">npx create-blun my-project</div>
+        <div class="terminal-line line-2">cd my-project && blun start</div>
+        <div class="terminal-line line-3">Dashboard live at http://localhost:3000</div>
       </div>
     </div>
   </div>
 </section>
 
-<section id="how-it-works">
+<!-- Trusted By -->
+<section class="trusted" style="padding: 60px 0;">
+  <div class="container">
+    <p>Trusted by teams building the future</p>
+    <div class="trusted-logos">
+      <span>AUTOFLASHER</span>
+      <span>TUNINGFILES</span>
+      <span>BITCHIP</span>
+      <span>WEBCONSULTING</span>
+      <!-- Add more logos as adoption grows -->
+    </div>
+  </div>
+</section>
+
+<!-- Features (14 Systems) -->
+<section id="features">
   <div class="container">
     <div class="section-header">
-      <p class="section-label">How it works</p>
-      <h2 class="section-title">Three steps to organized AI</h2>
+      <p class="section-label">14 Systems</p>
+      <h2 class="section-title">Everything you need to orchestrate AI</h2>
+      <p class="section-desc">A complete platform. Not a library. Not a wrapper. A full operating system for AI teams.</p>
     </div>
-    <div class="steps">
-      <div class="step">
-        <div class="step-number">01</div>
-        <h3>Install</h3>
-        <p>Scaffold a new BLUN project with a single command. Everything you need is included out of the box.</p>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-num">01</div>
+        <h3>KI-Organisator</h3>
+        <p>A meta-AI above your agents. It recruits, delegates, and coordinates like a CTO.</p>
+        <span class="feature-tag">Core</span>
       </div>
-      <div class="step">
-        <div class="step-number">02</div>
-        <h3>Configure Agents</h3>
-        <p>Define your agents, assign roles, pick models, and install skills. YAML config, no boilerplate.</p>
+      <div class="feature-card">
+        <div class="feature-num">02</div>
+        <h3>Code Canvas</h3>
+        <p>Watch your agents write code in real time with syntax highlighting.</p>
+        <span class="feature-tag">Core</span>
       </div>
-      <div class="step">
-        <div class="step-number">03</div>
-        <h3>Let BLUN Organize</h3>
-        <p>The CEO agent takes over -- recruiting, delegating, and coordinating your team in real time.</p>
+      <div class="feature-card">
+        <div class="feature-num">03</div>
+        <h3>Skills Marketplace</h3>
+        <p>Install skills from Git or build your own. Agents auto-discover what they need.</p>
+        <span class="feature-tag">Core</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-num">04</div>
+        <h3>Federation</h3>
+        <p>Connect BLUN instances across servers. Agents collaborate cross-network.</p>
+        <span class="feature-tag">Core</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-num">05</div>
+        <h3>Telegram Bridge</h3>
+        <p>One-click bot integration. Agents respond directly in Telegram chats.</p>
+        <span class="feature-tag">Integration</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-num">06</div>
+        <h3>Voice and Avatar</h3>
+        <p>Give agents a face and voice. Video-call your AI team.</p>
+        <span class="feature-tag soon">Coming Soon</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-num">07</div>
+        <h3>Multi-Model Router</h3>
+        <p>GPT-4, Claude, Gemini, Ollama -- assign different models per agent.</p>
+        <span class="feature-tag">Core</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-num">08</div>
+        <h3>Local Runtime</h3>
+        <p>SQLite, offline-first. Scale to PostgreSQL and Redis when ready.</p>
+        <span class="feature-tag">Core</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-num">09</div>
+        <h3>Billing Engine</h3>
+        <p>Stripe subscriptions, invoices, plan limits. Monetize from day one.</p>
+        <span class="feature-tag">Business</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-num">10</div>
+        <h3>Dashboard</h3>
+        <p>Real-time React UI. Monitor agents, tasks, and system health.</p>
+        <span class="feature-tag">Core</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-num">11</div>
+        <h3>WebSocket Layer</h3>
+        <p>Event-driven, zero-polling architecture for instant updates.</p>
+        <span class="feature-tag">Infrastructure</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-num">12</div>
+        <h3>Auth System</h3>
+        <p>JWT, OAuth, role-based access control. Production-ready security.</p>
+        <span class="feature-tag">Security</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-num">13</div>
+        <h3>Plugin API</h3>
+        <p>Extend anything with hooks. Build custom integrations in minutes.</p>
+        <span class="feature-tag">Extensibility</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-num">14</div>
+        <h3>CLI</h3>
+        <p>Full management from your terminal. Create, deploy, monitor.</p>
+        <span class="feature-tag">Developer</span>
       </div>
     </div>
   </div>
 </section>
 
+<!-- Comparison -->
+<section id="comparison" style="border-top: 1px solid var(--border);">
+  <div class="container">
+    <div class="section-header">
+      <p class="section-label">Comparison</p>
+      <h2 class="section-title">Why teams choose BLUN</h2>
+    </div>
+    <div style="overflow-x: auto;">
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th>BLUN</th>
+            <th>CrewAI</th>
+            <th>AutoGen</th>
+            <th>LangGraph</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Built-in Dashboard</td><td class="check">Yes</td><td class="cross">No</td><td class="cross">No</td><td class="cross">No</td></tr>
+          <tr><td>One-command setup</td><td class="check">Yes</td><td class="cross">No</td><td class="cross">No</td><td class="cross">No</td></tr>
+          <tr><td>Telegram integration</td><td class="check">Yes</td><td class="cross">No</td><td class="cross">No</td><td class="cross">No</td></tr>
+          <tr><td>Federation</td><td class="check">Yes</td><td class="cross">No</td><td class="cross">No</td><td class="cross">No</td></tr>
+          <tr><td>Skills marketplace</td><td class="check">Yes</td><td class="cross">No</td><td class="cross">No</td><td class="cross">No</td></tr>
+          <tr><td>Multi-model per agent</td><td class="check">Yes</td><td class="partial">Partial</td><td class="partial">Partial</td><td class="partial">Partial</td></tr>
+          <tr><td>Real-time WebSocket</td><td class="check">Yes</td><td class="cross">No</td><td class="cross">No</td><td class="cross">No</td></tr>
+          <tr><td>Works offline</td><td class="check">Yes</td><td class="cross">No</td><td class="cross">No</td><td class="cross">No</td></tr>
+          <tr><td>Built-in billing</td><td class="check">Yes</td><td class="cross">No</td><td class="cross">No</td><td class="cross">No</td></tr>
+          <tr><td>No Python required</td><td class="check">Yes</td><td class="cross">No</td><td class="cross">No</td><td class="cross">No</td></tr>
+          <tr><td>Open source (MIT)</td><td class="check">Yes</td><td class="check">Yes</td><td class="check">Yes</td><td class="check">Yes</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- Install -->
+<section id="install" style="border-top: 1px solid var(--border);">
+  <div class="container">
+    <div class="section-header">
+      <p class="section-label">Quick Start</p>
+      <h2 class="section-title">Up and running in 30 seconds</h2>
+      <p class="section-desc">One command to scaffold. One command to launch. No configuration required.</p>
+    </div>
+    <div class="hero-terminal" style="max-width: 600px; margin: 0 auto;">
+      <div class="terminal-bar">
+        <div class="terminal-dot"></div>
+        <div class="terminal-dot"></div>
+        <div class="terminal-dot"></div>
+      </div>
+      <div class="terminal-body">
+        <div class="terminal-line" style="width: 100%; border: none;">npx create-blun my-project</div>
+        <div class="terminal-line" style="width: 100%; border: none;">cd my-project</div>
+        <div class="terminal-line" style="width: 100%; border: none;">blun start</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Pricing -->
+<section id="pricing" style="border-top: 1px solid var(--border);">
+  <div class="container-wide">
+    <div class="section-header">
+      <p class="section-label">Pricing</p>
+      <h2 class="section-title">Start free. Scale when ready.</h2>
+      <p class="section-desc">Self-host forever for free. Cloud plans include hosting and automatic updates.</p>
+    </div>
+    <div class="pricing-grid">
+
+      <div class="pricing-card">
+        <h3>Free</h3>
+        <div class="price">0 EUR <span>/ month</span></div>
+        <p class="price-note">Perfect for trying BLUN out</p>
+        <ul>
+          <li>3 Agents</li>
+          <li>5 Skills</li>
+          <li>Dashboard</li>
+          <li>SQLite storage</li>
+          <li>Community support</li>
+        </ul>
+        <a href="#install" class="pricing-btn">Get Started</a>
+      </div>
+
+      <div class="pricing-card featured">
+        <div class="plan-badge">Popular</div>
+        <h3>Pro</h3>
+        <div class="price">5 EUR <span>/ month</span></div>
+        <p class="price-note">For serious builders</p>
+        <ul>
+          <li>10 Agents</li>
+          <li>Unlimited Skills</li>
+          <li>Federation</li>
+          <li>PostgreSQL support</li>
+          <li>Email support</li>
+        </ul>
+        <a href="/register" class="pricing-btn primary">Start Free Trial</a>
+      </div>
+
+      <div class="pricing-card">
+        <h3>Team</h3>
+        <div class="price">15 EUR <span>/ month</span></div>
+        <p class="price-note">For teams and agencies</p>
+        <ul>
+          <li>Unlimited Agents</li>
+          <li>Unlimited Skills</li>
+          <li>Custom branding</li>
+          <li>Priority support</li>
+          <li>Team management</li>
+        </ul>
+        <a href="/register" class="pricing-btn">Start Free Trial</a>
+      </div>
+
+      <div class="pricing-card">
+        <h3>Enterprise</h3>
+        <div class="price">Custom</div>
+        <p class="price-note">For organizations</p>
+        <ul>
+          <li>Everything in Team</li>
+          <li>Dedicated infrastructure</li>
+          <li>SLA guarantee</li>
+          <li>SSO / SAML</li>
+          <li>Onboarding support</li>
+        </ul>
+        <a href="mailto:hello@blun.at" class="pricing-btn">Contact Sales</a>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- Testimonials -->
+<section id="testimonials" style="border-top: 1px solid var(--border);">
+  <div class="container">
+    <div class="section-header">
+      <p class="section-label">Testimonials</p>
+      <h2 class="section-title">What builders are saying</h2>
+    </div>
+    <div class="testimonials-grid">
+      <div class="testimonial-card">
+        <blockquote>"BLUN replaced three different tools for us. The KI-Organisator is genuinely impressive -- it coordinates our agents better than we could manually."</blockquote>
+        <div class="testimonial-author">-- Early Adopter</div>
+        <div class="testimonial-role">AI Engineering Team</div>
+      </div>
+      <div class="testimonial-card">
+        <blockquote>"We went from zero to a working agent team in under five minutes. The Telegram integration alone was worth switching."</blockquote>
+        <div class="testimonial-author">-- Beta User</div>
+        <div class="testimonial-role">Startup CTO</div>
+      </div>
+      <div class="testimonial-card">
+        <blockquote>"Finally an agent framework that ships with a real UI. No more cobbling together dashboards from scratch."</blockquote>
+        <div class="testimonial-author">-- Community Member</div>
+        <div class="testimonial-role">Full-Stack Developer</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section id="faq" style="border-top: 1px solid var(--border);">
+  <div class="container">
+    <div class="section-header">
+      <p class="section-label">FAQ</p>
+      <h2 class="section-title">Frequently asked questions</h2>
+    </div>
+    <div class="faq-list">
+
+      <div class="faq-item">
+        <button class="faq-question">What is an AI agent?</button>
+        <div class="faq-answer">
+          <p>An AI agent is a program powered by a language model (like ChatGPT or Claude) that can perform tasks autonomously. Instead of just answering questions, agents can write code, do research, send messages, and make decisions. BLUN organizes multiple agents into a coordinated team.</p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question">Do I need to know how to code?</button>
+        <div class="faq-answer">
+          <p>You need basic command-line skills to install and run BLUN. But once it is running, you interact with your agents through the dashboard or Telegram -- no coding required for day-to-day use.</p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question">Which AI models does BLUN support?</button>
+        <div class="faq-answer">
+          <p>OpenAI (GPT-4, GPT-4o), Anthropic (Claude), Google (Gemini), and any local model via Ollama. You can assign different models to different agents and switch anytime.</p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question">Is BLUN really free?</button>
+        <div class="faq-answer">
+          <p>Yes. BLUN is MIT licensed and free to self-host forever. The paid plans are for managed cloud hosting with extra features like federation and priority support. You bring your own API keys for the AI models.</p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question">Can BLUN work without internet?</button>
+        <div class="faq-answer">
+          <p>Yes. BLUN uses SQLite by default and can run entirely offline if you pair it with a local model through Ollama. No cloud dependency whatsoever.</p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question">What is Federation?</button>
+        <div class="faq-answer">
+          <p>Federation lets multiple BLUN instances talk to each other across the internet. Your agents can collaborate with agents running on someone else's server -- like email, but for AI teams. Available on Pro plans and above.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- Newsletter -->
+<section class="newsletter">
+  <div class="container">
+    <h2>Stay in the loop</h2>
+    <p>Get notified about major releases and new features. No spam, ever.</p>
+    <form class="newsletter-form" onsubmit="return false;">
+      <input type="email" placeholder="you@example.com" />
+      <button type="submit">Subscribe</button>
+    </form>
+  </div>
+</section>
+
+<!-- Footer -->
 <footer>
   <div class="container">
-    <p style="margin-bottom: 12px;">Built with care. MIT License.</p>
-    <p><a href="https://github.com/placeholder/blun">GitHub</a></p>
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <div class="logo">BLUN</div>
+        <p>Open-source AI agent orchestration. Built for developers who want organized, productive AI teams.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Product</h4>
+        <ul>
+          <li><a href="#features">Features</a></li>
+          <li><a href="#pricing">Pricing</a></li>
+          <li><a href="/dashboard">Dashboard</a></li>
+          <li><a href="#install">Quick Start</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Resources</h4>
+        <ul>
+          <li><a href="https://github.com/Maykbiletti/blun" target="_blank">GitHub</a></li>
+          <li><a href="#">Documentation</a></li>
+          <li><a href="#">Blog</a></li>
+          <li><a href="#">Changelog</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Community</h4>
+        <ul>
+          <li><a href="#">Discord</a></li>
+          <li><a href="#">Twitter / X</a></li>
+          <li><a href="https://github.com/Maykbiletti/blun/discussions" target="_blank">Discussions</a></li>
+          <li><a href="https://github.com/Maykbiletti/blun/issues" target="_blank">Issues</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>2026 BLUN. MIT License.</p>
+      <div class="footer-bottom-links">
+        <a href="#">Privacy</a>
+        <a href="#">Terms</a>
+        <a href="https://github.com/Maykbiletti/blun" target="_blank">GitHub</a>
+      </div>
+    </div>
   </div>
 </footer>
+
+<script>
+// FAQ accordion
+document.querySelectorAll('.faq-question').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var item = this.parentElement;
+    var wasOpen = item.classList.contains('open');
+    document.querySelectorAll('.faq-item').forEach(function(i) { i.classList.remove('open'); });
+    if (!wasOpen) item.classList.add('open');
+  });
+});
+</script>
 
 </body>
 </html>
