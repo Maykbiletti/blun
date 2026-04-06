@@ -836,6 +836,7 @@ footer {
     <div class="logo">BLUN</div>
     <ul class="nav-center">
       <li><a href="#features">Features</a></li>
+      <li><a href="#in-action">Preview</a></li>
       <li><a href="#pricing">Pricing</a></li>
       <li><a href="#faq">FAQ</a></li>
       <li><a href="https://github.com/Maykbiletti/blun" target="_blank">GitHub</a></li>
@@ -985,6 +986,352 @@ footer {
       </div>
     </div>
   </div>
+</section>
+
+
+<!-- ============ SEE BLUN IN ACTION ============ -->
+<section id="in-action" style="border-top: 1px solid var(--border);">
+<div class="container-wide">
+  <div class="section-header">
+    <p class="section-label">Live Preview</p>
+    <h2 class="section-title">See BLUN in Action</h2>
+    <p class="section-desc">Real interfaces. Real workflows. This is what orchestrating AI agents actually looks like.</p>
+  </div>
+
+  <style>
+  .mockup-grid { display: flex; flex-direction: column; gap: 64px; }
+  .mockup-block { background: #111113; border: 1px solid #27272a; border-radius: 16px; overflow: hidden; }
+  .mockup-titlebar { display: flex; align-items: center; gap: 8px; padding: 12px 16px; background: #0c0c0e; border-bottom: 1px solid #27272a; }
+  .mockup-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .mockup-dot.r { background: #ef4444; }
+  .mockup-dot.y { background: #f59e0b; }
+  .mockup-dot.g { background: #22c55e; }
+  .mockup-titlebar span { font-size: 12px; color: #71717a; margin-left: 8px; font-family: 'Inter', sans-serif; }
+  .mockup-body { padding: 20px; }
+
+  .dash-agents { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+  .dash-card { background: #1a1a1e; border: 1px solid #27272a; border-radius: 10px; padding: 16px; }
+  .dash-card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .dash-card-head h4 { font-size: 14px; font-weight: 600; color: #fafafa; }
+  .dash-status { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .dash-status.online { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+  .dash-status.busy { background: #f59e0b; box-shadow: 0 0 6px #f59e0b; }
+  .dash-status.offline { background: #71717a; }
+  .dash-meta { font-size: 12px; color: #71717a; margin-bottom: 4px; }
+  .dash-meta b { color: #a1a1aa; }
+  .dash-bar { height: 4px; background: #27272a; border-radius: 2px; margin-top: 8px; overflow: hidden; }
+  .dash-bar-fill { height: 100%; border-radius: 2px; background: #3b82f6; }
+  .dash-stats { display: flex; gap: 24px; margin-bottom: 16px; flex-wrap: wrap; }
+  .dash-stat { text-align: center; }
+  .dash-stat .num { font-size: 28px; font-weight: 700; color: #fafafa; }
+  .dash-stat .lbl { font-size: 11px; color: #71717a; text-transform: uppercase; letter-spacing: 1px; }
+
+  .term-body { font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.8; padding: 16px 20px; background: #0a0a0c; min-height: 260px; }
+  .term-line { opacity: 0; animation: termFadeIn 0.3s forwards; }
+  .term-line .ts { color: #3f3f46; margin-right: 8px; }
+  .term-line .claude { color: #a78bfa; }
+  .term-line .gpt { color: #4ade80; }
+  .term-line .gemini { color: #60a5fa; }
+  .term-line .sys { color: #f59e0b; }
+  .term-line .dim { color: #52525b; }
+  .term-cursor { display: inline-block; width: 8px; height: 15px; background: #f59e0b; animation: blink 1s step-end infinite; vertical-align: middle; margin-left: 2px; }
+  @keyframes blink { 50% { opacity: 0; } }
+  @keyframes termFadeIn { to { opacity: 1; } }
+
+  .canvas-layout { display: grid; grid-template-columns: 180px 1fr 200px; min-height: 300px; }
+  .canvas-tree { background: #0e0e10; border-right: 1px solid #27272a; padding: 12px; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+  .canvas-tree-item { padding: 4px 8px; border-radius: 4px; color: #71717a; cursor: default; white-space: nowrap; }
+  .canvas-tree-item.active { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
+  .canvas-tree-item.folder { color: #a1a1aa; }
+  .canvas-code { padding: 16px; font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.7; overflow-x: auto; }
+  .canvas-code .ln { color: #3f3f46; display: inline-block; width: 30px; text-align: right; margin-right: 16px; user-select: none; }
+  .canvas-code .kw { color: #c084fc; }
+  .canvas-code .fn { color: #60a5fa; }
+  .canvas-code .str { color: #4ade80; }
+  .canvas-code .cm { color: #52525b; }
+  .canvas-code .op { color: #f59e0b; }
+  .canvas-agents { background: #0e0e10; border-left: 1px solid #27272a; padding: 12px; }
+  .canvas-agent-indicator { padding: 10px; border-radius: 8px; background: #141416; border: 1px solid #27272a; margin-bottom: 8px; }
+  .canvas-agent-indicator .name { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+  .canvas-agent-indicator .action { font-size: 11px; color: #71717a; }
+  .canvas-agent-indicator .name.purple { color: #a78bfa; }
+  .canvas-agent-indicator .name.green { color: #4ade80; }
+  .canvas-agent-indicator .name.blue { color: #60a5fa; }
+  .canvas-agent-cursor { display: inline-block; width: 2px; height: 14px; animation: blink 0.8s step-end infinite; vertical-align: middle; }
+
+  .race-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .race-panel { background: #141416; border: 1px solid #27272a; border-radius: 10px; overflow: hidden; }
+  .race-panel-head { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid #1e1e22; }
+  .race-panel-head .model-name { font-size: 13px; font-weight: 600; }
+  .race-panel-head .cherry { font-size: 11px; padding: 3px 10px; border-radius: 100px; background: rgba(245, 158, 11, 0.15); color: #f59e0b; cursor: pointer; border: 1px solid rgba(245, 158, 11, 0.3); }
+  .race-panel-head .cherry.picked { background: #f59e0b; color: #0a0a0a; font-weight: 600; }
+  .race-preview { padding: 14px; min-height: 160px; }
+  .race-site-bar { height: 8px; background: #27272a; border-radius: 4px; margin-bottom: 10px; }
+  .race-site-bar-fill { height: 100%; border-radius: 4px; }
+  .race-site-hero { height: 40px; border-radius: 6px; margin-bottom: 8px; }
+  .race-site-text { height: 6px; background: #27272a; border-radius: 3px; margin-bottom: 6px; }
+  .race-site-cols { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 10px; }
+  .race-site-col { height: 50px; border-radius: 4px; background: #1a1a1e; }
+  .race-mix-btn { display: block; margin: 16px auto 0; padding: 10px 28px; background: #f59e0b; color: #0a0a0a; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; transition: transform 0.15s; }
+  .race-mix-btn:hover { transform: scale(1.03); }
+
+  .builder-steps { display: flex; align-items: center; justify-content: center; gap: 0; margin-bottom: 32px; flex-wrap: wrap; }
+  .builder-step { text-align: center; padding: 16px 24px; }
+  .builder-step .step-num { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: #27272a; color: #71717a; font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+  .builder-step.active .step-num { background: #f59e0b; color: #0a0a0a; }
+  .builder-step.done .step-num { background: #22c55e; color: #0a0a0a; }
+  .builder-step .step-label { display: block; font-size: 13px; color: #71717a; }
+  .builder-step.active .step-label { color: #fafafa; }
+  .builder-arrow { color: #3f3f46; font-size: 18px; margin: 0 4px; }
+  .builder-prompt { background: #141416; border: 1px solid #27272a; border-radius: 10px; padding: 16px 20px; margin-bottom: 20px; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #a1a1aa; }
+  .builder-prompt .typed { color: #fafafa; }
+  .builder-progress { background: #27272a; border-radius: 6px; height: 10px; overflow: hidden; margin-bottom: 12px; }
+  .builder-progress-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #f59e0b); border-radius: 6px; width: 0%; animation: buildProgress 4s ease-in-out infinite; }
+  @keyframes buildProgress { 0% { width: 0%; } 60% { width: 92%; } 80% { width: 97%; } 100% { width: 100%; } }
+  .builder-progress-label { font-size: 12px; color: #71717a; text-align: right; margin-bottom: 20px; }
+  .builder-platforms { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; }
+  .builder-platform { display: flex; align-items: center; gap: 6px; padding: 8px 16px; background: #1a1a1e; border: 1px solid #27272a; border-radius: 8px; font-size: 13px; color: #a1a1aa; }
+  .builder-platform svg { width: 18px; height: 18px; fill: currentColor; }
+
+  @media (max-width: 768px) {
+    .canvas-layout { grid-template-columns: 1fr; }
+    .canvas-tree, .canvas-agents { display: none; }
+    .race-grid { grid-template-columns: 1fr; }
+    .builder-steps { gap: 4px; }
+    .builder-arrow { display: none; }
+  }
+  </style>
+
+  <div class="mockup-grid">
+
+  <!-- 1. DASHBOARD PREVIEW -->
+  <div class="mockup-block">
+    <div class="mockup-titlebar">
+      <div class="mockup-dot r"></div><div class="mockup-dot y"></div><div class="mockup-dot g"></div>
+      <span>BLUN Dashboard -- agents.local:3000</span>
+    </div>
+    <div class="mockup-body">
+      <div class="dash-stats">
+        <div class="dash-stat"><div class="num">16</div><div class="lbl">Agents</div></div>
+        <div class="dash-stat"><div class="num">3</div><div class="lbl">Companies</div></div>
+        <div class="dash-stat"><div class="num">2,847</div><div class="lbl">Messages Today</div></div>
+        <div class="dash-stat"><div class="num">99.7%</div><div class="lbl">Uptime</div></div>
+      </div>
+      <div class="dash-agents">
+        <div class="dash-card">
+          <div class="dash-card-head"><h4>DevOps Agent</h4><span class="dash-status online"></span></div>
+          <div class="dash-meta"><b>Claude Sonnet</b> -- WebConsulting</div>
+          <div class="dash-meta">342 msgs | 1.2s avg</div>
+          <div class="dash-bar"><div class="dash-bar-fill" style="width:87%"></div></div>
+        </div>
+        <div class="dash-card">
+          <div class="dash-card-head"><h4>Code Reviewer</h4><span class="dash-status online"></span></div>
+          <div class="dash-meta"><b>GPT-4o</b> -- FinTech Corp</div>
+          <div class="dash-meta">518 msgs | 0.8s avg</div>
+          <div class="dash-bar"><div class="dash-bar-fill" style="width:94%"></div></div>
+        </div>
+        <div class="dash-card">
+          <div class="dash-card-head"><h4>QA Tester</h4><span class="dash-status busy"></span></div>
+          <div class="dash-meta"><b>Gemini Pro</b> -- DataVault</div>
+          <div class="dash-meta">127 msgs | 2.1s avg</div>
+          <div class="dash-bar"><div class="dash-bar-fill" style="width:63%"></div></div>
+        </div>
+        <div class="dash-card">
+          <div class="dash-card-head"><h4>API Builder</h4><span class="dash-status online"></span></div>
+          <div class="dash-meta"><b>Claude Opus</b> -- WebConsulting</div>
+          <div class="dash-meta">891 msgs | 1.5s avg</div>
+          <div class="dash-bar"><div class="dash-bar-fill" style="width:78%"></div></div>
+        </div>
+        <div class="dash-card">
+          <div class="dash-card-head"><h4>Doc Writer</h4><span class="dash-status offline"></span></div>
+          <div class="dash-meta"><b>GPT-4o mini</b> -- FinTech Corp</div>
+          <div class="dash-meta">45 msgs | idle</div>
+          <div class="dash-bar"><div class="dash-bar-fill" style="width:12%"></div></div>
+        </div>
+        <div class="dash-card">
+          <div class="dash-card-head"><h4>Security Scan</h4><span class="dash-status online"></span></div>
+          <div class="dash-meta"><b>Gemini Flash</b> -- DataVault</div>
+          <div class="dash-meta">203 msgs | 0.4s avg</div>
+          <div class="dash-bar"><div class="dash-bar-fill" style="width:91%"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. MULTI-AGENT TERMINAL -->
+  <div class="mockup-block">
+    <div class="mockup-titlebar">
+      <div class="mockup-dot r"></div><div class="mockup-dot y"></div><div class="mockup-dot g"></div>
+      <span>Terminal -- blun orchestrate --project api-gateway</span>
+    </div>
+    <div class="term-body" id="mockup-terminal">
+      <div class="term-line" style="animation-delay:0.2s"><span class="ts">09:14:02</span><span class="sys">[BLUN]</span> Orchestrating 3 agents on project api-gateway...</div>
+      <div class="term-line" style="animation-delay:0.6s"><span class="ts">09:14:03</span><span class="claude">[Claude]</span> Scaffolding route handlers in /src/routes/</div>
+      <div class="term-line" style="animation-delay:1.0s"><span class="ts">09:14:03</span><span class="gpt">[GPT-4o]</span> Writing unit tests for auth middleware</div>
+      <div class="term-line" style="animation-delay:1.4s"><span class="ts">09:14:04</span><span class="gemini">[Gemini]</span> Generating OpenAPI spec from route definitions</div>
+      <div class="term-line" style="animation-delay:1.8s"><span class="ts">09:14:06</span><span class="claude">[Claude]</span> <span class="dim">Created 12 endpoints across 4 modules</span></div>
+      <div class="term-line" style="animation-delay:2.2s"><span class="ts">09:14:07</span><span class="gpt">[GPT-4o]</span> <span class="dim">48 tests passing, 0 failures</span></div>
+      <div class="term-line" style="animation-delay:2.6s"><span class="ts">09:14:08</span><span class="gemini">[Gemini]</span> <span class="dim">OpenAPI 3.1 spec generated -- 847 lines</span></div>
+      <div class="term-line" style="animation-delay:3.0s"><span class="ts">09:14:09</span><span class="sys">[BLUN]</span> Merging outputs... conflict resolution: 0 conflicts</div>
+      <div class="term-line" style="animation-delay:3.4s"><span class="ts">09:14:10</span><span class="sys">[BLUN]</span> Build complete. 3 agents, 14 files, 2,340 lines in 8.2s</div>
+      <div class="term-line" style="animation-delay:3.8s"><span class="ts">09:14:10</span><span class="dim">$</span> <span class="term-cursor"></span></div>
+    </div>
+  </div>
+
+  <!-- 3. CODE CANVAS -->
+  <div class="mockup-block">
+    <div class="mockup-titlebar">
+      <div class="mockup-dot r"></div><div class="mockup-dot y"></div><div class="mockup-dot g"></div>
+      <span>BLUN Canvas -- api-gateway/src/routes/auth.ts</span>
+    </div>
+    <div class="canvas-layout">
+      <div class="canvas-tree">
+        <div class="canvas-tree-item folder">src/</div>
+        <div class="canvas-tree-item" style="padding-left:20px">index.ts</div>
+        <div class="canvas-tree-item" style="padding-left:20px">config.ts</div>
+        <div class="canvas-tree-item folder" style="padding-left:20px">routes/</div>
+        <div class="canvas-tree-item active" style="padding-left:32px">auth.ts</div>
+        <div class="canvas-tree-item" style="padding-left:32px">users.ts</div>
+        <div class="canvas-tree-item" style="padding-left:32px">billing.ts</div>
+        <div class="canvas-tree-item folder" style="padding-left:20px">middleware/</div>
+        <div class="canvas-tree-item" style="padding-left:32px">rateLimit.ts</div>
+        <div class="canvas-tree-item" style="padding-left:32px">cors.ts</div>
+        <div class="canvas-tree-item folder" style="padding-left:20px">tests/</div>
+        <div class="canvas-tree-item" style="padding-left:32px">auth.test.ts</div>
+      </div>
+      <div class="canvas-code">
+        <div><span class="ln">38</span><span class="kw">import</span> { <span class="fn">validateToken</span> } <span class="kw">from</span> <span class="str">'../middleware/auth'</span>;</div>
+        <div><span class="ln">39</span></div>
+        <div><span class="ln">40</span><span class="kw">export const</span> <span class="fn">authRouter</span> <span class="op">=</span> <span class="fn">createRouter</span>();</div>
+        <div><span class="ln">41</span></div>
+        <div style="background:rgba(167,139,250,0.08);border-left:2px solid #a78bfa;padding-left:4px"><span class="ln">42</span>authRouter.<span class="fn">post</span>(<span class="str">'/login'</span>, <span class="kw">async</span> (ctx) <span class="op">=&gt;</span> {</div>
+        <div style="background:rgba(167,139,250,0.06)"><span class="ln">43</span>  <span class="kw">const</span> { email, password } <span class="op">=</span> ctx.body;</div>
+        <div style="background:rgba(167,139,250,0.06)"><span class="ln">44</span>  <span class="kw">const</span> user <span class="op">=</span> <span class="kw">await</span> <span class="fn">findUser</span>(email);</div>
+        <div style="background:rgba(167,139,250,0.06)"><span class="ln">45</span>  <span class="kw">const</span> token <span class="op">=</span> <span class="fn">signJWT</span>({ sub: user.id });<span class="canvas-agent-cursor" style="background:#a78bfa"></span></div>
+        <div><span class="ln">46</span>  ctx.json({ token, <span class="fn">expiresIn</span>: <span class="str">'24h'</span> });</div>
+        <div><span class="ln">47</span>});</div>
+        <div><span class="ln">48</span></div>
+        <div><span class="ln">49</span><span class="cm">// Rate-limited refresh endpoint</span></div>
+        <div style="background:rgba(74,222,128,0.06);border-left:2px solid #4ade80;padding-left:4px"><span class="ln">50</span>authRouter.<span class="fn">post</span>(<span class="str">'/refresh'</span>, <span class="fn">rateLimit</span>(<span class="str">'5/min'</span>), <span class="kw">async</span> (ctx) <span class="op">=&gt;</span> {</div>
+        <div style="background:rgba(74,222,128,0.04)"><span class="ln">51</span>  <span class="kw">const</span> decoded <span class="op">=</span> <span class="fn">verifyJWT</span>(ctx.headers.authorization);</div>
+        <div style="background:rgba(74,222,128,0.04)"><span class="ln">52</span>  <span class="kw">return</span> ctx.json({ token: <span class="fn">signJWT</span>(decoded) });<span class="canvas-agent-cursor" style="background:#4ade80"></span></div>
+        <div><span class="ln">53</span>});</div>
+      </div>
+      <div class="canvas-agents">
+        <div class="canvas-agent-indicator">
+          <div class="name purple">Claude Opus</div>
+          <div class="action">Editing line 42-45</div>
+          <div class="action" style="color:#a78bfa;margin-top:4px">Writing login handler</div>
+        </div>
+        <div class="canvas-agent-indicator">
+          <div class="name green">GPT-4o</div>
+          <div class="action">Reviewing line 50-52</div>
+          <div class="action" style="color:#4ade80;margin-top:4px">Adding rate limiting</div>
+        </div>
+        <div class="canvas-agent-indicator">
+          <div class="name blue">Gemini Pro</div>
+          <div class="action">Watching all files</div>
+          <div class="action" style="color:#60a5fa;margin-top:4px">Generating API docs</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. MODEL RACE -->
+  <div class="mockup-block">
+    <div class="mockup-titlebar">
+      <div class="mockup-dot r"></div><div class="mockup-dot y"></div><div class="mockup-dot g"></div>
+      <span>BLUN Race -- "Build a SaaS landing page"</span>
+    </div>
+    <div class="mockup-body">
+      <div class="race-grid">
+        <div class="race-panel">
+          <div class="race-panel-head">
+            <span class="model-name" style="color:#a78bfa">Claude</span>
+            <span class="cherry picked">Cherry-picked</span>
+          </div>
+          <div class="race-preview">
+            <div class="race-site-bar"><div class="race-site-bar-fill" style="width:100%;background:#a78bfa"></div></div>
+            <div class="race-site-hero" style="background:linear-gradient(135deg,#1e1b4b,#4c1d95);border:1px solid #6d28d9"></div>
+            <div class="race-site-text" style="width:80%"></div>
+            <div class="race-site-text" style="width:60%"></div>
+            <div class="race-site-cols">
+              <div class="race-site-col" style="background:#1e1b4b"></div>
+              <div class="race-site-col" style="background:#1e1b4b"></div>
+              <div class="race-site-col" style="background:#1e1b4b"></div>
+            </div>
+          </div>
+        </div>
+        <div class="race-panel">
+          <div class="race-panel-head">
+            <span class="model-name" style="color:#4ade80">GPT-4o</span>
+            <span class="cherry">Cherry-pick</span>
+          </div>
+          <div class="race-preview">
+            <div class="race-site-bar"><div class="race-site-bar-fill" style="width:100%;background:#4ade80"></div></div>
+            <div class="race-site-hero" style="background:linear-gradient(135deg,#052e16,#166534);border:1px solid #22c55e"></div>
+            <div class="race-site-text" style="width:90%"></div>
+            <div class="race-site-text" style="width:50%"></div>
+            <div class="race-site-cols">
+              <div class="race-site-col" style="background:#052e16"></div>
+              <div class="race-site-col" style="background:#052e16"></div>
+              <div class="race-site-col" style="background:#052e16"></div>
+            </div>
+          </div>
+        </div>
+        <div class="race-panel">
+          <div class="race-panel-head">
+            <span class="model-name" style="color:#60a5fa">Gemini</span>
+            <span class="cherry">Cherry-pick</span>
+          </div>
+          <div class="race-preview">
+            <div class="race-site-bar"><div class="race-site-bar-fill" style="width:100%;background:#60a5fa"></div></div>
+            <div class="race-site-hero" style="background:linear-gradient(135deg,#0c1a3a,#1e3a5f);border:1px solid #3b82f6"></div>
+            <div class="race-site-text" style="width:70%"></div>
+            <div class="race-site-text" style="width:85%"></div>
+            <div class="race-site-cols">
+              <div class="race-site-col" style="background:#0c1a3a"></div>
+              <div class="race-site-col" style="background:#0c1a3a"></div>
+              <div class="race-site-col" style="background:#0c1a3a"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <button class="race-mix-btn">Mix &amp; Match Best Parts</button>
+    </div>
+  </div>
+
+  <!-- 5. SOFTWARE BUILDER -->
+  <div class="mockup-block">
+    <div class="mockup-titlebar">
+      <div class="mockup-dot r"></div><div class="mockup-dot y"></div><div class="mockup-dot g"></div>
+      <span>BLUN Build -- Software Builder</span>
+    </div>
+    <div class="mockup-body">
+      <div class="builder-steps">
+        <div class="builder-step done"><div class="step-num">1</div><span class="step-label">Describe</span></div>
+        <span class="builder-arrow">--&gt;</span>
+        <div class="builder-step active"><div class="step-num">2</div><span class="step-label">AI Builds</span></div>
+        <span class="builder-arrow">--&gt;</span>
+        <div class="builder-step"><div class="step-num">3</div><span class="step-label">Download</span></div>
+      </div>
+      <div class="builder-prompt">
+        <span class="dim">$</span> <span class="typed">blun build "A password manager with AES-256 encryption, auto-fill browser extension, and cloud sync"</span>
+      </div>
+      <div class="builder-progress"><div class="builder-progress-fill"></div></div>
+      <div class="builder-progress-label">Claude: backend | GPT-4o: extension | Gemini: cloud sync -- Compiling...</div>
+      <div class="builder-platforms">
+        <div class="builder-platform"><svg viewBox="0 0 24 24"><path d="M3 5.5L10.7 4.1 10.7 11.3 3 11.4zM10.7 12.5L10.7 19.8 3 18.4 3 12.5zM11.8 3.9L21 2.5 21 11.2 11.8 11.3zM21 12.5L21 21.5 11.8 20 11.8 12.5z"/></svg>Windows .exe</div>
+        <div class="builder-platform"><svg viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83z"/></svg>macOS .dmg</div>
+        <div class="builder-platform"><svg viewBox="0 0 24 24"><path d="M12.5 2L2 7.5 12.5 13 23 7.5zM2 12l10.5 5.5L23 12M2 16.5l10.5 5.5L23 16.5"/></svg>Linux .AppImage</div>
+        <div class="builder-platform"><svg viewBox="0 0 24 24"><path d="M17.523 2H6.477C5.1 2 4 3.1 4 4.477v15.046C4 20.9 5.1 22 6.477 22h11.046C18.9 22 20 20.9 20 19.523V4.477C20 3.1 18.9 2 17.523 2zM12 20.5a1 1 0 110-2 1 1 0 010 2zM18 17H6V5h12v12z"/></svg>Android .apk</div>
+        <div class="builder-platform"><svg viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83z"/></svg>iOS .ipa</div>
+      </div>
+    </div>
+  </div>
+
+  </div>
+</div>
 </section>
 
 <!-- Comparison -->
@@ -1223,6 +1570,7 @@ footer {
         <h4>Product</h4>
         <ul>
           <li><a href="#features">Features</a></li>
+      <li><a href="#in-action">Preview</a></li>
           <li><a href="#pricing">Pricing</a></li>
           <li><a href="/dashboard">Dashboard</a></li>
           <li><a href="#install">Quick Start</a></li>
