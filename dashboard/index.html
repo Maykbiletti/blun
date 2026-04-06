@@ -1,781 +1,565 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#0a0a0a">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BLUN Dashboard</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="manifest" href="/dashboard/manifest.json">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-:root{
-  --bg:#0a0a0a;--card:#141414;--card-border:#1e1e1e;--card-hover:#1a1a1a;
-  --fg:#fafafa;--fg2:#a1a1aa;--fg3:#52525b;
-  --amber:#f59e0b;--amber-dim:#b45309;--amber-bg:rgba(245,158,11,.08);
-  --green:#22c55e;--red:#ef4444;--blue:#3b82f6;
-  --radius:8px;--radius-lg:12px;
-  --sidebar-w:240px;
-  --mono:'Inter',ui-monospace,SFMono-Regular,monospace;
-  --font:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-}
-html,body{height:100%;background:var(--bg);color:var(--fg);font-family:var(--font);font-size:14px;-webkit-font-smoothing:antialiased;overflow:hidden}
+body{font-family:"Inter",sans-serif;background:#0a0a0a;color:#e5e5e5;display:flex;min-height:100vh}
+a{color:#3b82f6;text-decoration:none}
+button{font-family:inherit;cursor:pointer;border:none;outline:none}
+input,textarea,select{font-family:inherit;background:#1a1a1a;border:1px solid #2a2a2a;color:#e5e5e5;padding:10px 14px;border-radius:8px;width:100%;font-size:14px}
+input:focus,textarea:focus,select:focus{border-color:#3b82f6;outline:none}
 
-/* Layout */
-.shell{display:flex;height:100dvh;width:100%}
+.sidebar{width:260px;background:#1a1a1a;border-right:1px solid #2a2a2a;display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;transition:transform .2s}
+.sidebar-header{padding:20px;border-bottom:1px solid #2a2a2a}
+.sidebar-logo{font-size:20px;font-weight:700;color:#3b82f6}
+.sidebar-user{margin-top:12px;font-size:13px;color:#a3a3a3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sidebar-nav{flex:1;padding:12px 0}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 20px;color:#a3a3a3;font-size:14px;font-weight:500;cursor:pointer;transition:all .15s}
+.nav-item:hover{color:#e5e5e5;background:#2a2a2a}
+.nav-item.active{color:#3b82f6;background:rgba(59,130,246,.1);border-right:3px solid #3b82f6}
+.nav-item svg{width:20px;height:20px;flex-shrink:0}
+.sidebar-footer{padding:16px 20px;border-top:1px solid #2a2a2a}
+.logout-btn{width:100%;padding:10px;background:transparent;color:#ef4444;border:1px solid #ef4444;border-radius:8px;font-size:14px;font-weight:500;transition:all .15s}
+.logout-btn:hover{background:#ef4444;color:#fff}
 
-/* Sidebar */
-.sidebar{width:var(--sidebar-w);background:var(--card);border-right:1px solid var(--card-border);display:flex;flex-direction:column;flex-shrink:0;transition:transform .2s ease}
-.sidebar-logo{padding:20px 20px 16px;font-size:18px;font-weight:700;letter-spacing:-.02em;display:flex;align-items:center;gap:10px}
-.sidebar-logo span{color:var(--amber)}
-.sidebar-nav{flex:1;padding:0 12px}
-.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--radius);cursor:pointer;color:var(--fg2);font-size:13px;font-weight:500;transition:all .15s;margin-bottom:2px;user-select:none}
-.nav-item:hover{background:rgba(255,255,255,.04);color:var(--fg)}
-.nav-item.active{background:var(--amber-bg);color:var(--amber)}
-.nav-item svg{width:18px;height:18px;flex-shrink:0}
-.sidebar-footer{padding:16px 20px;border-top:1px solid var(--card-border);font-size:11px;color:var(--fg3)}
+.main{flex:1;margin-left:260px;min-height:100vh}
+.topbar{height:60px;background:#1a1a1a;border-bottom:1px solid #2a2a2a;display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:50}
+.topbar-left{display:flex;align-items:center;gap:12px}
+.hamburger{display:none;background:none;color:#e5e5e5;font-size:24px;padding:4px}
+.page-title{font-size:18px;font-weight:600}
+.ws-dot{width:10px;height:10px;border-radius:50%;background:#ef4444;transition:background .3s}
+.ws-dot.connected{background:#22c55e}
+.content{padding:24px}
 
-/* Topbar */
-.topbar{height:52px;border-bottom:1px solid var(--card-border);display:flex;align-items:center;padding:0 24px;gap:12px;flex-shrink:0}
-.topbar-title{font-size:15px;font-weight:600;flex:1}
-.topbar-back{cursor:pointer;color:var(--fg2);font-size:13px;display:none;padding:4px 8px 4px 0}
-.topbar-back:hover{color:var(--fg)}
-.ws-indicator{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--fg3);font-family:var(--mono)}
-.ws-dot{width:7px;height:7px;border-radius:50%;background:var(--fg3)}
-.ws-dot.connected{background:var(--green)}
-.ws-dot.connecting{background:var(--amber);animation:pulse 1.5s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-.hamburger{display:none;cursor:pointer;color:var(--fg2);padding:4px}
-.hamburger:hover{color:var(--fg)}
-.hamburger svg{width:22px;height:22px}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
+.stat-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:20px}
+.stat-label{font-size:13px;color:#a3a3a3;margin-bottom:4px}
+.stat-value{font-size:28px;font-weight:700}
+.stat-value.blue{color:#3b82f6}
 
-/* Main */
-.main{flex:1;display:flex;flex-direction:column;min-width:0}
-.content{flex:1;overflow-y:auto;padding:24px;padding-bottom:80px}
+.card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:20px;margin-bottom:16px}
+.card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.card-title{font-size:16px;font-weight:600}
+.btn{padding:8px 16px;border-radius:8px;font-size:14px;font-weight:500;transition:all .15s}
+.btn-primary{background:#3b82f6;color:#fff}
+.btn-primary:hover{background:#2563eb}
+.btn-sm{padding:6px 12px;font-size:13px}
+.btn-danger{background:#ef4444;color:#fff}
+.btn-danger:hover{background:#dc2626}
+.btn-outline{background:transparent;color:#3b82f6;border:1px solid #3b82f6}
+.btn-outline:hover{background:#3b82f6;color:#fff}
 
-/* Overlay for mobile sidebar */
-.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:49}
+.list-item{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #2a2a2a}
+.list-item:last-child{border-bottom:none}
+.list-item-title{font-weight:500}
+.list-item-sub{font-size:13px;color:#a3a3a3;margin-top:2px}
 
-/* Cards */
-.card{background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius-lg);padding:16px;margin-bottom:12px;transition:border-color .15s}
-.card:hover{border-color:#2a2a2a}
-.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-bottom:20px}
-.stat-card{background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius-lg);padding:20px}
-.stat-card .label{font-size:12px;color:var(--fg3);font-weight:500;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px}
-.stat-card .value{font-size:28px;font-weight:700;letter-spacing:-.02em}
-.stat-card .sub{font-size:12px;color:var(--fg2);margin-top:4px}
+.status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
+.status-dot.online{background:#22c55e}
+.status-dot.offline{background:#a3a3a3}
+.status-dot.error{background:#ef4444}
 
-/* Section headers */
-.section-title{font-size:13px;font-weight:600;color:var(--fg2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:12px;margin-top:24px}
-.section-title:first-child{margin-top:0}
+.welcome{text-align:center;padding:80px 20px}
+.welcome h2{font-size:28px;font-weight:700;margin-bottom:12px}
+.welcome p{color:#a3a3a3;font-size:16px;margin-bottom:32px;max-width:500px;margin-left:auto;margin-right:auto}
+.welcome .btn{font-size:16px;padding:14px 32px}
 
-/* Agent list */
-.agent-row{display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;transition:background .1s}
-.agent-row:hover{background:rgba(255,255,255,.02)}
-.agent-row+.agent-row{border-top:1px solid var(--card-border)}
-.agent-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-.dot-active{background:var(--green)}.dot-idle{background:var(--fg3)}.dot-error{background:var(--red)}.dot-paused{background:var(--amber-dim)}.dot-stopped{background:var(--fg3)}
-.agent-info{flex:1;min-width:0}
-.agent-name{font-size:14px;font-weight:600}
-.agent-meta{font-size:12px;color:var(--fg2);margin-top:2px}
-.agent-right{text-align:right;flex-shrink:0}
-.agent-right .model-tag{font-size:11px;color:var(--fg3);font-family:var(--mono)}
-.agent-right .hb-time{font-size:11px;color:var(--fg3);font-family:var(--mono)}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:24px;width:90%;max-width:480px}
+.modal h3{font-size:18px;font-weight:600;margin-bottom:16px}
+.modal label{display:block;font-size:13px;color:#a3a3a3;margin-bottom:4px;margin-top:12px}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
 
-/* Status badge */
-.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-family:var(--mono);font-weight:500}
-.badge-active{background:rgba(34,197,94,.12);color:var(--green)}
-.badge-idle{background:rgba(82,82,91,.2);color:var(--fg3)}
-.badge-error{background:rgba(239,68,68,.12);color:var(--red)}
-.badge-paused{background:rgba(245,158,11,.1);color:var(--amber)}
-.badge-stopped{background:rgba(82,82,91,.2);color:var(--fg3)}
+.agent-actions{display:flex;gap:6px}
+.agent-actions .btn{padding:4px 10px;font-size:12px}
 
-/* Company card */
-.company-row{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer;transition:background .1s}
-.company-row:hover{background:rgba(255,255,255,.02)}
-.company-row+.company-row{border-top:1px solid var(--card-border)}
-.company-name{font-size:14px;font-weight:600}
-.company-sub{font-size:12px;color:var(--fg2);margin-top:2px}
-.company-arrow{color:var(--fg3);font-size:16px}
-
-/* Buttons */
-.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--radius);font-size:13px;font-weight:500;cursor:pointer;border:1px solid var(--card-border);background:var(--card);color:var(--fg);transition:all .15s;font-family:var(--font)}
-.btn:hover{border-color:#3a3a3a;background:var(--card-hover)}
-.btn-amber{background:var(--amber);color:#000;border-color:var(--amber)}
-.btn-amber:hover{background:var(--amber-dim)}
-.btn-red{background:transparent;color:var(--red);border-color:rgba(239,68,68,.3)}
-.btn-red:hover{background:rgba(239,68,68,.08)}
-.btn-green{background:transparent;color:var(--green);border-color:rgba(34,197,94,.3)}
-.btn-green:hover{background:rgba(34,197,94,.08)}
-.btn-group{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
-
-/* Inner tabs */
-.tab-bar{display:flex;gap:2px;margin-bottom:20px;border-bottom:1px solid var(--card-border);overflow-x:auto}
-.tab-btn{padding:10px 16px;font-size:13px;font-weight:500;color:var(--fg3);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap}
-.tab-btn:hover{color:var(--fg2)}
-.tab-btn.active{color:var(--amber);border-bottom-color:var(--amber)}
-
-/* Chat */
-.chat-container{display:flex;flex-direction:column;height:calc(100dvh - 52px - 48px)}
-.chat-messages{flex:1;overflow-y:auto;padding:16px 0}
-.chat-bubble{max-width:75%;padding:10px 14px;border-radius:10px;margin-bottom:8px;font-size:13px;line-height:1.5;word-break:break-word}
-.chat-bubble.user{background:#1e293b;margin-left:auto;border-bottom-right-radius:2px}
-.chat-bubble.agent{background:var(--card);border:1px solid var(--card-border);border-bottom-left-radius:2px}
-.chat-bubble .bubble-meta{font-size:10px;color:var(--fg3);margin-top:4px;font-family:var(--mono)}
-.chat-input-row{display:flex;gap:8px;padding-top:12px;border-top:1px solid var(--card-border)}
-.chat-input-row input{flex:1;background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);padding:10px 14px;color:var(--fg);font-size:13px;outline:none;font-family:var(--font)}
-.chat-input-row input:focus{border-color:var(--amber)}
-.chat-input-row button{background:var(--amber);color:#000;border:none;border-radius:var(--radius);padding:10px 20px;font-weight:600;cursor:pointer;font-size:13px;font-family:var(--font)}
-
-/* Heartbeat list */
-.hb-row{padding:10px 16px;font-size:12px;cursor:pointer;transition:background .1s}
-.hb-row:hover{background:rgba(255,255,255,.02)}
-.hb-row+.hb-row{border-top:1px solid var(--card-border)}
-.hb-head{display:flex;justify-content:space-between;align-items:center}
-.hb-status{font-family:var(--mono);font-size:11px;font-weight:500}
-.hb-status.ok{color:var(--green)}.hb-status.err{color:var(--red)}.hb-status.run{color:var(--amber)}
-.hb-time{color:var(--fg3);font-family:var(--mono);font-size:11px}
-.hb-body{margin-top:8px;color:var(--fg2);font-family:var(--mono);font-size:11px;white-space:pre-wrap;max-height:250px;overflow-y:auto;display:none}
-.hb-row.open .hb-body{display:block}
-
-/* Memory table */
-.mem-row{display:flex;gap:12px;padding:10px 16px;font-size:12px}
-.mem-row+.mem-row{border-top:1px solid var(--card-border)}
-.mem-key{font-weight:600;color:var(--amber);min-width:140px;font-family:var(--mono)}
-.mem-val{flex:1;color:var(--fg2);font-family:var(--mono);white-space:pre-wrap;word-break:break-all}
-
-/* Cost table */
-.cost-table{width:100%;border-collapse:collapse;font-size:12px}
-.cost-table th{text-align:left;padding:8px 12px;border-bottom:1px solid var(--card-border);color:var(--fg3);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.04em}
-.cost-table td{padding:8px 12px;border-bottom:1px solid var(--card-border)}
-
-/* Tools */
-.tool-card{padding:14px 16px}
-.tool-card+.tool-card{border-top:1px solid var(--card-border)}
-.tool-name{font-weight:600;font-size:13px;color:var(--amber);font-family:var(--mono)}
-.tool-desc{font-size:12px;color:var(--fg2);margin-top:4px}
-
-/* Conversations list */
-.conv-row{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer;transition:background .1s}
-.conv-row:hover{background:rgba(255,255,255,.02)}
-.conv-row+.conv-row{border-top:1px solid var(--card-border)}
-.conv-title{font-size:13px;font-weight:500}
-.conv-sub{font-size:11px;color:var(--fg3);margin-top:2px;font-family:var(--mono)}
-
-/* Settings */
-.setting-row{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid var(--card-border)}
-.setting-label{font-size:13px;font-weight:500}
-.setting-val{font-size:12px;color:var(--fg2);font-family:var(--mono);text-align:right;max-width:60%;word-break:break-all}
-
-/* Empty state */
-.empty{text-align:center;padding:48px 20px;color:var(--fg3);font-size:13px}
-
-/* Loading spinner */
-.spinner{display:inline-block;width:16px;height:16px;border:2px solid var(--card-border);border-top-color:var(--amber);border-radius:50%;animation:spin .6s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-
-/* Modal */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;display:flex;align-items:center;justify-content:center;padding:16px}
-.modal{background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius-lg);padding:24px;width:100%;max-width:440px}
-.modal-title{font-size:16px;font-weight:600;margin-bottom:16px}
-.form-field{margin-bottom:14px}
-.form-field label{display:block;font-size:12px;color:var(--fg2);margin-bottom:4px;font-weight:500}
-.form-field input,.form-field textarea,.form-field select{width:100%;background:var(--bg);border:1px solid var(--card-border);border-radius:var(--radius);padding:9px 12px;color:var(--fg);font-size:13px;outline:none;font-family:var(--font)}
-.form-field input:focus,.form-field textarea:focus{border-color:var(--amber)}
-.form-field textarea{resize:vertical;min-height:60px}
-
-/* Responsive */
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99}
 @media(max-width:768px){
-  .sidebar{position:fixed;left:0;top:0;bottom:0;z-index:50;transform:translateX(-100%)}
+  .sidebar{transform:translateX(-100%)}
   .sidebar.open{transform:translateX(0)}
   .sidebar-overlay.show{display:block}
+  .main{margin-left:0}
   .hamburger{display:block}
-  .card-grid{grid-template-columns:1fr 1fr}
-  .content{padding:16px}
+  .stats-grid{grid-template-columns:1fr 1fr}
 }
 @media(max-width:480px){
-  .card-grid{grid-template-columns:1fr}
+  .stats-grid{grid-template-columns:1fr}
 }
+
+.page{display:none}
+.page.active{display:block}
+
+.msg{padding:10px 0;border-bottom:1px solid #2a2a2a}
+.msg-sender{font-size:12px;font-weight:600;color:#3b82f6;margin-bottom:2px}
+.msg-body{font-size:14px;white-space:pre-wrap}
+.msg-time{font-size:11px;color:#a3a3a3;margin-top:2px}
+
+.settings-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #2a2a2a}
+.settings-label{font-weight:500}
+.settings-value{color:#a3a3a3;font-size:14px}
 </style>
 </head>
 <body>
-<div class="shell">
-  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
-  <aside class="sidebar" id="sidebar">
-    <div class="sidebar-logo"><span>BLUN</span> Dashboard</div>
-    <nav class="sidebar-nav" id="sidebarNav"></nav>
-    <div class="sidebar-footer">BLUN AI Organisator v2.0</div>
-  </aside>
-  <div class="main">
-    <header class="topbar">
-      <div class="hamburger" onclick="toggleSidebar()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></div>
-      <div class="topbar-back" id="topBack" onclick="goBack()">Back</div>
-      <div class="topbar-title" id="topTitle">Overview</div>
-      <div class="ws-indicator"><div class="ws-dot" id="wsDot"></div><span id="wsLabel">Connecting</span></div>
-    </header>
-    <div class="content" id="content"></div>
+
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo">BLUN</div>
+    <div class="sidebar-user" id="userInfo">Loading...</div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-item active" data-page="overview">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Overview
+    </div>
+    <div class="nav-item" data-page="companies">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 7v14M21 7v14M6 21V10M10 21V10M14 21V10M18 21V10M3 7l9-4 9 4"/></svg>
+      Companies
+    </div>
+    <div class="nav-item" data-page="agents">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M6 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/></svg>
+      Agents
+    </div>
+    <div class="nav-item" data-page="conversations">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      Conversations
+    </div>
+    <div class="nav-item" data-page="tools">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+      Tools
+    </div>
+    <div class="nav-item" data-page="settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      Settings
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <button class="logout-btn" id="logoutBtn">Log out</button>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger" id="hamburger">&#9776;</button>
+      <div class="page-title" id="pageTitle">Overview</div>
+    </div>
+    <div class="ws-dot" id="wsDot" title="WebSocket disconnected"></div>
+  </div>
+  <div class="content">
+
+    <div class="page active" id="page-overview">
+      <div id="welcomeState" style="display:none">
+        <div class="welcome">
+          <h2>Welcome to BLUN!</h2>
+          <p>Create your first company to get started. A company groups your AI agents together and keeps everything organized.</p>
+          <button class="btn btn-primary" onclick="showModal('company')">Create Company</button>
+        </div>
+      </div>
+      <div id="dashboardState">
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-label">Companies</div><div class="stat-value blue" id="statCompanies">-</div></div>
+          <div class="stat-card"><div class="stat-label">Agents</div><div class="stat-value blue" id="statAgents">-</div></div>
+          <div class="stat-card"><div class="stat-label">Tokens (30d)</div><div class="stat-value blue" id="statMessages">-</div></div>
+          <div class="stat-card"><div class="stat-label">Cost (30d)</div><div class="stat-value blue" id="statCost">-</div></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Recent Tasks</div>
+            <button class="btn btn-primary btn-sm" onclick="showModal('company')">New Company</button>
+          </div>
+          <div id="recentTasks">No recent tasks.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page" id="page-companies">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Companies</div>
+          <button class="btn btn-primary btn-sm" onclick="showModal('company')">Create Company</button>
+        </div>
+        <div id="companiesList">Loading...</div>
+      </div>
+      <div id="companyDetail" style="display:none">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title" id="companyDetailName"></div>
+            <button class="btn btn-outline btn-sm" onclick="document.getElementById('companyDetail').style.display='none'">Close</button>
+          </div>
+          <div id="companyAgentsList"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page" id="page-agents">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Agents</div>
+          <button class="btn btn-primary btn-sm" onclick="showModal('agent')">Create Agent</button>
+        </div>
+        <div id="agentsList">Loading...</div>
+      </div>
+    </div>
+
+    <div class="page" id="page-conversations">
+      <div class="card">
+        <div class="card-header"><div class="card-title">Conversations</div></div>
+        <div id="convList">Select an agent to see conversations.</div>
+      </div>
+      <div class="card" id="convMessages" style="display:none">
+        <div class="card-header"><div class="card-title" id="convTitle"></div></div>
+        <div id="msgList"></div>
+      </div>
+    </div>
+
+    <div class="page" id="page-tools">
+      <div class="card">
+        <div class="card-header"><div class="card-title">Available Tools</div></div>
+        <div id="toolsList">Loading...</div>
+      </div>
+    </div>
+
+    <div class="page" id="page-settings">
+      <div class="card">
+        <div class="card-header"><div class="card-title">Profile</div></div>
+        <div id="settingsProfile">Loading...</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalCompany">
+  <div class="modal">
+    <h3>Create Company</h3>
+    <label>Name</label>
+    <input id="companyName" placeholder="My Company">
+    <label>Description</label>
+    <textarea id="companyDesc" rows="3" placeholder="What does this company do?"></textarea>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="hideModals()">Cancel</button>
+      <button class="btn btn-primary" onclick="createCompany()">Create</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalAgent">
+  <div class="modal">
+    <h3>Create Agent</h3>
+    <label>Company</label>
+    <select id="agentCompany"></select>
+    <label>Name</label>
+    <input id="agentName" placeholder="Agent name">
+    <label>Role</label>
+    <input id="agentRole" placeholder="e.g. assistant, developer">
+    <label>Model</label>
+    <input id="agentModel" placeholder="e.g. gpt-4o-mini" value="gpt-4o-mini">
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="hideModals()">Cancel</button>
+      <button class="btn btn-primary" onclick="createAgent()">Create</button>
+    </div>
   </div>
 </div>
 
 <script>
-// ============================
-// CONFIG & STATE
-// ============================
-const BASE = window.location.origin;
-const API = BASE + '/api';
-// Session-based auth — no API key needed
+var currentPage = "overview";
+var dashData = null;
+var ws = null;
 
-const NAV_ITEMS = [
-  {id:'overview', label:'Overview', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>'},
-  {id:'companies', label:'Companies', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>'},
-  {id:'agents', label:'Agents', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>'},
-  {id:'conversations', label:'Conversations', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>'},
-  {id:'tools', label:'Tools', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>'},
-  {id:'settings', label:'Settings', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>'},
-];
-
-let state = {
-  page: 'overview',
-  navStack: [],
-  subView: null,
-  subData: null,
-  // cached data
-  dashboard: null,
-  wsConnected: false,
-};
-
-// ============================
-// API HELPERS
-// ============================
-function headers() { return {'Content-Type':'application/json','x-blun-key': ''}; }
-
-async function api(path, opts) {
-  const r = await fetch(API + path, Object.assign({headers: headers(), credentials: 'include'}, opts || {}));
-  if (r.status === 401) { promptApiKey(); throw new Error('Unauthorized'); }
-  if (!r.ok) throw new Error(r.status + ' ' + r.statusText);
-  return r.json();
-}
-async function apiPost(path, body) { return api(path, {method:'POST', body:JSON.stringify(body)}); }
-async function apiPatch(path, body) { return api(path, {method:'PATCH', body:JSON.stringify(body)}); }
-async function apiDelete(path) { return api(path, {method:'DELETE'}); }
-
-function promptApiKey() { window.location.href = "/login"; return;
-  const k = prompt('Enter BLUN API Key:');
-  if (k) { API_KEY = k; localStorage.setItem('blun-api-key', k); }
-}
-
-// ============================
-// UTILS
-// ============================
-function $(id) { return document.getElementById(id); }
-function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
-function ago(d) {
-  if (!d) return '--';
-  const s = Math.floor((Date.now() - new Date(d).getTime()) / 1000);
-  if (s < 0) return 'just now';
-  if (s < 60) return s + 's ago';
-  if (s < 3600) return Math.floor(s/60) + 'm ago';
-  if (s < 86400) return Math.floor(s/3600) + 'h ago';
-  return Math.floor(s/86400) + 'd ago';
-}
-function fmtDate(d) { if (!d) return '--'; return new Date(d).toLocaleString('de-AT',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
-function fmtCost(cents) { return '$' + (parseFloat(cents||0)/100).toFixed(2); }
-
-// ============================
-// NAVIGATION
-// ============================
-function navigate(page, sub, data) {
-  if (state.page !== page || state.subView !== sub) {
-    if (state.subView) state.navStack.push({page:state.page, sub:state.subView, data:state.subData});
-    else state.navStack = [];
-  }
-  state.page = page;
-  state.subView = sub || null;
-  state.subData = data || null;
-  closeSidebar();
-  render();
-}
-
-function goBack() {
-  if (state.navStack.length) {
-    const prev = state.navStack.pop();
-    state.page = prev.page;
-    state.subView = prev.sub;
-    state.subData = prev.data;
-  } else {
-    state.subView = null;
-    state.subData = null;
-  }
-  render();
-}
-
-function toggleSidebar() { $('sidebar').classList.toggle('open'); $('sidebarOverlay').classList.toggle('show'); }
-function closeSidebar() { $('sidebar').classList.remove('open'); $('sidebarOverlay').classList.remove('show'); }
-
-// ============================
-// RENDER SIDEBAR
-// ============================
-function renderNav() {
-  $('sidebarNav').innerHTML = NAV_ITEMS.map(n =>
-    '<div class="nav-item' + (state.page===n.id && !state.subView?' active':'') + '" onclick="navigate(\'' + n.id + '\')">' + n.icon + '<span>' + n.label + '</span></div>'
-  ).join('');
-}
-
-// ============================
-// RENDER
-// ============================
-async function render() {
-  renderNav();
-  const c = $('content');
-  const showBack = !!state.subView || state.navStack.length > 0;
-  $('topBack').style.display = showBack ? 'block' : 'none';
-
-  try {
-    if (state.subView === 'agent-detail') await renderAgentDetail(c, state.subData);
-    else if (state.subView === 'conversation-detail') await renderConversationDetail(c, state.subData);
-    else if (state.subView === 'company-detail') await renderCompanyDetail(c, state.subData);
-    else if (state.page === 'overview') await renderOverview(c);
-    else if (state.page === 'companies') await renderCompanies(c);
-    else if (state.page === 'agents') await renderAgents(c);
-    else if (state.page === 'conversations') await renderConversations(c);
-    else if (state.page === 'tools') await renderTools(c);
-    else if (state.page === 'settings') renderSettings(c);
-  } catch(e) {
-    c.innerHTML = '<div class="empty">Error loading data: ' + esc(e.message) + '</div>';
-  }
-}
-
-// ============================
-// PAGE: OVERVIEW
-// ============================
-async function renderOverview(c) {
-  $('topTitle').textContent = 'Overview';
-  c.innerHTML = '<div style="text-align:center;padding:40px"><div class="spinner"></div></div>';
-
-  const [dash, health, stats] = await Promise.all([
-    api('/dashboard'),
-    api('/admin/health').catch(() => null),
-    api('/admin/stats').catch(() => null),
-  ]);
-  state.dashboard = dash;
-
-  const companies = dash.companies || [];
-  const agents = dash.agents || [];
-  const activeAgents = agents.filter(a => a.status === 'active').length;
-  const totalMessages = stats ? stats.messages : 0;
-  const costCents = dash.costSummary ? dash.costSummary.total_cost_cents : 0;
-
-  let html = '<div class="card-grid">';
-  html += statCard('Companies', companies.length, '');
-  html += statCard('Agents', agents.length, activeAgents + ' active');
-  html += statCard('Messages', totalMessages.toLocaleString(), '');
-  html += statCard('Cost (30d)', fmtCost(costCents), (dash.costSummary?.total_input_tokens||0).toLocaleString() + ' input tokens');
-  if (health) {
-    html += statCard('Status', health.status === 'healthy' ? 'Healthy' : 'Unhealthy', 'Uptime: ' + Math.floor((health.uptime||0)/3600) + 'h');
-    html += statCard('Processes', health.processes || 0, '');
-  }
-  html += '</div>';
-
-  // Recent agents
-  html += '<div class="section-title">Agents</div><div class="card" style="padding:0">';
-  if (agents.length === 0) html += '<div class="empty">No agents</div>';
-  for (const a of agents) {
-    html += agentRowHTML(a);
-  }
-  html += '</div>';
-
-  c.innerHTML = html;
-}
-
-function statCard(label, value, sub) {
-  return '<div class="stat-card"><div class="label">' + esc(label) + '</div><div class="value">' + esc(String(value)) + '</div>' + (sub ? '<div class="sub">' + esc(sub) + '</div>' : '') + '</div>';
-}
-
-function agentRowHTML(a) {
-  return '<div class="agent-row" onclick="navigate(\'agents\',\'agent-detail\',\'' + a.id + '\')">'
-    + '<div class="agent-dot dot-' + (a.status||'idle') + '"></div>'
-    + '<div class="agent-info"><div class="agent-name">' + esc(a.name) + '</div>'
-    + '<div class="agent-meta">' + esc(a.company_name||'') + (a.role ? ' / ' + esc(a.role) : '') + '</div></div>'
-    + '<div class="agent-right"><div class="model-tag">' + esc(a.model||a.adapter_type||'--') + '</div>'
-    + '<div><span class="badge badge-' + (a.status||'idle') + '">' + esc(a.status||'idle') + '</span></div></div></div>';
-}
-
-// ============================
-// PAGE: COMPANIES
-// ============================
-async function renderCompanies(c) {
-  $('topTitle').textContent = 'Companies';
-  const companies = await api('/companies');
-  const agents = state.dashboard ? state.dashboard.agents : await api('/agents');
-
-  let html = '<div class="card" style="padding:0">';
-  if (!companies.length) html += '<div class="empty">No companies found</div>';
-  for (const co of companies) {
-    const cnt = agents.filter(a => a.company_id === co.id).length;
-    const active = agents.filter(a => a.company_id === co.id && a.status === 'active').length;
-    html += '<div class="company-row" onclick="navigate(\'companies\',\'company-detail\',\'' + co.id + '\')">'
-      + '<div><div class="company-name">' + esc(co.name) + '</div>'
-      + '<div class="company-sub">' + cnt + ' agents, ' + active + ' active / created ' + fmtDate(co.created_at) + '</div></div>'
-      + '<div class="company-arrow">&#8250;</div></div>';
-  }
-  html += '</div>';
-  c.innerHTML = html;
-}
-
-// ============================
-// PAGE: COMPANY DETAIL
-// ============================
-async function renderCompanyDetail(c, companyId) {
-  const data = await api('/company/' + companyId);
-  $('topTitle').textContent = data.name;
-
-  let html = '<div class="section-title">Agents (' + data.agents.length + ')</div><div class="card" style="padding:0">';
-  if (!data.agents.length) html += '<div class="empty">No agents in this company</div>';
-  for (const a of data.agents) {
-    html += '<div class="agent-row" onclick="navigate(\'agents\',\'agent-detail\',\'' + a.id + '\')">'
-      + '<div class="agent-dot dot-' + (a.status||'idle') + '"></div>'
-      + '<div class="agent-info"><div class="agent-name">' + esc(a.name) + '</div>'
-      + '<div class="agent-meta">' + esc(a.role||a.title||'--') + '</div></div>'
-      + '<div class="agent-right"><div class="model-tag">' + esc(a.model||a.adapter_type||'--') + '</div>'
-      + '<div><span class="badge badge-' + (a.status||'idle') + '">' + esc(a.status||'idle') + '</span></div></div></div>';
-  }
-  html += '</div>';
-  c.innerHTML = html;
-}
-
-// ============================
-// PAGE: AGENTS
-// ============================
-async function renderAgents(c) {
-  $('topTitle').textContent = 'Agents';
-  const agents = await api('/agents');
-
-  let html = '<div class="btn-group">'
-    + '<button class="btn btn-green" onclick="massAgentAction(\'start\')">Start All</button>'
-    + '<button class="btn btn-red" onclick="massAgentAction(\'stop\')">Stop All</button>'
-    + '</div>';
-
-  html += '<div class="card" style="padding:0">';
-  if (!agents.length) html += '<div class="empty">No agents</div>';
-  for (const a of agents) html += agentRowHTML(a);
-  html += '</div>';
-  c.innerHTML = html;
-}
-
-async function massAgentAction(action) {
-  try {
-    if (action === 'start') await apiPost('/admin/agents/start-all', {});
-    else await apiPost('/admin/agents/stop-all', {});
-    render();
-  } catch(e) { alert('Error: ' + e.message); }
-}
-
-// ============================
-// PAGE: AGENT DETAIL
-// ============================
-let agentDetailTab = 'info';
-
-async function renderAgentDetail(c, agentId) {
-  const agent = await api('/agent/' + agentId);
-  $('topTitle').textContent = agent.name;
-
-  let html = '<div class="tab-bar">';
-  ['info','chat','memory','heartbeats','costs'].forEach(t => {
-    html += '<div class="tab-btn' + (agentDetailTab===t?' active':'') + '" onclick="agentDetailTab=\'' + t + '\';render()">' + t.charAt(0).toUpperCase()+t.slice(1) + '</div>';
+function api(url, opts) {
+  opts = opts || {};
+  opts.credentials = "include";
+  opts.headers = Object.assign({"Content-Type": "application/json"}, opts.headers || {});
+  return fetch(url, opts).then(function(r) {
+    if (r.status === 401) { window.location.href = "/login"; return Promise.reject("auth"); }
+    return r.json();
   });
-  html += '</div>';
-
-  // Controls
-  html += '<div class="btn-group">';
-  html += '<button class="btn btn-green" onclick="agentAction(\'' + agentId + '\',\'start\')">Start</button>';
-  html += '<button class="btn btn-red" onclick="agentAction(\'' + agentId + '\',\'stop\')">Stop</button>';
-  html += '<button class="btn" onclick="agentAction(\'' + agentId + '\',\'restart\')">Restart</button>';
-  html += '</div>';
-
-  html += '<div id="agentTabContent"></div>';
-  c.innerHTML = html;
-
-  const tc = $('agentTabContent');
-  if (agentDetailTab === 'info') await renderAgentInfo(tc, agent);
-  else if (agentDetailTab === 'chat') await renderAgentChat(tc, agent);
-  else if (agentDetailTab === 'memory') await renderAgentMemory(tc, agent);
-  else if (agentDetailTab === 'heartbeats') await renderAgentHeartbeats(tc, agent);
-  else if (agentDetailTab === 'costs') await renderAgentCosts(tc, agent);
 }
 
-async function renderAgentInfo(el, agent) {
-  let html = '<div class="card">';
-  const fields = [
-    ['Status', '<span class="badge badge-' + (agent.status||'idle') + '">' + esc(agent.status||'idle') + '</span>'],
-    ['Model', esc(agent.model||'default')],
-    ['Adapter', esc(agent.adapter_type||'--')],
-    ['Role', esc(agent.role||'--')],
-    ['Title', esc(agent.title||'--')],
-    ['Tools', (agent.tools||[]).map(t => '<span class="badge badge-idle">' + esc(t) + '</span> ').join('') || '--'],
-    ['Created', fmtDate(agent.created_at)],
-    ['Updated', fmtDate(agent.updated_at)],
-  ];
-  for (const [label, val] of fields) {
-    html += '<div class="setting-row"><div class="setting-label">' + label + '</div><div class="setting-val">' + val + '</div></div>';
-  }
-  html += '</div>';
+document.querySelectorAll(".nav-item").forEach(function(el) {
+  el.addEventListener("click", function() {
+    navigate(el.dataset.page);
+    closeSidebar();
+  });
+});
 
-  // Recent tasks
-  let tasks = [];
-  try { tasks = await api('/agent/' + agent.id + '/tasks'); } catch(e) {}
-  if (tasks.length) {
-    html += '<div class="section-title">Tasks (' + tasks.length + ')</div><div class="card" style="padding:0">';
-    for (const t of tasks.slice(0, 20)) {
-      html += '<div style="padding:10px 16px;border-bottom:1px solid var(--card-border);display:flex;justify-content:space-between;align-items:center">'
-        + '<div><div style="font-size:13px;font-weight:500">' + esc(t.title) + '</div>'
-        + '<div style="font-size:11px;color:var(--fg3)">' + ago(t.created_at) + '</div></div>'
-        + '<span class="badge badge-' + (t.status==='in_progress'?'active':t.status==='done'?'active':t.status==='todo'?'idle':'paused') + '">' + esc(t.status) + '</span></div>';
+function navigate(page) {
+  currentPage = page;
+  document.querySelectorAll(".nav-item").forEach(function(n) { n.classList.toggle("active", n.dataset.page === page); });
+  document.querySelectorAll(".page").forEach(function(p) { p.classList.toggle("active", p.id === "page-" + page); });
+  var titles = {overview: "Overview", companies: "Companies", agents: "Agents", conversations: "Conversations", tools: "Tools", settings: "Settings"};
+  document.getElementById("pageTitle").textContent = titles[page] || page;
+  if (page === "overview") loadDashboard();
+  if (page === "companies") loadCompanies();
+  if (page === "agents") loadAgents();
+  if (page === "conversations") loadConversations();
+  if (page === "tools") loadTools();
+  if (page === "settings") loadSettings();
+}
+
+document.getElementById("hamburger").addEventListener("click", function() {
+  document.getElementById("sidebar").classList.add("open");
+  document.getElementById("sidebarOverlay").classList.add("show");
+});
+document.getElementById("sidebarOverlay").addEventListener("click", closeSidebar);
+function closeSidebar() {
+  document.getElementById("sidebar").classList.remove("open");
+  document.getElementById("sidebarOverlay").classList.remove("show");
+}
+
+document.getElementById("logoutBtn").addEventListener("click", function() {
+  fetch("/auth/logout", {method: "POST", credentials: "include"}).then(function() {
+    document.cookie = "blun_session=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+    window.location.href = "/login";
+  });
+});
+
+function loadUser() {
+  api("/auth/me").then(function(u) {
+    if (u && u.name) {
+      document.getElementById("userInfo").textContent = u.name + (u.email ? " - " + u.email : "");
+    } else if (u && u.email) {
+      document.getElementById("userInfo").textContent = u.email;
     }
-    html += '</div>';
-  }
-  el.innerHTML = html;
+  }).catch(function() {});
 }
 
-async function renderAgentChat(el, agent) {
-  // List conversations first
-  let convs = [];
-  try { convs = await api('/agent/' + agent.id + '/conversations'); } catch(e) {}
-
-  let html = '<div class="btn-group"><button class="btn btn-amber" onclick="startNewChat(\'' + agent.id + '\',\'' + esc(agent.name) + '\')">New Conversation</button></div>';
-  html += '<div class="card" style="padding:0">';
-  if (!convs.length) html += '<div class="empty">No conversations yet</div>';
-  for (const cv of convs) {
-    html += '<div class="conv-row" onclick="navigate(\'agents\',\'conversation-detail\',{agentId:\'' + agent.id + '\',agentName:\'' + esc(agent.name) + '\',convId:\'' + cv.id + '\'})">'
-      + '<div><div class="conv-title">' + esc(cv.title||'Untitled') + '</div>'
-      + '<div class="conv-sub">' + (cv.message_count||0) + ' messages / ' + ago(cv.last_message_at||cv.updated_at||cv.created_at) + '</div></div>'
-      + '<div class="company-arrow">&#8250;</div></div>';
-  }
-  html += '</div>';
-  el.innerHTML = html;
+function loadDashboard() {
+  api("/api/dashboard").then(function(d) {
+    dashData = d;
+    if (!d.companies || d.companies.length === 0) {
+      document.getElementById("welcomeState").style.display = "block";
+      document.getElementById("dashboardState").style.display = "none";
+      return;
+    }
+    document.getElementById("welcomeState").style.display = "none";
+    document.getElementById("dashboardState").style.display = "block";
+    document.getElementById("statCompanies").textContent = d.companies.length;
+    document.getElementById("statAgents").textContent = d.agents.length;
+    var totalTokens = 0;
+    if (d.costSummary) totalTokens = parseInt(d.costSummary.total_input_tokens || 0) + parseInt(d.costSummary.total_output_tokens || 0);
+    document.getElementById("statMessages").textContent = totalTokens.toLocaleString();
+    var cost = d.costSummary ? (parseFloat(d.costSummary.total_cost_cents || 0) / 100).toFixed(2) : "0.00";
+    document.getElementById("statCost").textContent = "$" + cost;
+    var tasksHtml = "";
+    if (d.recentTasks && d.recentTasks.length > 0) {
+      d.recentTasks.slice(0, 10).forEach(function(t) {
+        tasksHtml += '<div class="list-item"><div><div class="list-item-title">' + esc(t.title) + '</div><div class="list-item-sub">' + esc(t.status || "pending") + '</div></div><div style="color:#a3a3a3;font-size:12px">' + timeAgo(t.created_at) + '</div></div>';
+      });
+    } else {
+      tasksHtml = '<div style="color:#a3a3a3;padding:12px 0">No recent tasks.</div>';
+    }
+    document.getElementById("recentTasks").innerHTML = tasksHtml;
+  }).catch(function() {});
 }
 
-async function renderAgentMemory(el, agent) {
-  let mem = [];
-  try { mem = await api('/agent/' + agent.id + '/memory'); } catch(e) {}
-
-  let html = '<div class="card" style="padding:0">';
-  if (!mem.length) html += '<div class="empty">No memory entries</div>';
-  for (const m of mem) {
-    html += '<div class="mem-row"><div class="mem-key">' + esc(m.key) + '</div><div class="mem-val">' + esc(typeof m.content === 'string' ? m.content : JSON.stringify(m.content, null, 2)) + '</div></div>';
-  }
-  html += '</div>';
-  el.innerHTML = html;
-}
-
-async function renderAgentHeartbeats(el, agent) {
-  let hbs = [];
-  try { hbs = await api('/agent/' + agent.id + '/heartbeats'); } catch(e) {}
-
-  let html = '<div class="card" style="padding:0">';
-  if (!hbs.length) html += '<div class="empty">No heartbeats</div>';
-  for (const hb of hbs) {
-    const cls = (hb.status === 'success' || hb.status === 'ok') ? 'ok' : hb.status === 'running' ? 'run' : 'err';
-    const stdout = (hb.stdout || '').replace(/\/home\/codex[^\s]*/g, '[path]').replace(/\/root\/\.codex[^\s]*/g, '[path]');
-    html += '<div class="hb-row" onclick="this.classList.toggle(\'open\')">'
-      + '<div class="hb-head"><span class="hb-status ' + cls + '">' + esc(hb.status||'--') + '</span><span class="hb-time">' + fmtDate(hb.started_at) + '</span></div>'
-      + '<div class="hb-body">' + (stdout ? esc(stdout) : '(no output)') + (hb.error ? '\n\nERROR: ' + esc(hb.error) : '') + '</div></div>';
-  }
-  html += '</div>';
-  el.innerHTML = html;
-}
-
-async function renderAgentCosts(el, agent) {
-  let costs = [];
-  try { costs = await api('/costs?days=30'); costs = costs.filter(x => x.agent_id === agent.id); } catch(e) {}
-
-  let html = '<div class="card" style="padding:0"><table class="cost-table"><thead><tr><th>Provider</th><th>Model</th><th>Requests</th><th>In Tokens</th><th>Out Tokens</th><th>Cost</th></tr></thead><tbody>';
-  let total = 0;
-  for (const r of costs) {
-    total += parseFloat(r.total_cost_cents||0);
-    html += '<tr><td>' + esc(r.provider||'--') + '</td><td>' + esc(r.model||'--') + '</td><td>' + r.request_count + '</td><td>' + (r.total_input_tokens||0).toLocaleString() + '</td><td>' + (r.total_output_tokens||0).toLocaleString() + '</td><td>' + fmtCost(r.total_cost_cents) + '</td></tr>';
-  }
-  html += '</tbody></table></div>';
-  if (costs.length) html = '<div class="stat-card" style="margin-bottom:12px"><div class="label">Total (30 days)</div><div class="value">' + fmtCost(total) + '</div></div>' + html;
-  else html = '<div class="empty">No cost data</div>';
-  el.innerHTML = html;
-}
-
-async function agentAction(id, action) {
-  try {
-    await apiPost('/agent/' + id + '/' + action, {});
-    render();
-  } catch(e) { alert('Error: ' + e.message); }
-}
-
-function startNewChat(agentId, agentName) {
-  const body = prompt('Message:');
-  if (!body) return;
-  apiPost('/chat/send', {agentId: agentId, body: body}).then(r => {
-    navigate('agents', 'conversation-detail', {agentId: agentId, agentName: agentName, convId: r.conversationId});
-  }).catch(e => alert('Error: ' + e.message));
-}
-
-// ============================
-// PAGE: CONVERSATION DETAIL
-// ============================
-async function renderConversationDetail(c, data) {
-  $('topTitle').textContent = 'Conversation';
-  let msgs = [];
-  try { msgs = await api('/chat/history/' + data.convId); } catch(e) {}
-
-  let html = '<div class="chat-container"><div class="chat-messages" id="chatMsgs">';
-  for (const m of msgs) {
-    html += '<div class="chat-bubble ' + m.sender_type + '"><div>' + esc(m.body) + '</div><div class="bubble-meta">' + m.sender_type + ' / ' + fmtDate(m.created_at) + '</div></div>';
-  }
-  html += '</div>';
-  html += '<div class="chat-input-row"><input id="chatIn" placeholder="Send a message..." onkeydown="if(event.key===\'Enter\')sendChatMsg(\'' + data.agentId + '\',\'' + data.convId + '\')"><button onclick="sendChatMsg(\'' + data.agentId + '\',\'' + data.convId + '\')">Send</button></div></div>';
-  c.innerHTML = html;
-  const cm = $('chatMsgs');
-  cm.scrollTop = cm.scrollHeight;
-}
-
-async function sendChatMsg(agentId, convId) {
-  const inp = $('chatIn');
-  const body = inp.value.trim();
-  if (!body) return;
-  inp.value = '';
-  try {
-    await apiPost('/chat/send', {agentId: agentId, body: body, conversationId: convId});
-    render();
-  } catch(e) { alert('Error: ' + e.message); }
-}
-
-// ============================
-// PAGE: CONVERSATIONS
-// ============================
-async function renderConversations(c) {
-  $('topTitle').textContent = 'Conversations';
-  const convs = await api('/chat/conversations');
-
-  let html = '<div class="card" style="padding:0">';
-  if (!convs.length) html += '<div class="empty">No conversations</div>';
-  for (const cv of convs) {
-    html += '<div class="conv-row" onclick="navigate(\'conversations\',\'conversation-detail\',{agentId:\'' + (cv.agent_id||'') + '\',agentName:\'' + esc(cv.agent_name||'') + '\',convId:\'' + cv.id + '\'})">'
-      + '<div><div class="conv-title">' + esc(cv.title||'Untitled') + '</div>'
-      + '<div class="conv-sub">' + esc(cv.agent_name||'--') + ' / ' + (cv.message_count||0) + ' messages / ' + ago(cv.last_message_at||cv.created_at) + '</div></div>'
-      + '<div class="company-arrow">&#8250;</div></div>';
-  }
-  html += '</div>';
-  c.innerHTML = html;
-}
-
-// ============================
-// PAGE: TOOLS
-// ============================
-async function renderTools(c) {
-  $('topTitle').textContent = 'Tools';
-  const tools = await api('/tools');
-
-  let html = '<div class="card" style="padding:0">';
-  if (!tools.length) html += '<div class="empty">No tools registered</div>';
-  for (const t of tools) {
-    html += '<div class="tool-card"><div class="tool-name">' + esc(t.name) + '</div>'
-      + '<div class="tool-desc">' + esc(t.description||'No description') + '</div></div>';
-  }
-  html += '</div>';
-  c.innerHTML = html;
-}
-
-// ============================
-// PAGE: SETTINGS
-// ============================
-function renderSettings(c) {
-  $('topTitle').textContent = 'Settings';
-  let html = '<div class="card">';
-  html += '<div class="setting-row"><div class="setting-label">API Endpoint</div><div class="setting-val">' + esc(API) + '</div></div>';
-  html += '<div class="setting-row"><div class="setting-label">WebSocket URL</div><div class="setting-val">' + esc((location.protocol==='https:'?'wss:':'ws:') + '//' + location.host + '?role=dashboard') + '</div></div>';
-  html += '<div class="setting-row"><div class="setting-label">API Key</div><div class="setting-val">' + esc(API_KEY ? API_KEY.slice(0,8) + '...' : 'Not set') + '</div></div>';
-  html += '<div class="setting-row"><div class="setting-label">WebSocket</div><div class="setting-val">' + (state.wsConnected ? 'Connected' : 'Disconnected') + '</div></div>';
-  html += '</div>';
-  html += '<div class="btn-group" style="margin-top:16px">';
-  html += '<button class="btn" onclick="promptApiKey();render()">Change API Key</button>';
-  html += '<button class="btn" onclick="render()">Refresh</button>';
-  html += '</div>';
-
-  // Health
-  html += '<div class="section-title">Health Check</div><div class="card" id="healthBox"><div class="spinner"></div></div>';
-  c.innerHTML = html;
-
-  api('/admin/health').then(h => {
-    const hb = $('healthBox');
-    if (hb) hb.innerHTML = '<div class="setting-row"><div class="setting-label">Status</div><div class="setting-val" style="color:var(--green)">' + esc(h.status) + '</div></div>'
-      + '<div class="setting-row"><div class="setting-label">Uptime</div><div class="setting-val">' + Math.floor((h.uptime||0)/3600) + 'h ' + Math.floor(((h.uptime||0)%3600)/60) + 'm</div></div>'
-      + '<div class="setting-row"><div class="setting-label">Agents</div><div class="setting-val">' + (h.agents?.active||0) + ' active / ' + (h.agents?.total||0) + ' total</div></div>'
-      + '<div class="setting-row"><div class="setting-label">Processes</div><div class="setting-val">' + (h.processes||0) + '</div></div>';
-  }).catch(() => {
-    const hb = $('healthBox');
-    if (hb) hb.innerHTML = '<div style="color:var(--red)">Health check failed</div>';
+function loadCompanies() {
+  api("/api/companies").then(function(list) {
+    if (!list || list.length === 0) {
+      document.getElementById("companiesList").innerHTML = '<div style="color:#a3a3a3;padding:12px 0">No companies yet.</div>';
+      return;
+    }
+    var html = "";
+    list.forEach(function(c) {
+      html += '<div class="list-item" style="cursor:pointer" onclick="showCompany(\x27' + c.id + '\x27)"><div><div class="list-item-title">' + esc(c.name) + '</div><div class="list-item-sub">Created ' + timeAgo(c.created_at) + '</div></div></div>';
+    });
+    document.getElementById("companiesList").innerHTML = html;
   });
 }
 
-// ============================
-// WEBSOCKET
-// ============================
-let ws = null;
-function connectWS() {
-  if (!API_KEY) return;
-  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const url = proto + '//' + location.host + '?role=dashboard&key=' + encodeURIComponent(API_KEY);
-  try { ws = new WebSocket(url); } catch(e) { return; }
-
-  $('wsDot').className = 'ws-dot connecting';
-  $('wsLabel').textContent = 'Connecting';
-
-  ws.onopen = () => {
-    state.wsConnected = true;
-    $('wsDot').className = 'ws-dot connected';
-    $('wsLabel').textContent = 'Connected';
-  };
-  ws.onclose = () => {
-    state.wsConnected = false;
-    $('wsDot').className = 'ws-dot';
-    $('wsLabel').textContent = 'Disconnected';
-    setTimeout(connectWS, 4000);
-  };
-  ws.onerror = () => {};
-  ws.onmessage = (e) => {
-    try {
-      const msg = JSON.parse(e.data);
-      if (['agent.status','heartbeat','task.updated','agent.message'].includes(msg.type)) {
-        render();
-      }
-    } catch(err) {}
-  };
+function showCompany(id) {
+  api("/api/company/" + id).then(function(c) {
+    document.getElementById("companyDetailName").textContent = c.name;
+    var html = "";
+    if (c.agents && c.agents.length > 0) {
+      c.agents.forEach(function(a) {
+        var st = a.status || "offline";
+        html += '<div class="list-item"><div><span class="status-dot ' + st + '"></span><span class="list-item-title">' + esc(a.name) + '</span><div class="list-item-sub">' + esc(a.role || "agent") + ' / ' + esc(a.model || "default") + '</div></div></div>';
+      });
+    } else {
+      html = '<div style="color:#a3a3a3;padding:12px 0">No agents in this company.</div>';
+    }
+    document.getElementById("companyAgentsList").innerHTML = html;
+    document.getElementById("companyDetail").style.display = "block";
+  });
 }
 
-// ============================
-// SERVICE WORKER (PWA)
-// ============================
-function registerSW() {
-  if ('serviceWorker' in navigator) {
-    // Inline SW via blob
-    const swCode = "self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>e.waitUntil(clients.claim()));self.addEventListener('fetch',e=>{});";
-    const blob = new Blob([swCode], {type:'application/javascript'});
-    navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(()=>{});
+function loadAgents() {
+  api("/api/agents").then(function(list) {
+    if (!list || list.length === 0) {
+      document.getElementById("agentsList").innerHTML = '<div style="color:#a3a3a3;padding:12px 0">No agents yet. Create a company first, then add agents.</div>';
+      return;
+    }
+    var html = "";
+    list.forEach(function(a) {
+      var st = a.status || "offline";
+      html += '<div class="list-item"><div><span class="status-dot ' + st + '"></span><span class="list-item-title">' + esc(a.name) + '</span><div class="list-item-sub">' + esc(a.company_name || "Unknown") + ' / ' + esc(a.role || "agent") + ' / ' + esc(a.model || "default") + '</div></div><div class="agent-actions"><button class="btn btn-outline btn-sm" onclick="agentAction(\x27' + a.id + '\x27,\x27start\x27)">Start</button><button class="btn btn-outline btn-sm" onclick="agentAction(\x27' + a.id + '\x27,\x27stop\x27)">Stop</button><button class="btn btn-outline btn-sm" onclick="agentAction(\x27' + a.id + '\x27,\x27restart\x27)">Restart</button></div></div>';
+    });
+    document.getElementById("agentsList").innerHTML = html;
+  });
+}
+
+function agentAction(id, action) {
+  api("/api/agent/" + id + "/" + action, {method: "POST"}).then(function() { loadAgents(); });
+}
+
+function loadConversations() {
+  api("/api/agents").then(function(agents) {
+    if (!agents || agents.length === 0) {
+      document.getElementById("convList").innerHTML = '<div style="color:#a3a3a3;padding:12px 0">No agents yet.</div>';
+      return;
+    }
+    var html = "";
+    agents.forEach(function(a) {
+      html += '<div class="list-item" style="cursor:pointer" onclick="loadAgentConvs(\x27' + a.id + '\x27,\x27' + esc(a.name) + '\x27)"><div><div class="list-item-title">' + esc(a.name) + '</div><div class="list-item-sub">' + esc(a.company_name || "") + '</div></div></div>';
+    });
+    document.getElementById("convList").innerHTML = html;
+  });
+}
+
+function loadAgentConvs(agentId, name) {
+  api("/api/agent/" + agentId + "/conversations").then(function(convs) {
+    if (!convs || convs.length === 0) {
+      document.getElementById("convList").innerHTML = '<div style="color:#a3a3a3;padding:12px 0">No conversations for ' + name + '.</div>';
+      return;
+    }
+    var html = "";
+    convs.forEach(function(c) {
+      html += '<div class="list-item" style="cursor:pointer" onclick="loadConvMessages(\x27' + c.id + '\x27)"><div><div class="list-item-title">' + esc(c.title || "Untitled") + '</div><div class="list-item-sub">' + (c.message_count || 0) + ' messages / ' + timeAgo(c.updated_at) + '</div></div></div>';
+    });
+    document.getElementById("convList").innerHTML = html;
+  });
+}
+
+function loadConvMessages(convId) {
+  api("/api/conversation/" + convId).then(function(c) {
+    document.getElementById("convTitle").textContent = c.title || "Conversation";
+    var html = "";
+    if (c.messages && c.messages.length > 0) {
+      c.messages.forEach(function(m) {
+        html += '<div class="msg"><div class="msg-sender">' + esc(m.sender_type || "unknown") + '</div><div class="msg-body">' + esc(m.body) + '</div><div class="msg-time">' + timeAgo(m.created_at) + '</div></div>';
+      });
+    } else {
+      html = '<div style="color:#a3a3a3;padding:12px 0">No messages.</div>';
+    }
+    document.getElementById("msgList").innerHTML = html;
+    document.getElementById("convMessages").style.display = "block";
+  });
+}
+
+function loadTools() {
+  api("/api/tools").then(function(tools) {
+    if (!tools || tools.length === 0) {
+      document.getElementById("toolsList").innerHTML = '<div style="color:#a3a3a3;padding:12px 0">No tools available.</div>';
+      return;
+    }
+    var html = "";
+    tools.forEach(function(t) {
+      var name = typeof t === "string" ? t : (t.name || JSON.stringify(t));
+      var desc = t.description || "";
+      html += '<div class="list-item"><div><div class="list-item-title">' + esc(name) + '</div>' + (desc ? '<div class="list-item-sub">' + esc(desc) + '</div>' : '') + '</div></div>';
+    });
+    document.getElementById("toolsList").innerHTML = html;
+  }).catch(function() {
+    document.getElementById("toolsList").innerHTML = '<div style="color:#a3a3a3;padding:12px 0">Could not load tools.</div>';
+  });
+}
+
+function loadSettings() {
+  api("/auth/me").then(function(u) {
+    var html = '<div class="settings-row"><div class="settings-label">Name</div><div class="settings-value">' + esc(u.name || "-") + '</div></div>';
+    html += '<div class="settings-row"><div class="settings-label">Email</div><div class="settings-value">' + esc(u.email || "-") + '</div></div>';
+    html += '<div class="settings-row"><div class="settings-label">Role</div><div class="settings-value">' + esc(u.role || "-") + '</div></div>';
+    html += '<div class="settings-row"><div class="settings-label">Plan</div><div class="settings-value">' + esc(u.plan || "free") + '</div></div>';
+    document.getElementById("settingsProfile").innerHTML = html;
+  });
+}
+
+function showModal(type) {
+  if (type === "company") {
+    document.getElementById("modalCompany").classList.add("show");
+  } else if (type === "agent") {
+    api("/api/companies").then(function(list) {
+      var sel = document.getElementById("agentCompany");
+      sel.innerHTML = "";
+      (list || []).forEach(function(c) {
+        var o = document.createElement("option");
+        o.value = c.id;
+        o.textContent = c.name;
+        sel.appendChild(o);
+      });
+    });
+    document.getElementById("modalAgent").classList.add("show");
   }
 }
 
-// ============================
-// INIT
-// ============================
-async function init() {
-  if (!API_KEY) promptApiKey();
-  registerSW();
-  connectWS();
-  await render();
-  // Auto-refresh every 30s
-  setInterval(() => { if (!state.subView || state.subView === 'agent-detail') render(); }, 30000);
+function hideModals() {
+  document.querySelectorAll(".modal-overlay").forEach(function(m) { m.classList.remove("show"); });
 }
-init();
+
+function createCompany() {
+  var name = document.getElementById("companyName").value.trim();
+  if (!name) return;
+  api("/api/companies", {method: "POST", body: JSON.stringify({name: name, config: {description: document.getElementById("companyDesc").value.trim()}})}).then(function() {
+    hideModals();
+    document.getElementById("companyName").value = "";
+    document.getElementById("companyDesc").value = "";
+    navigate(currentPage);
+  });
+}
+
+function createAgent() {
+  var companyId = document.getElementById("agentCompany").value;
+  var name = document.getElementById("agentName").value.trim();
+  if (!companyId || !name) return;
+  api("/api/agents", {method: "POST", body: JSON.stringify({company_id: companyId, name: name, role: document.getElementById("agentRole").value.trim(), model: document.getElementById("agentModel").value.trim()})}).then(function() {
+    hideModals();
+    document.getElementById("agentName").value = "";
+    document.getElementById("agentRole").value = "";
+    navigate("agents");
+  });
+}
+
+document.querySelectorAll(".modal-overlay").forEach(function(m) {
+  m.addEventListener("click", function(e) { if (e.target === m) hideModals(); });
+});
+
+function connectWS() {
+  var proto = location.protocol === "https:" ? "wss:" : "ws:";
+  ws = new WebSocket(proto + "//" + location.host + "?role=dashboard");
+  ws.onopen = function() { document.getElementById("wsDot").classList.add("connected"); document.getElementById("wsDot").title = "Connected"; };
+  ws.onclose = function() { document.getElementById("wsDot").classList.remove("connected"); document.getElementById("wsDot").title = "Disconnected"; setTimeout(connectWS, 3000); };
+  ws.onerror = function() { ws.close(); };
+  ws.onmessage = function(e) {
+    try {
+      var msg = JSON.parse(e.data);
+      if (msg.type === "agent.status" || msg.type === "heartbeat") {
+        if (currentPage === "overview") loadDashboard();
+        if (currentPage === "agents") loadAgents();
+      }
+    } catch(ex) {}
+  };
+}
+
+function esc(s) { if (!s) return ""; var d = document.createElement("div"); d.textContent = String(s); return d.innerHTML; }
+function timeAgo(ts) {
+  if (!ts) return "";
+  var diff = (Date.now() - new Date(ts).getTime()) / 1000;
+  if (diff < 60) return "just now";
+  if (diff < 3600) return Math.floor(diff / 60) + "m ago";
+  if (diff < 86400) return Math.floor(diff / 3600) + "h ago";
+  return Math.floor(diff / 86400) + "d ago";
+}
+
+loadUser();
+loadDashboard();
+connectWS();
 </script>
 </body>
 </html>
