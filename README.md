@@ -1,17 +1,62 @@
-# KAIROS v2
+# BLUN
 
-**Event-driven AI Agent Framework** — real-time, multi-agent orchestration with WebSocket communication, Redis pub/sub, and PostgreSQL persistence.
+**AI Organisator** -- open-source framework that organizes your AI agents into productive teams. One command to install. Zero complexity.
+
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Node.js](https://img.shields.io/badge/node-%3E%3D18-green.svg)](https://nodejs.org)
 
 ## Architecture
 
 ```
-Browser/Dashboard <──WebSocket──> KAIROS Server <──Redis Pub/Sub──> Agent Processes
-                  <───REST API──>               <───PostgreSQL────>
+Browser/Dashboard <--WebSocket--> BLUN Server <--Redis Pub/Sub--> Agent Processes
+                  <---REST API-->             <---PostgreSQL---->
 ```
 
-KAIROS replaces traditional polling-based agent systems with an event-driven architecture. Agents connect via WebSocket, receive messages in real-time, and report tool executions, cost events, and status changes back to the server — which broadcasts them to connected dashboards.
+BLUN replaces traditional polling-based agent systems with an event-driven architecture. Agents connect via WebSocket, receive messages in real-time, and report tool executions, cost events, and status changes back to the server.
 
-### Core Components
+## Quick Start
+
+```bash
+# Install globally
+npm install -g blun
+
+# Create a new project
+blun init my-project
+cd my-project
+
+# Start
+blun start
+```
+
+Or manually:
+
+```bash
+git clone https://github.com/Maykbiletti/blun.git
+cd blun
+cp .env.example .env
+npm install
+sudo -u postgres psql -f src/models/schema.sql
+npm start
+```
+
+The dashboard is at `http://localhost:3200/dashboard`.
+
+## Features
+
+- **Real-time agents** -- WebSocket-powered, event-driven, no polling
+- **Multi-model** -- OpenAI, Claude, Gemini, local LLMs -- switch per agent
+- **Skills system** -- Install domain knowledge as packages (tax advisor, devops, research...)
+- **Tool registry** -- 6 built-in tools, install more from Git
+- **Agent teams** -- Organize agents into companies with roles
+- **Chat** -- Real-time bidirectional user-agent communication
+- **Memory** -- Per-agent persistent key-value store
+- **Dashboard** -- PWA with dark theme, live updates, mobile-ready
+- **Auth** -- User login, sessions, OAuth (GitHub, Google)
+- **Billing** -- Stripe subscriptions, invoices, plan limits
+- **CLI** -- Full command-line interface for all operations
+- **Federation** -- Cross-instance agent communication (coming soon)
+
+## Core Components
 
 | Component | Description |
 |-----------|-------------|
@@ -23,85 +68,53 @@ KAIROS replaces traditional polling-based agent systems with an event-driven arc
 | `src/agent/tools.js` | Tool registry with built-in tools |
 | `src/agent/memory.js` | Per-agent key-value memory store |
 | `src/routes/api.js` | REST API for dashboard and integrations |
-| `src/routes/chat.js` | Chat endpoints (send, history, conversations) |
-| `src/routes/admin.js` | Admin operations (health, bulk ops, stats) |
-
-## Quick Start
-
-```bash
-# 1. Create the database
-sudo -u postgres psql -f src/models/schema.sql
-
-# 2. Install dependencies
-npm install
-
-# 3. Start the server
-npm start
-
-# 4. (Optional) Set a custom API key
-KAIROS_API_KEY=your-secret-key npm start
-```
-
-The server runs on port **3200** by default (set `KAIROS_PORT` to change).
-
-## WebSocket Protocol
-
-Connect to `ws://host:3200?role=dashboard` for dashboard updates, or `ws://host:3200?role=agent&agentId=UUID` for agent connections.
-
-All messages are JSON with `{ type, payload }`:
-
-| Type | Direction | Description |
-|------|-----------|-------------|
-| `agent.connect` | Agent -> Server | Agent registers itself |
-| `agent.status` | Both | Status change (active/idle/error/offline) |
-| `agent.message` | Agent -> Server | Agent sends a chat message |
-| `agent.tool.start` | Agent -> Server | Tool execution started |
-| `agent.tool.result` | Agent -> Server | Tool execution completed |
-| `user.message` | Dashboard -> Agent | User sends message to agent |
-| `task.created` | Server -> Both | New task assigned |
-| `task.updated` | Server -> Both | Task status changed |
-| `dashboard.sync` | Server -> Dashboard | Full state snapshot |
-| `cost.report` | Agent -> Server | Token/cost usage report |
+| `src/routes/chat.js` | Chat endpoints |
+| `src/routes/auth.js` | Authentication (login, register, OAuth) |
+| `src/routes/billing.js` | Stripe billing and subscriptions |
+| `src/routes/skills.js` | Skills management |
 
 ## REST API
 
-All API endpoints require the `x-kairos-key` header (except health checks).
+All API endpoints require the `x-blun-key` header (except health checks and auth).
 
 ### Companies
-- `GET /api/companies` — List all companies
-- `GET /api/company/:id` — Company detail with agents
-- `POST /api/companies` — Create company
+- `GET /api/companies` -- List all companies
+- `GET /api/company/:id` -- Company detail with agents
+- `POST /api/companies` -- Create company
 
 ### Agents
-- `GET /api/agents` — List all agents
-- `GET /api/agent/:id` — Agent detail
-- `POST /api/agents` — Create agent
-- `PATCH /api/agent/:id` — Update agent
-- `POST /api/agent/:id/start` — Start agent process
-- `POST /api/agent/:id/stop` — Stop agent process
-- `POST /api/agent/:id/restart` — Restart agent process
+- `GET /api/agents` -- List all agents
+- `GET /api/agent/:id` -- Agent detail
+- `POST /api/agents` -- Create agent
+- `PATCH /api/agent/:id` -- Update agent
+- `POST /api/agent/:id/start` -- Start agent process
+- `POST /api/agent/:id/stop` -- Stop agent process
+- `POST /api/agent/:id/restart` -- Restart agent process
 
 ### Chat
-- `POST /api/agent/:id/message` — Send message to agent
-- `POST /api/chat/send` — Send message (alternative)
-- `GET /api/chat/history/:conversationId` — Message history
-- `GET /api/chat/conversations` — List conversations
+- `POST /api/agent/:id/message` -- Send message to agent
+- `GET /api/chat/history/:conversationId` -- Message history
+- `GET /api/chat/conversations` -- List conversations
 
-### Tasks
-- `GET /api/agent/:id/tasks` — Agent tasks
-- `POST /api/agent/:id/task` — Create task
-- `PATCH /api/task/:id` — Update task
+### Skills
+- `GET /skills` -- List installed skills
+- `POST /skills/install` -- Install a skill
+- `POST /skills/:id/assign/:agentId` -- Assign skill to agent
+- `GET /skills/registry` -- Browse available skills
 
-### Memory
-- `GET /api/agent/:id/memory` — List agent memories
-- `POST /api/agent/:id/memory` — Store memory entry
+### Auth
+- `POST /auth/register` -- Create account
+- `POST /auth/login` -- Login
+- `GET /auth/me` -- Current user
+
+### Billing
+- `GET /billing/plans` -- Available plans
+- `POST /billing/checkout` -- Start subscription
+- `GET /billing/subscription` -- Current subscription
 
 ### System
-- `GET /api/dashboard` — Full dashboard data
-- `GET /api/costs` — Cost overview
-- `GET /api/tools` — List available tools
-- `GET /api/admin/health` — System health check
-- `GET /api/admin/stats` — Database statistics
+- `GET /api/dashboard` -- Full dashboard data
+- `GET /api/admin/health` -- System health check
 
 ## Built-in Tools
 
@@ -114,27 +127,54 @@ All API endpoints require the `x-kairos-key` header (except health checks).
 | `file_read` | Read files from the filesystem |
 | `file_write` | Write files to the filesystem |
 
-Custom tools can be registered via `tools.register(name, { description, parameters, execute })`.
-
 ## Agent Adapters
 
-- **codex_local** — OpenAI Codex CLI
-- **gemini_cli** — Google Gemini CLI
-- **claude_api** — Anthropic Claude API
-- **openai_api** — OpenAI API
+- **codex_local** -- OpenAI Codex CLI
+- **gemini_cli** -- Google Gemini CLI
+- **claude_api** -- Anthropic Claude API
+- **openai_api** -- OpenAI API
 
 ## Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `KAIROS_PORT` | `3200` | HTTP/WebSocket port |
-| `KAIROS_API_KEY` | `kairos-dev-key` | API authentication key |
-| `KAIROS_DB_HOST` | `localhost` | PostgreSQL host |
-| `KAIROS_DB_PORT` | `5432` | PostgreSQL port |
-| `KAIROS_DB_NAME` | `kairos` | Database name |
-| `KAIROS_DB_USER` | `postgres` | Database user |
-| `KAIROS_DB_PASSWORD` | *(empty)* | Database password |
-| `KAIROS_REDIS_URL` | `redis://127.0.0.1:6379` | Redis connection URL |
+| `BLUN_PORT` | `3200` | HTTP/WebSocket port |
+| `BLUN_API_KEY` | `blun-dev-key` | API authentication key |
+| `BLUN_DB_HOST` | `localhost` | PostgreSQL host |
+| `BLUN_DB_PORT` | `5432` | PostgreSQL port |
+| `BLUN_DB_NAME` | `blun` | Database name |
+| `BLUN_DB_USER` | `postgres` | Database user |
+| `BLUN_DB_PASSWORD` | *(empty)* | Database password |
+| `BLUN_REDIS_URL` | `redis://127.0.0.1:6379` | Redis connection URL |
+
+## CLI
+
+```bash
+blun init [name]       # Create new project
+blun start             # Start server
+blun stop              # Stop server
+blun status            # Show health
+blun agent list        # List agents
+blun agent create      # Create agent
+blun company list      # List companies
+blun skill install     # Install skill
+blun help              # Show all commands
+```
+
+## Plans
+
+| | Free | Pro (5/mo) | Team (15/mo) | Enterprise |
+|---|---|---|---|---|
+| Agents | 3 | Unlimited | Unlimited | Unlimited |
+| Companies | 1 | 10 | 50 | Unlimited |
+| Messages | 1000/day | Unlimited | Unlimited | Unlimited |
+| Shared Projects | -- | -- | Yes | Yes |
+| Federation | -- | -- | Yes | Yes |
+| Admin Panel | -- | -- | Yes | Yes |
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 
