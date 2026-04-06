@@ -469,6 +469,19 @@ footer { border-top: 1px solid var(--border); padding: 40px 0; }
   </div>
 </section>
 
+<!-- Newsletter Signup -->
+<section style="border-top:1px solid var(--border);padding:60px 0">
+  <div class="container" style="text-align:center;max-width:480px">
+    <h3 style="font-size:1.25rem;font-weight:600;margin-bottom:8px">Stay in the loop</h3>
+    <p style="color:var(--text-muted);font-size:0.875rem;margin-bottom:20px">Get product updates and news. No spam.</p>
+    <form id="nlSignup" style="display:flex;gap:10px">
+      <input type="email" id="nlEmail" placeholder="you@example.com" required style="flex:1;padding:12px 16px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);font-family:var(--font);font-size:0.9375rem;outline:none">
+      <button type="submit" class="btn btn-primary" style="white-space:nowrap">Subscribe</button>
+    </form>
+    <div id="nlMsg" style="display:none;margin-top:12px;font-size:0.875rem;color:#22c55e"></div>
+  </div>
+</section>
+
 <!-- Footer -->
 <footer>
   <div class="container footer-inner">
@@ -476,6 +489,7 @@ footer { border-top: 1px solid var(--border); padding: 40px 0; }
     <div class="footer-links">
       <a href="/impressum">Impressum</a>
       <a href="/datenschutz">Datenschutz</a>
+      <a href="/contact">Contact</a>
       <a href="https://github.com/blun-ai" target="_blank" rel="noopener">GitHub</a>
     </div>
     <div class="footer-made">Made in Austria</div>
@@ -793,5 +807,23 @@ function handleCookies(accepted){
 
 </script>
 <script src="/support-widget.js"></script>
+<script>
+(function(){
+  var form=document.getElementById("nlSignup");
+  if(!form)return;
+  form.addEventListener("submit",async function(e){
+    e.preventDefault();
+    var msg=document.getElementById("nlMsg");
+    try{
+      var r=await fetch("/api/newsletter/subscribe",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:document.getElementById("nlEmail").value})});
+      var d=await r.json();
+      msg.textContent=d.ok?d.message:(d.error||"Error");
+      msg.style.color=d.ok?"#22c55e":"#ef4444";
+      msg.style.display="block";
+      if(d.ok)form.reset();
+    }catch(err){msg.textContent="Network error.";msg.style.color="#ef4444";msg.style.display="block";}
+  });
+})();
+</script>
 </body>
 </html>

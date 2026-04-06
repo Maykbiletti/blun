@@ -39,6 +39,10 @@ const softwareRoutes = require("./src/routes/software");
 const websiteWizardRoutes = require("./src/routes/website-wizard");
 const modelsRoutes = require("./src/routes/models");
 const profileRoutes = require("./src/routes/profile");
+const contactRoutes = require("./src/routes/contact");
+const newsletterRoutes = require("./src/routes/newsletter");
+const voiceRoutes = require("./src/routes/voice");
+const blunCodeRoutes = require("./src/routes/blun-code");
 const { startAllBots, activeBots } = require("./src/channels/telegram");
 
 const PORT = parseInt(process.env.BLUN_PORT || "3200", 10);
@@ -56,6 +60,7 @@ app.get("/impressum", (req, res) => {
   res.sendFile(__dirname + "/dashboard/impressum.html");
 });
 app.get("/datenschutz", (req, res) => { res.sendFile(__dirname + "/dashboard/datenschutz.html"); });
+app.get("/contact", function(req, res) { res.sendFile(__dirname + "/dashboard/contact.html"); });
 app.get("/feature/websites", function(req, res) { res.sendFile(__dirname + "/dashboard/feature-websites.html"); });app.get("/feature/software", function(req, res) { res.sendFile(__dirname + "/dashboard/feature-software.html"); });app.get("/feature/assistants", function(req, res) { res.sendFile(__dirname + "/dashboard/feature-assistants.html"); });app.get("/feature/compare", function(req, res) { res.sendFile(__dirname + "/dashboard/feature-compare.html"); });app.get("/feature/local-ai", function(req, res) { res.sendFile(__dirname + "/dashboard/feature-local-ai.html"); });app.get("/feature/everything", function(req, res) { res.sendFile(__dirname + "/dashboard/feature-everything.html"); });
 
 app.use(helmet({ contentSecurityPolicy: false }));
@@ -69,7 +74,7 @@ app.use(cookieParser());
 
 // Auth middleware — accept cookie session OR x-blun-key header
 app.use("/api", function (req, res, next) {
-  if (req.path === "/health" || req.path === "/admin/health") return next();
+  if (req.path === "/health" || req.path === "/admin/health" || req.path === "/contact" || req.path === "/newsletter/subscribe" || req.path === "/newsletter/unsubscribe") return next();
   // Check API key first (for programmatic access)
   var key = req.headers["x-blun-key"];
   if (key && key === API_KEY) return next();
@@ -92,10 +97,14 @@ app.use("/software", softwareRoutes);
 app.use("/api/website-wizard", websiteWizardRoutes);
 app.use("/api/models", modelsRoutes);
 app.use("/api/profile", authenticate, profileRoutes);
+app.use("/api/voice", voiceRoutes);
+app.use("/api/blun-code", blunCodeRoutes);
 app.use("/support", supportChatRoutes);
 app.get("/support-widget.js", function(req, res) { res.sendFile(__dirname + "/dashboard/support-widget.js"); });
 
 app.use("/api", apiRoutes);
+app.use("/api/contact", contactRoutes);
+app.use("/api/newsletter", newsletterRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/skills", skillsRoutes);
@@ -124,6 +133,11 @@ app.get("/admin-panel", authenticate, function (req, res) {
   if (!req.user) return res.redirect("/login");
   if (req.user.role !== "admin" && req.user.role !== "owner") return res.redirect("/dashboard");
   res.sendFile(path.join(__dirname, "dashboard", "admin-panel.html"));
+app.get("/newsletter", authenticate, function (req, res) {
+  if (!req.user) return res.redirect("/login");
+  if (req.user.role !== "admin" && req.user.role !== "owner") return res.redirect("/dashboard");
+  res.sendFile(path.join(__dirname, "dashboard", "newsletter.html"));
+});
 });
 
 app.get("/privacy-settings", authenticate, function (req, res) {
@@ -148,7 +162,9 @@ app.get("/dashboard/websites", authenticate, function (req, res) { if (!req.user
 app.get("/dashboard/software", authenticate, function (req, res) { if (!req.user) return res.redirect("/login"); res.sendFile(path.join(__dirname, "dashboard", "software.html")); });
 app.get("/dashboard/website-wizard", authenticate, function (req, res) { if (!req.user) return res.redirect("/login"); res.sendFile(path.join(__dirname, "dashboard", "website-wizard.html")); });
 app.get("/profile", authenticate, function (req, res) { if (!req.user) return res.redirect("/login"); res.sendFile(path.join(__dirname, "dashboard", "profile.html")); });
+app.get("/voice", authenticate, function (req, res) { if (!req.user) return res.redirect("/login"); res.sendFile(path.join(__dirname, "dashboard", "voice.html")); });
 app.get("/dashboard/models", authenticate, function (req, res) { if (!req.user) return res.redirect("/login"); res.sendFile(path.join(__dirname, "dashboard", "models.html")); });
+app.get("/dashboard/blun-code", authenticate, function (req, res) { if (!req.user) return res.redirect("/login"); res.sendFile(path.join(__dirname, "dashboard", "blun-code.html")); });
 app.get("/dashboard", authenticate, function (req, res) {
   if (!req.user) return res.redirect("/login");
   res.sendFile(path.join(__dirname, "dashboard", "index.html"));

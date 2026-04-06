@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Newsletter Management — BLUN</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --blue: #3b82f6;
+  --blue-hover: #2563eb;
+  --bg: #0a0a0a;
+  --card: #1a1a1a;
+  --border: #27272a;
+  --text: #fafafa;
+  --text-muted: #a1a1aa;
+  --font: 'Inter', system-ui, sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.6; -webkit-font-smoothing: antialiased; min-height: 100vh; }
+a { color: inherit; text-decoration: none; }
+
+nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: rgba(10,10,10,0.8); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); }
+.nav-inner { display: flex; align-items: center; justify-content: space-between; height: 64px; max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+.nav-logo { font-weight: 700; font-size: 1.25rem; letter-spacing: -0.02em; }
+.nav-logo span { color: var(--blue); }
+.nav-right { display: flex; gap: 12px; align-items: center; }
+.btn { display: inline-flex; align-items: center; justify-content: center; padding: 10px 20px; border-radius: 8px; font-size: 0.875rem; font-weight: 500; font-family: var(--font); cursor: pointer; transition: all 0.2s; border: none; }
+.btn-primary { background: var(--blue); color: #fff; }
+.btn-primary:hover { background: var(--blue-hover); }
+.btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
+.btn-outline:hover { border-color: var(--text-muted); }
+.btn-sm { padding: 8px 16px; font-size: 0.8125rem; }
+
+.page { max-width: 900px; margin: 0 auto; padding: 100px 24px 60px; }
+h1 { font-size: 2rem; font-weight: 700; margin-bottom: 8px; letter-spacing: -0.02em; }
+.subtitle { color: var(--text-muted); margin-bottom: 32px; }
+
+.stats { display: flex; gap: 16px; margin-bottom: 40px; }
+.stat-card { flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+.stat-label { font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 4px; }
+.stat-value { font-size: 1.75rem; font-weight: 700; }
+
+.section { margin-bottom: 40px; }
+.section h2 { font-size: 1.25rem; font-weight: 600; margin-bottom: 16px; }
+
+.form-group { margin-bottom: 16px; }
+label { display: block; font-size: 0.8125rem; font-weight: 500; color: var(--text-muted); margin-bottom: 6px; }
+input, select, textarea {
+  width: 100%; padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--card); color: var(--text); font-family: var(--font); font-size: 0.9375rem;
+  outline: none; transition: border-color 0.2s;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--blue); }
+textarea { resize: vertical; min-height: 200px; }
+select { cursor: pointer; }
+
+.form-row { display: flex; gap: 16px; }
+.form-row .form-group { flex: 1; }
+
+.submit-btn { padding: 12px 28px; border-radius: 8px; background: var(--blue); color: #fff; font-size: 0.9375rem; font-weight: 600; font-family: var(--font); border: none; cursor: pointer; transition: background 0.2s; }
+.submit-btn:hover { background: var(--blue-hover); }
+.submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.drafts-list { display: flex; flex-direction: column; gap: 12px; }
+.draft-item { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; }
+.draft-subject { font-weight: 600; }
+.draft-meta { font-size: 0.8125rem; color: var(--text-muted); }
+.draft-status { font-size: 0.75rem; padding: 4px 10px; border-radius: 100px; background: rgba(59,130,246,0.15); color: var(--blue); }
+.draft-status.scheduled { background: rgba(245,158,11,0.15); color: #f59e0b; }
+
+.msg { display: none; padding: 12px 16px; border-radius: 8px; margin-top: 16px; text-align: center; font-size: 0.875rem; }
+.msg.success { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3); color: #22c55e; }
+.msg.error { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #ef4444; }
+.empty { color: var(--text-muted); font-size: 0.875rem; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a href="/dashboard" class="nav-logo">BL<span>UN</span></a>
+    <div class="nav-right">
+      <a href="/dashboard" class="btn btn-outline btn-sm">Dashboard</a>
+      <a href="/admin-panel" class="btn btn-outline btn-sm">Admin</a>
+    </div>
+  </div>
+</nav>
+
+<div class="page">
+  <h1>Newsletter Management</h1>
+  <p class="subtitle">Manage subscribers and compose newsletters.</p>
+
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-label">Total Subscribers</div>
+      <div class="stat-value" id="totalSubs">--</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Active Subscribers</div>
+      <div class="stat-value" id="activeSubs">--</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Newsletters Sent</div>
+      <div class="stat-value" id="totalSent">--</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Compose Newsletter</h2>
+    <form id="composeForm">
+      <div class="form-group">
+        <label for="nlSubject">Subject</label>
+        <input type="text" id="nlSubject" placeholder="Your newsletter subject" required>
+      </div>
+      <div class="form-group">
+        <label for="nlBody">Body</label>
+        <textarea id="nlBody" placeholder="Write your newsletter content here..." required></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="nlTemplate">Template</label>
+          <select id="nlTemplate">
+            <option value="simple">Simple</option>
+            <option value="branded">Branded</option>
+            <option value="minimal">Minimal</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="nlSchedule">Schedule (optional)</label>
+          <input type="datetime-local" id="nlSchedule">
+        </div>
+      </div>
+      <button type="submit" class="submit-btn" id="composeBtn">Save as Draft</button>
+    </form>
+    <div class="msg success" id="composeSuccess">Newsletter saved.</div>
+    <div class="msg error" id="composeError"></div>
+  </div>
+
+  <div class="section">
+    <h2>Saved Newsletters</h2>
+    <div id="draftsList" class="drafts-list">
+      <div class="empty">Loading...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  async function apiFetch(url, opts) {
+    var resp = await fetch(url, opts);
+    if (resp.status === 401) { window.location.href = "/login"; return null; }
+    return resp.json();
+  }
+
+  async function loadStats() {
+    var data = await apiFetch("/api/newsletter/subscribers");
+    if (!data) return;
+    document.getElementById("totalSubs").textContent = data.total || 0;
+    document.getElementById("activeSubs").textContent = data.active || 0;
+  }
+
+  async function loadDrafts() {
+    var data = await apiFetch("/api/newsletter/drafts");
+    if (!data) return;
+    var list = document.getElementById("draftsList");
+    var sent = 0;
+    if (!data.newsletters || data.newsletters.length === 0) {
+      list.innerHTML = "<div class=\"empty\">No newsletters yet.</div>";
+    } else {
+      list.innerHTML = "";
+      data.newsletters.forEach(function(nl) {
+        if (nl.status === "sent") sent++;
+        var d = new Date(nl.created_at);
+        var dateStr = d.toLocaleDateString() + " " + d.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
+        var statusClass = nl.status === "scheduled" ? "draft-status scheduled" : "draft-status";
+        var el = document.createElement("div");
+        el.className = "draft-item";
+        el.innerHTML = "<div><div class=\"draft-subject\">" + nl.subject + "</div><div class=\"draft-meta\">" + nl.template + " template | " + dateStr + "</div></div><span class=\"" + statusClass + "\">" + nl.status + "</span>";
+        list.appendChild(el);
+      });
+    }
+    document.getElementById("totalSent").textContent = sent;
+  }
+
+  loadStats();
+  loadDrafts();
+
+  var form = document.getElementById("composeForm");
+  form.addEventListener("submit", async function(e) {
+    e.preventDefault();
+    var btn = document.getElementById("composeBtn");
+    var successEl = document.getElementById("composeSuccess");
+    var errorEl = document.getElementById("composeError");
+    successEl.style.display = "none";
+    errorEl.style.display = "none";
+    btn.disabled = true;
+    btn.textContent = "Saving...";
+
+    var payload = {
+      subject: document.getElementById("nlSubject").value,
+      body: document.getElementById("nlBody").value,
+      template: document.getElementById("nlTemplate").value
+    };
+    var sched = document.getElementById("nlSchedule").value;
+    if (sched) payload.scheduled_at = new Date(sched).toISOString();
+
+    try {
+      var data = await apiFetch("/api/newsletter/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      if (data && data.ok) {
+        successEl.style.display = "block";
+        form.reset();
+        loadDrafts();
+      } else {
+        errorEl.textContent = (data && data.error) || "Failed to save.";
+        errorEl.style.display = "block";
+      }
+    } catch (err) {
+      errorEl.textContent = "Network error.";
+      errorEl.style.display = "block";
+    }
+    btn.disabled = false;
+    btn.textContent = "Save as Draft";
+  });
+})();
+</script>
+</body>
+</html>

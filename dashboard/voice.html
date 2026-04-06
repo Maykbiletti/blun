@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BLUN - Voice Chat</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"Inter",sans-serif;background:#0a0a0a;color:#e5e5e5;display:flex;min-height:100vh}
+a{color:#3b82f6;text-decoration:none}
+button{font-family:inherit;cursor:pointer;border:none;outline:none}
+input,textarea,select{font-family:inherit;background:#1a1a1a;border:1px solid #2a2a2a;color:#e5e5e5;padding:10px 14px;border-radius:8px;width:100%;font-size:14px}
+input:focus,textarea:focus,select:focus{border-color:#3b82f6;outline:none}
+
+.sidebar{width:260px;background:#1a1a1a;border-right:1px solid #2a2a2a;display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;transition:transform .2s}
+.sidebar-header{padding:20px;border-bottom:1px solid #2a2a2a}
+.sidebar-logo{font-size:20px;font-weight:700;color:#3b82f6}
+.sidebar-user{margin-top:12px;font-size:13px;color:#a3a3a3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sidebar-nav{flex:1;padding:12px 0}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 20px;color:#a3a3a3;font-size:14px;font-weight:500;cursor:pointer;transition:all .15s;text-decoration:none}
+.nav-item:hover{color:#e5e5e5;background:#2a2a2a}
+.nav-item.active{color:#3b82f6;background:rgba(59,130,246,.1);border-right:3px solid #3b82f6}
+.nav-item svg{width:20px;height:20px;flex-shrink:0}
+.sidebar-footer{padding:16px 20px;border-top:1px solid #2a2a2a}
+.logout-btn{width:100%;padding:10px;background:transparent;color:#ef4444;border:1px solid #ef4444;border-radius:8px;font-size:14px;font-weight:500;transition:all .15s}
+.logout-btn:hover{background:#ef4444;color:#fff}
+
+.main{flex:1;margin-left:260px;min-height:100vh}
+.topbar{height:60px;background:#1a1a1a;border-bottom:1px solid #2a2a2a;display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:50}
+.topbar-left{display:flex;align-items:center;gap:12px}
+.hamburger{display:none;background:none;color:#e5e5e5;font-size:24px;padding:4px}
+.page-title{font-size:18px;font-weight:600}
+
+.content{padding:24px;max-width:800px;margin:0 auto}
+
+/* Voice Controls */
+.voice-center{display:flex;flex-direction:column;align-items:center;padding:40px 0 24px}
+
+.mic-btn{width:120px;height:120px;border-radius:50%;background:#1a1a1a;border:3px solid #2a2a2a;display:flex;align-items:center;justify-content:center;transition:all .3s;position:relative}
+.mic-btn:hover{border-color:#3b82f6;background:#111}
+.mic-btn.recording{border-color:#3b82f6;background:rgba(59,130,246,.15);box-shadow:0 0 0 8px rgba(59,130,246,.1),0 0 0 16px rgba(59,130,246,.05)}
+.mic-btn.recording .mic-icon{color:#3b82f6}
+.mic-icon{width:48px;height:48px;color:#a3a3a3;transition:color .3s}
+
+.mic-status{margin-top:16px;font-size:14px;color:#a3a3a3;height:20px}
+.mic-status.active{color:#3b82f6}
+
+/* Waveform */
+.waveform{display:flex;align-items:center;justify-content:center;gap:3px;height:48px;margin-top:16px;opacity:0;transition:opacity .3s}
+.waveform.active{opacity:1}
+.waveform .bar{width:4px;background:#3b82f6;border-radius:2px;animation:wave 1.2s ease-in-out infinite}
+.waveform .bar:nth-child(1){height:12px;animation-delay:0s}
+.waveform .bar:nth-child(2){height:24px;animation-delay:.1s}
+.waveform .bar:nth-child(3){height:36px;animation-delay:.2s}
+.waveform .bar:nth-child(4){height:28px;animation-delay:.3s}
+.waveform .bar:nth-child(5){height:40px;animation-delay:.4s}
+.waveform .bar:nth-child(6){height:32px;animation-delay:.5s}
+.waveform .bar:nth-child(7){height:20px;animation-delay:.6s}
+.waveform .bar:nth-child(8){height:36px;animation-delay:.7s}
+.waveform .bar:nth-child(9){height:16px;animation-delay:.8s}
+.waveform .bar:nth-child(10){height:28px;animation-delay:.9s}
+.waveform .bar:nth-child(11){height:12px;animation-delay:1s}
+
+@keyframes wave{
+  0%,100%{transform:scaleY(.4);opacity:.5}
+  50%{transform:scaleY(1);opacity:1}
+}
+
+/* Controls row */
+.controls-row{display:flex;gap:12px;margin-top:24px;flex-wrap:wrap;justify-content:center}
+.control-group{display:flex;flex-direction:column;gap:4px}
+.control-group label{font-size:12px;color:#a3a3a3;text-transform:uppercase;letter-spacing:.5px}
+.control-group select{width:160px;padding:8px 12px;font-size:13px}
+
+.toggle-row{display:flex;align-items:center;gap:10px;margin-top:16px}
+.toggle{width:44px;height:24px;background:#2a2a2a;border-radius:12px;position:relative;cursor:pointer;transition:background .3s}
+.toggle.on{background:#3b82f6}
+.toggle .knob{width:20px;height:20px;background:#e5e5e5;border-radius:50%;position:absolute;top:2px;left:2px;transition:left .3s}
+.toggle.on .knob{left:22px}
+.toggle-label{font-size:13px;color:#a3a3a3}
+
+/* Live transcript */
+.transcript-box{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:16px;margin-top:24px;min-height:60px;font-size:14px;line-height:1.6;color:#a3a3a3;display:none}
+.transcript-box.visible{display:block}
+.transcript-box .label{font-size:12px;color:#525252;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.transcript-box .text{color:#e5e5e5}
+
+/* AI Response */
+.response-box{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:16px;margin-top:12px;min-height:60px;font-size:14px;line-height:1.6;display:none}
+.response-box.visible{display:block}
+.response-box .label{font-size:12px;color:#3b82f6;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.response-box .text{color:#e5e5e5}
+.response-box .speaking-indicator{display:inline-block;width:8px;height:8px;background:#3b82f6;border-radius:50%;margin-left:8px;animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* Chat History */
+.history-section{margin-top:32px}
+.history-title{font-size:16px;font-weight:600;margin-bottom:12px}
+.history-empty{color:#525252;font-size:14px;padding:20px;text-align:center}
+.history-list{display:flex;flex-direction:column;gap:8px}
+.history-item{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:14px}
+.history-item .user-msg{color:#a3a3a3;font-size:13px;margin-bottom:6px}
+.history-item .user-msg span{color:#e5e5e5}
+.history-item .ai-msg{color:#a3a3a3;font-size:13px}
+.history-item .ai-msg span{color:#3b82f6}
+.history-item .ts{font-size:11px;color:#525252;margin-top:6px}
+.history-item .replay-btn{background:none;color:#3b82f6;font-size:12px;padding:4px 8px;border:1px solid #2a2a2a;border-radius:6px;margin-top:6px}
+.history-item .replay-btn:hover{background:#1e1e1e}
+
+/* Mobile */
+@media(max-width:768px){
+  .sidebar{transform:translateX(-100%)}
+  .sidebar.open{transform:translateX(0)}
+  .main{margin-left:0}
+  .hamburger{display:block}
+  .mic-btn{width:100px;height:100px}
+  .mic-icon{width:40px;height:40px}
+  .controls-row{flex-direction:column;align-items:center}
+  .control-group select{width:200px}
+}
+</style>
+</head>
+<body>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo">BLUN</div>
+    <div class="sidebar-user" id="sidebarUser">Loading...</div>
+  </div>
+  <nav class="sidebar-nav">
+    <a class="nav-item" href="/dashboard" style="text-decoration:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Dashboard
+    </a>
+    <a class="nav-item" href="/organisator" style="text-decoration:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+      Organisator
+    </a>
+    <a class="nav-item active" href="/voice" style="text-decoration:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+      Voice Chat
+    </a>
+    <a class="nav-item" href="/canvas" style="text-decoration:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/></svg>
+      Canvas
+    </a>
+    <a class="nav-item" href="/dashboard/websites" style="text-decoration:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+      Websites
+    </a>
+    <a class="nav-item" href="/dashboard/software" style="text-decoration:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      Software
+    </a>
+    <a class="nav-item" href="/dashboard/models" style="text-decoration:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      AI Models
+    </a>
+    <a class="nav-item" href="/profile" style="text-decoration:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Profile
+    </a>
+  </nav>
+  <div class="sidebar-footer">
+    <button class="logout-btn" onclick="location.href='/auth/logout'">Log out</button>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open')">&#9776;</button>
+      <div class="page-title">Voice Chat</div>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="voice-center">
+      <button class="mic-btn" id="micBtn" onclick="toggleRecording()">
+        <svg class="mic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/>
+          <path d="M19 10v2a7 7 0 01-14 0v-2"/>
+          <line x1="12" y1="19" x2="12" y2="23"/>
+          <line x1="8" y1="23" x2="16" y2="23"/>
+        </svg>
+      </button>
+      <div class="mic-status" id="micStatus">Click to start talking</div>
+
+      <div class="waveform" id="waveform">
+        <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+        <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+        <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+        <div class="bar"></div><div class="bar"></div>
+      </div>
+    </div>
+
+    <div class="controls-row">
+      <div class="control-group">
+        <label>Voice</label>
+        <select id="voiceSelect">
+          <option value="female">Female</option>
+          <option value="male">Male</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label>Language</label>
+        <select id="langSelect">
+          <option value="auto">Auto-detect</option>
+          <option value="en-US">English</option>
+          <option value="de-DE">Deutsch</option>
+          <option value="es-ES">Espanol</option>
+          <option value="fr-FR">Francais</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="toggle-row" style="justify-content:center">
+      <div class="toggle" id="alwaysListenToggle" onclick="toggleAlwaysListen()">
+        <div class="knob"></div>
+      </div>
+      <span class="toggle-label">Always listening</span>
+    </div>
+
+    <div class="transcript-box" id="transcriptBox">
+      <div class="label">You</div>
+      <div class="text" id="transcriptText"></div>
+    </div>
+
+    <div class="response-box" id="responseBox">
+      <div class="label">AI Response</div>
+      <div class="text" id="responseText"></div>
+    </div>
+
+    <div class="history-section">
+      <div class="history-title">Conversation History</div>
+      <div id="historyList" class="history-list">
+        <div class="history-empty">No voice conversations yet. Click the microphone to begin.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var recognition = null;
+var isRecording = false;
+var alwaysListen = false;
+var finalTranscript = "";
+var synth = window.speechSynthesis;
+var voices = [];
+var historyItems = [];
+
+// Load user info
+(function() {
+  fetch("/api/profile", { credentials: "same-origin" })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.user) document.getElementById("sidebarUser").textContent = d.user.email || d.user.name || "User";
+    }).catch(function() {});
+})();
+
+// Load voices
+function loadVoices() {
+  voices = synth.getVoices();
+}
+if (synth.onvoiceschanged !== undefined) synth.onvoiceschanged = loadVoices;
+loadVoices();
+
+// Check browser support
+var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (!SpeechRecognition) {
+  document.getElementById("micStatus").textContent = "Speech recognition not supported in this browser";
+  document.getElementById("micBtn").style.opacity = "0.3";
+  document.getElementById("micBtn").style.pointerEvents = "none";
+}
+
+function getSelectedLang() {
+  var v = document.getElementById("langSelect").value;
+  return v === "auto" ? "en-US" : v;
+}
+
+function toggleRecording() {
+  if (!SpeechRecognition) return;
+  if (isRecording) {
+    stopRecording();
+  } else {
+    startRecording();
+  }
+}
+
+function startRecording() {
+  finalTranscript = "";
+  recognition = new SpeechRecognition();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = getSelectedLang();
+
+  recognition.onstart = function() {
+    isRecording = true;
+    document.getElementById("micBtn").classList.add("recording");
+    document.getElementById("waveform").classList.add("active");
+    document.getElementById("micStatus").textContent = "Listening...";
+    document.getElementById("micStatus").classList.add("active");
+    document.getElementById("transcriptBox").classList.add("visible");
+    document.getElementById("transcriptText").textContent = "";
+  };
+
+  recognition.onresult = function(event) {
+    var interim = "";
+    for (var i = event.resultIndex; i < event.results.length; i++) {
+      if (event.results[i].isFinal) {
+        finalTranscript += event.results[i][0].transcript + " ";
+      } else {
+        interim += event.results[i][0].transcript;
+      }
+    }
+    document.getElementById("transcriptText").textContent = finalTranscript + interim;
+  };
+
+  recognition.onerror = function(event) {
+    console.error("Speech error:", event.error);
+    if (event.error !== "no-speech") stopRecording();
+  };
+
+  recognition.onend = function() {
+    if (alwaysListen && isRecording) {
+      // If always-listen mode, check if we got text
+      if (finalTranscript.trim()) {
+        processTranscript(finalTranscript.trim());
+        finalTranscript = "";
+      }
+      // Restart
+      try { recognition.start(); } catch(e) {}
+      return;
+    }
+    if (isRecording) {
+      isRecording = false;
+      document.getElementById("micBtn").classList.remove("recording");
+      document.getElementById("waveform").classList.remove("active");
+      document.getElementById("micStatus").textContent = "Click to start talking";
+      document.getElementById("micStatus").classList.remove("active");
+      if (finalTranscript.trim()) processTranscript(finalTranscript.trim());
+    }
+  };
+
+  recognition.start();
+}
+
+function stopRecording() {
+  isRecording = false;
+  if (recognition) recognition.stop();
+  document.getElementById("micBtn").classList.remove("recording");
+  document.getElementById("waveform").classList.remove("active");
+  document.getElementById("micStatus").textContent = "Click to start talking";
+  document.getElementById("micStatus").classList.remove("active");
+}
+
+function toggleAlwaysListen() {
+  var toggle = document.getElementById("alwaysListenToggle");
+  alwaysListen = !alwaysListen;
+  toggle.classList.toggle("on", alwaysListen);
+  if (alwaysListen && !isRecording) {
+    startRecording();
+  } else if (!alwaysListen && isRecording) {
+    stopRecording();
+  }
+}
+
+function processTranscript(text) {
+  document.getElementById("transcriptText").textContent = text;
+  document.getElementById("responseBox").classList.add("visible");
+  document.getElementById("responseText").innerHTML = "Thinking...";
+
+  fetch("/api/voice/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify({ message: text })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    var reply = data.response || data.error || "No response";
+    document.getElementById("responseText").textContent = reply;
+    speakText(reply);
+    addToHistory(text, reply);
+  })
+  .catch(function(err) {
+    document.getElementById("responseText").textContent = "Error: " + err.message;
+  });
+}
+
+function speakText(text) {
+  synth.cancel();
+  var utter = new SpeechSynthesisUtterance(text);
+  var voicePref = document.getElementById("voiceSelect").value;
+  var lang = getSelectedLang();
+  utter.lang = lang;
+
+  if (voices.length) {
+    var match = null;
+    for (var i = 0; i < voices.length; i++) {
+      var v = voices[i];
+      if (v.lang.startsWith(lang.split("-")[0])) {
+        if (voicePref === "female" && v.name.match(/female|woman|zira|samantha|anna|google.*female/i)) { match = v; break; }
+        if (voicePref === "male" && v.name.match(/male|man|david|daniel|google.*male/i)) { match = v; break; }
+        if (!match) match = v;
+      }
+    }
+    // Fallback: pick any voice matching gender hint
+    if (!match) {
+      for (var j = 0; j < voices.length; j++) {
+        if (voicePref === "male" && voices[j].name.match(/male|david|daniel/i)) { match = voices[j]; break; }
+        if (voicePref === "female" && voices[j].name.match(/female|zira|samantha/i)) { match = voices[j]; break; }
+      }
+    }
+    if (match) utter.voice = match;
+  }
+
+  utter.rate = 1;
+  utter.pitch = voicePref === "female" ? 1.1 : 0.9;
+
+  var indicator = document.createElement("span");
+  indicator.className = "speaking-indicator";
+  document.getElementById("responseText").appendChild(indicator);
+  utter.onend = function() { if (indicator.parentNode) indicator.remove(); };
+
+  synth.speak(utter);
+}
+
+function addToHistory(userMsg, aiMsg) {
+  historyItems.unshift({ user: userMsg, ai: aiMsg, ts: new Date() });
+  renderHistory();
+}
+
+function renderHistory() {
+  var container = document.getElementById("historyList");
+  if (!historyItems.length) {
+    container.innerHTML = '<div class="history-empty">No voice conversations yet. Click the microphone to begin.</div>';
+    return;
+  }
+  var html = "";
+  for (var i = 0; i < historyItems.length; i++) {
+    var item = historyItems[i];
+    var time = item.ts.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    html += '<div class="history-item">';
+    html += '<div class="user-msg">You: <span>' + escHtml(item.user) + '</span></div>';
+    html += '<div class="ai-msg">AI: <span>' + escHtml(item.ai) + '</span></div>';
+    html += '<div class="ts">' + time + '</div>';
+    html += '<button class="replay-btn" onclick="speakText(\'' + escJs(item.ai) + '\')">Replay</button>';
+    html += '</div>';
+  }
+  container.innerHTML = html;
+}
+
+function escHtml(s) { var d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+function escJs(s) { return s.replace(/\\/g,"\\\\").replace(/'/g,"\\'").replace(/\n/g,"\\n"); }
+</script>
+</body>
+</html>

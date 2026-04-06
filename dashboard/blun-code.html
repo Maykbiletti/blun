@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BLUN Code</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0a0a0a;--surface:#111;--surface2:#1a1a1a;--border:#2a2a2a;--text:#e5e5e5;--muted:#737373;--blue:#3b82f6;--green:#22c55e;--purple:#a855f7;--red:#ef4444;--amber:#f59e0b}
+body{font-family:"JetBrains Mono","Fira Code",monospace;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+
+/* Top Bar */
+.topbar{height:48px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:16px;flex-shrink:0}
+.topbar-logo{font-family:"Inter",sans-serif;font-weight:700;font-size:16px;color:var(--blue)}
+.topbar-logo span{color:var(--muted);font-weight:400;font-size:13px;margin-left:8px}
+.topbar-project{font-size:13px;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:4px 12px;cursor:pointer}
+.topbar-project:hover{border-color:var(--blue)}
+.topbar-spacer{flex:1}
+.topbar-btn{background:transparent;border:1px solid var(--border);color:var(--muted);padding:6px 12px;border-radius:4px;font-size:12px;font-family:"JetBrains Mono",monospace;cursor:pointer;transition:all .15s}
+.topbar-btn:hover{color:var(--text);border-color:var(--text)}
+.topbar-btn.active{color:var(--blue);border-color:var(--blue)}
+.topbar-btn.marathon{color:var(--amber);border-color:var(--amber)}
+.topbar-btn.marathon.active{background:rgba(245,158,11,.15)}
+.back-link{color:var(--muted);text-decoration:none;font-family:"Inter",sans-serif;font-size:13px;display:flex;align-items:center;gap:4px}
+.back-link:hover{color:var(--text)}
+
+/* Layout */
+.layout{display:flex;flex:1;overflow:hidden}
+
+/* Side Panel */
+.sidepanel{width:280px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;transition:width .2s}
+.sidepanel.collapsed{width:0;overflow:hidden}
+.sidepanel-section{padding:12px 16px;border-bottom:1px solid var(--border)}
+.sidepanel-title{font-family:"Inter",sans-serif;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.model-status{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px}
+.model-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.model-dot.idle{opacity:.4}
+.model-dot.thinking{animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.model-name{flex:1}
+.model-tokens{font-size:11px;color:var(--muted)}
+.file-tree{font-size:13px}
+.file-item{padding:4px 0;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:6px}
+.file-item:hover{color:var(--text)}
+.file-item .icon{font-size:11px;width:16px;text-align:center}
+
+/* Terminal Area */
+.terminal-area{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.terminal-output{flex:1;overflow-y:auto;padding:16px;font-size:13px;line-height:1.7}
+.terminal-output::-webkit-scrollbar{width:6px}
+.terminal-output::-webkit-scrollbar-track{background:transparent}
+.terminal-output::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.terminal-output::-webkit-scrollbar-thumb:hover{background:#444}
+
+.msg{margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--border)}
+.msg:last-child{border-bottom:none}
+.msg-header{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.msg-badge{font-size:11px;font-weight:600;padding:2px 8px;border-radius:3px;font-family:"Inter",sans-serif}
+.msg-time{font-size:11px;color:var(--muted);margin-left:auto}
+.msg-content{white-space:pre-wrap;word-break:break-word}
+.msg-content code{background:var(--surface2);padding:1px 4px;border-radius:3px;font-size:12px}
+.msg-content pre{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px;margin:8px 0;overflow-x:auto;font-size:12px}
+.msg-content pre code{background:transparent;padding:0}
+
+.msg-user .msg-badge{background:rgba(255,255,255,.1);color:var(--text)}
+.msg-claude .msg-badge{background:rgba(59,130,246,.15);color:var(--blue)}
+.msg-claude .msg-content{color:#93c5fd}
+.msg-gpt .msg-badge{background:rgba(34,197,94,.15);color:var(--green)}
+.msg-gpt .msg-content{color:#86efac}
+.msg-gemini .msg-badge{background:rgba(168,85,247,.15);color:var(--purple)}
+.msg-gemini .msg-content{color:#c4b5fd}
+.msg-system .msg-badge{background:rgba(115,115,115,.15);color:var(--muted)}
+.msg-system .msg-content{color:var(--muted);font-style:italic}
+
+/* Split View */
+.split-view{display:none;flex:1;overflow:hidden}
+.split-view.active{display:flex}
+.split-col{flex:1;border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.split-col:last-child{border-right:none}
+.split-col-header{padding:8px 12px;background:var(--surface);border-bottom:1px solid var(--border);font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px}
+.split-col-output{flex:1;overflow-y:auto;padding:12px;font-size:12px;line-height:1.6}
+
+/* Input Bar */
+.input-bar{background:var(--surface);border-top:1px solid var(--border);padding:12px 16px;display:flex;gap:8px;align-items:flex-end;flex-shrink:0}
+.input-models{display:flex;gap:4px;align-items:center;flex-shrink:0}
+.model-chip{font-size:11px;padding:4px 8px;border-radius:3px;cursor:pointer;border:1px solid var(--border);font-family:"Inter",sans-serif;transition:all .15s;user-select:none}
+.model-chip.selected{border-color:currentColor}
+.model-chip[data-model="claude"]{color:var(--blue)}.model-chip[data-model="claude"].selected{background:rgba(59,130,246,.15)}
+.model-chip[data-model="gpt"]{color:var(--green)}.model-chip[data-model="gpt"].selected{background:rgba(34,197,94,.15)}
+.model-chip[data-model="gemini"]{color:var(--purple)}.model-chip[data-model="gemini"].selected{background:rgba(168,85,247,.15)}
+.input-field{flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:6px;font-size:13px;font-family:"JetBrains Mono",monospace;resize:none;min-height:40px;max-height:120px;line-height:1.5}
+.input-field:focus{border-color:var(--blue);outline:none}
+.input-field::placeholder{color:#525252}
+.send-btn{background:var(--blue);color:#fff;border:none;padding:10px 16px;border-radius:6px;font-size:13px;font-family:"JetBrains Mono",monospace;cursor:pointer;flex-shrink:0;font-weight:600}
+.send-btn:hover{background:#2563eb}
+.send-btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* Marathon Modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center}
+.modal-overlay.active{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:8px;width:560px;max-width:90vw;max-height:80vh;display:flex;flex-direction:column}
+.modal-header{padding:16px;border-bottom:1px solid var(--border);font-family:"Inter",sans-serif;font-weight:600;display:flex;align-items:center;justify-content:space-between}
+.modal-body{padding:16px;flex:1;overflow-y:auto}
+.modal-footer{padding:12px 16px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
+.marathon-task{display:flex;gap:8px;margin-bottom:8px;align-items:center}
+.marathon-task input{flex:1;font-family:"JetBrains Mono",monospace;font-size:13px;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:4px}
+.marathon-task input:focus{border-color:var(--blue);outline:none}
+.marathon-task .remove-task{background:transparent;border:none;color:var(--red);cursor:pointer;font-size:16px;padding:4px 8px}
+.btn-secondary{background:transparent;border:1px solid var(--border);color:var(--text);padding:8px 16px;border-radius:6px;font-size:13px;cursor:pointer;font-family:"Inter",sans-serif}
+.btn-secondary:hover{border-color:var(--text)}
+.btn-primary{background:var(--blue);border:none;color:#fff;padding:8px 16px;border-radius:6px;font-size:13px;cursor:pointer;font-family:"Inter",sans-serif;font-weight:500}
+.btn-primary:hover{background:#2563eb}
+
+/* Welcome */
+.welcome{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;text-align:center;padding:40px}
+.welcome h2{font-family:"Inter",sans-serif;font-size:24px;font-weight:700;margin-bottom:8px}
+.welcome p{color:var(--muted);font-size:14px;max-width:480px;line-height:1.6;font-family:"Inter",sans-serif}
+.welcome-shortcuts{margin-top:24px;display:flex;flex-direction:column;gap:8px;text-align:left}
+.shortcut{display:flex;gap:12px;align-items:center;font-size:13px;color:var(--muted)}
+.shortcut kbd{background:var(--surface2);border:1px solid var(--border);padding:2px 8px;border-radius:3px;font-size:12px;color:var(--text)}
+
+/* Mobile */
+@media(max-width:768px){
+  .sidepanel{display:none}
+  .topbar{padding:0 12px;gap:8px}
+  .topbar-project{display:none}
+  .split-view .split-col{min-width:100%}
+  .input-bar{padding:8px 12px}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="/dashboard" class="back-link"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></a>
+  <div class="topbar-logo">BLUN Code <span>v1.0</span></div>
+  <input type="text" class="topbar-project" id="projectName" value="my-project" spellcheck="false">
+  <div class="topbar-spacer"></div>
+  <button class="topbar-btn" id="toggleSidebar">Sidebar</button>
+  <button class="topbar-btn" id="toggleSplit">Split View</button>
+  <button class="topbar-btn marathon" id="marathonBtn">Marathon</button>
+  <button class="topbar-btn" id="newSession">New Session</button>
+</div>
+
+<div class="layout">
+  <div class="sidepanel" id="sidepanel">
+    <div class="sidepanel-section">
+      <div class="sidepanel-title">Models</div>
+      <div id="modelStatusList"></div>
+    </div>
+    <div class="sidepanel-section">
+      <div class="sidepanel-title">Token Usage</div>
+      <div id="tokenUsage" style="font-size:12px;color:var(--muted)">
+        <div style="display:flex;justify-content:space-between;padding:4px 0"><span>Claude</span><span id="tokClaude">0</span></div>
+        <div style="display:flex;justify-content:space-between;padding:4px 0"><span>GPT</span><span id="tokGpt">0</span></div>
+        <div style="display:flex;justify-content:space-between;padding:4px 0"><span>Gemini</span><span id="tokGemini">0</span></div>
+      </div>
+    </div>
+    <div class="sidepanel-section" style="flex:1;overflow-y:auto">
+      <div class="sidepanel-title">Files</div>
+      <div class="file-tree" id="fileTree">
+        <div class="file-item"><span class="icon">D</span> src/</div>
+        <div class="file-item" style="padding-left:16px"><span class="icon">F</span> index.js</div>
+        <div class="file-item" style="padding-left:16px"><span class="icon">F</span> server.js</div>
+        <div class="file-item" style="padding-left:16px"><span class="icon">F</span> utils.js</div>
+        <div class="file-item"><span class="icon">F</span> package.json</div>
+        <div class="file-item"><span class="icon">F</span> README.md</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="terminal-area" id="terminalArea">
+    <div class="terminal-output" id="output">
+      <div class="welcome" id="welcome">
+        <h2>BLUN Code</h2>
+        <p>Multi-model coding terminal. Select models below and start coding. Each model responds with color-coded output.</p>
+        <div class="welcome-shortcuts">
+          <div class="shortcut"><kbd>Enter</kbd> Send message</div>
+          <div class="shortcut"><kbd>Shift+Enter</kbd> New line</div>
+          <div class="shortcut"><kbd>Ctrl+L</kbd> Clear terminal</div>
+          <div class="shortcut"><kbd>Ctrl+B</kbd> Toggle sidebar</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="split-view" id="splitView">
+    <div class="split-col" data-model="claude">
+      <div class="split-col-header"><span style="color:var(--blue)">&#9679;</span> Claude</div>
+      <div class="split-col-output" id="splitClaude"></div>
+    </div>
+    <div class="split-col" data-model="gpt">
+      <div class="split-col-header"><span style="color:var(--green)">&#9679;</span> GPT</div>
+      <div class="split-col-output" id="splitGpt"></div>
+    </div>
+    <div class="split-col" data-model="gemini">
+      <div class="split-col-header"><span style="color:var(--purple)">&#9679;</span> Gemini</div>
+      <div class="split-col-output" id="splitGemini"></div>
+    </div>
+  </div>
+</div>
+
+<div class="input-bar">
+  <div class="input-models">
+    <div class="model-chip selected" data-model="claude">Claude</div>
+    <div class="model-chip" data-model="gpt">GPT</div>
+    <div class="model-chip" data-model="gemini">Gemini</div>
+  </div>
+  <textarea class="input-field" id="inputField" placeholder="Type a command or prompt..." rows="1"></textarea>
+  <button class="send-btn" id="sendBtn">Run</button>
+</div>
+
+<!-- Marathon Modal -->
+<div class="modal-overlay" id="marathonModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span>Marathon Mode</span>
+      <button style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:18px" id="closeMarathon">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;font-family:Inter,sans-serif">Assign different tasks to run simultaneously across models.</p>
+      <div id="marathonTasks">
+        <div class="marathon-task"><input type="text" placeholder="Task 1 — e.g. Write unit tests"><button class="remove-task">&times;</button></div>
+        <div class="marathon-task"><input type="text" placeholder="Task 2 — e.g. Optimize performance"><button class="remove-task">&times;</button></div>
+        <div class="marathon-task"><input type="text" placeholder="Task 3 — e.g. Add error handling"><button class="remove-task">&times;</button></div>
+      </div>
+      <button class="btn-secondary" id="addTask" style="margin-top:8px;font-size:12px">+ Add Task</button>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" id="cancelMarathon">Cancel</button>
+      <button class="btn-primary" id="startMarathon">Start Marathon</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var sessionId = null;
+  var splitMode = false;
+  var tokenCounts = { claude: 0, gpt: 0, gemini: 0 };
+
+  var output = document.getElementById("output");
+  var inputField = document.getElementById("inputField");
+  var sendBtn = document.getElementById("sendBtn");
+  var welcome = document.getElementById("welcome");
+  var splitView = document.getElementById("splitView");
+  var terminalArea = document.getElementById("terminalArea");
+
+  // Model selection
+  document.querySelectorAll(".model-chip").forEach(function(chip) {
+    chip.addEventListener("click", function() {
+      chip.classList.toggle("selected");
+    });
+  });
+
+  function getSelectedModels() {
+    var models = [];
+    document.querySelectorAll(".model-chip.selected").forEach(function(c) { models.push(c.dataset.model); });
+    return models.length ? models : ["claude"];
+  }
+
+  function updateModelStatus(thinkingModels) {
+    var html = "";
+    var models = [
+      { id: "claude", name: "Claude", color: "var(--blue)" },
+      { id: "gpt", name: "GPT", color: "var(--green)" },
+      { id: "gemini", name: "Gemini", color: "var(--purple)" }
+    ];
+    models.forEach(function(m) {
+      var state = thinkingModels && thinkingModels.indexOf(m.id) >= 0 ? "thinking" : "idle";
+      html += '<div class="model-status"><div class="model-dot ' + state + '" style="background:' + m.color + '"></div><span class="model-name">' + m.name + '</span><span class="model-tokens">' + tokenCounts[m.id] + ' tok</span></div>';
+    });
+    document.getElementById("modelStatusList").innerHTML = html;
+  }
+  updateModelStatus();
+
+  function escapeHtml(s) {
+    var d = document.createElement("div"); d.textContent = s; return d.innerHTML;
+  }
+
+  function formatContent(text) {
+    // Simple code block detection
+    var parts = text.split(/(```[\s\S]*?```)/g);
+    var result = "";
+    parts.forEach(function(part) {
+      if (part.startsWith("```")) {
+        var inner = part.slice(3, -3);
+        var nl = inner.indexOf("\n");
+        if (nl > 0 && nl < 15) inner = inner.slice(nl + 1);
+        result += "<pre><code>" + escapeHtml(inner) + "</code></pre>";
+      } else {
+        // Inline code
+        result += escapeHtml(part).replace(/`([^`]+)`/g, "<code>$1</code>");
+      }
+    });
+    return result;
+  }
+
+  function addMessage(role, model, content, time) {
+    if (welcome) { welcome.remove(); welcome = null; }
+    var cls = "msg msg-" + (role === "user" ? "user" : (model || "system"));
+    var badge = role === "user" ? "You" : (model ? model.charAt(0).toUpperCase() + model.slice(1) : "System");
+    var ts = time || new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+
+    var div = document.createElement("div");
+    div.className = cls;
+    div.innerHTML = '<div class="msg-header"><span class="msg-badge">' + badge + '</span><span class="msg-time">' + ts + '</span></div><div class="msg-content">' + formatContent(content) + '</div>';
+    output.appendChild(div);
+    output.scrollTop = output.scrollHeight;
+
+    // Split view
+    if (splitMode && model) {
+      var target = document.getElementById("split" + model.charAt(0).toUpperCase() + model.slice(1));
+      if (target) {
+        var clone = div.cloneNode(true);
+        target.appendChild(clone);
+        target.scrollTop = target.scrollHeight;
+      }
+    }
+  }
+
+  function addSystemMsg(text) { addMessage("system", null, text); }
+
+  async function sendMessage() {
+    var text = inputField.value.trim();
+    if (!text) return;
+    inputField.value = "";
+    inputField.style.height = "40px";
+
+    var models = getSelectedModels();
+    addMessage("user", null, text);
+    sendBtn.disabled = true;
+    updateModelStatus(models);
+
+    try {
+      var resp = await fetch("/api/blun-code/message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: sessionId, message: text, models: models })
+      });
+      var data = await resp.json();
+      if (data.error) { addSystemMsg("Error: " + data.error); return; }
+      sessionId = data.sessionId;
+      data.responses.forEach(function(r) {
+        var est = 40 + Math.floor(r.content.length * 0.8);
+        tokenCounts[r.model] = (tokenCounts[r.model] || 0) + est;
+        addMessage("assistant", r.model, r.content);
+      });
+    } catch (e) {
+      addSystemMsg("Connection error: " + e.message);
+    } finally {
+      sendBtn.disabled = false;
+      updateModelStatus();
+    }
+  }
+
+  sendBtn.addEventListener("click", sendMessage);
+  inputField.addEventListener("keydown", function(e) {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  });
+
+  // Auto-resize
+  inputField.addEventListener("input", function() {
+    this.style.height = "40px";
+    this.style.height = Math.min(this.scrollHeight, 120) + "px";
+  });
+
+  // Sidebar toggle
+  document.getElementById("toggleSidebar").addEventListener("click", function() {
+    document.getElementById("sidepanel").classList.toggle("collapsed");
+    this.classList.toggle("active");
+  });
+
+  // Split view toggle
+  document.getElementById("toggleSplit").addEventListener("click", function() {
+    splitMode = !splitMode;
+    this.classList.toggle("active");
+    splitView.classList.toggle("active", splitMode);
+    terminalArea.style.display = splitMode ? "none" : "flex";
+  });
+
+  // New session
+  document.getElementById("newSession").addEventListener("click", function() {
+    sessionId = null;
+    output.innerHTML = "";
+    ["splitClaude", "splitGpt", "splitGemini"].forEach(function(id) { document.getElementById(id).innerHTML = ""; });
+    tokenCounts = { claude: 0, gpt: 0, gemini: 0 };
+    updateModelStatus();
+    addSystemMsg("New session started.");
+  });
+
+  // Marathon
+  document.getElementById("marathonBtn").addEventListener("click", function() {
+    document.getElementById("marathonModal").classList.add("active");
+  });
+  document.getElementById("closeMarathon").addEventListener("click", function() {
+    document.getElementById("marathonModal").classList.remove("active");
+  });
+  document.getElementById("cancelMarathon").addEventListener("click", function() {
+    document.getElementById("marathonModal").classList.remove("active");
+  });
+  document.getElementById("addTask").addEventListener("click", function() {
+    var cnt = document.querySelectorAll(".marathon-task").length + 1;
+    var div = document.createElement("div");
+    div.className = "marathon-task";
+    div.innerHTML = '<input type="text" placeholder="Task ' + cnt + '"><button class="remove-task">&times;</button>';
+    document.getElementById("marathonTasks").appendChild(div);
+  });
+  document.getElementById("marathonTasks").addEventListener("click", function(e) {
+    if (e.target.classList.contains("remove-task")) {
+      var tasks = document.querySelectorAll(".marathon-task");
+      if (tasks.length > 1) e.target.parentElement.remove();
+    }
+  });
+  document.getElementById("startMarathon").addEventListener("click", async function() {
+    var tasks = [];
+    document.querySelectorAll(".marathon-task input").forEach(function(inp) {
+      if (inp.value.trim()) tasks.push(inp.value.trim());
+    });
+    if (!tasks.length) return;
+    document.getElementById("marathonModal").classList.remove("active");
+    if (welcome) { welcome.remove(); welcome = null; }
+    addSystemMsg("Marathon started with " + tasks.length + " tasks...");
+    updateModelStatus(["claude", "gpt", "gemini"]);
+
+    try {
+      var resp = await fetch("/api/blun-code/marathon", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tasks: tasks })
+      });
+      var data = await resp.json();
+      if (data.error) { addSystemMsg("Error: " + data.error); return; }
+      data.results.forEach(function(r) {
+        addSystemMsg("Task: " + r.task + " [" + r.modelName + "]");
+        tokenCounts[r.model] = (tokenCounts[r.model] || 0) + 60 + Math.floor(r.result.length * 0.8);
+        addMessage("assistant", r.model, r.result);
+      });
+      addSystemMsg("Marathon complete. " + data.results.length + " tasks finished.");
+    } catch (e) {
+      addSystemMsg("Marathon error: " + e.message);
+    } finally {
+      updateModelStatus();
+    }
+  });
+
+  // Keyboard shortcuts
+  document.addEventListener("keydown", function(e) {
+    if (e.ctrlKey && e.key === "l") { e.preventDefault(); output.innerHTML = ""; }
+    if (e.ctrlKey && e.key === "b") { e.preventDefault(); document.getElementById("toggleSidebar").click(); }
+  });
+})();
+</script>
+</body>
+</html>
