@@ -12,7 +12,6 @@
 
 [![MIT License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/Node.js-18+-339933?logo=node.js&logoColor=white)](https://nodejs.org)
-[![npm](https://img.shields.io/npm/v/blun?color=cb3837&logo=npm)](https://www.npmjs.com/package/blun)
 [![GitHub Stars](https://img.shields.io/github/stars/Maykbiletti/blun?style=social)](https://github.com/Maykbiletti/blun)
 
 [Website](https://blun.ai) | [Dashboard](https://blun.ai/dashboard) | [Documentation](#documentation) | [Discord](#community)
