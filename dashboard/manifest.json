@@ -1,6 +1,6 @@
 {
-  "name": "KAIROS Dashboard",
-  "short_name": "KAIROS",
+  "name": "BLUN Dashboard",
+  "short_name": "BLUN",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#0a0a0a",
