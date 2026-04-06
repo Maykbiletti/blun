@@ -4,6 +4,7 @@ const { WebSocketServer } = require("ws");
 const Redis = require("ioredis");
 const { sub, publish, broadcast } = require("./redis");
 const { query, queryOne } = require("./db");
+const { handleCanvasConnection } = require("./canvas/ws");
 
 const agentSockets = new Map();
 const dashboardSockets = new Set();
@@ -18,6 +19,8 @@ function attachWS(httpServer) {
 
     if (role === "agent" && agentId) {
       handleAgentConnection(ws, agentId);
+    } else if (role === "canvas") {
+      handleCanvasWS(ws, req);
     } else {
       handleDashboardConnection(ws);
     }
@@ -180,6 +183,23 @@ function sendToAgent(agentId, type, payload) {
     ws.send(JSON.stringify({ type, payload }));
   }
   publish("blun:agent:" + agentId, type, payload);
+}
+
+async function handleCanvasWS(ws, req) {
+  // Parse auth cookie from upgrade request
+  const cookies = {};
+  (req.headers.cookie || "").split(";").forEach(c => {
+    const [k, v] = c.trim().split("=");
+    if (k) cookies[k] = v;
+  });
+  const token = cookies.blun_token;
+  if (!token) { ws.close(4001, "Auth required"); return; }
+  const row = await queryOne(
+    "SELECT u.id, u.email, u.name FROM sessions s JOIN users u ON s.user_id = u.id WHERE s.token = $1 AND s.expires_at > NOW()",
+    [token]
+  );
+  if (!row) { ws.close(4001, "Invalid session"); return; }
+  handleCanvasConnection(ws, { id: row.id, email: row.email, name: row.name });
 }
 
 module.exports = { attachWS, sendToAgent, agentSockets, dashboardSockets };

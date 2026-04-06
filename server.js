@@ -32,6 +32,7 @@ const telegramRoutes = require("./src/routes/telegram");
 const federationRoutes = require("./src/routes/federation");
 const adminPanelRoutes = require("./src/routes/admin-panel");
 const privacyRoutes = require("./src/routes/privacy");
+const canvasRoutes = require("./src/routes/canvas");
 const { startAllBots, activeBots } = require("./src/channels/telegram");
 
 const PORT = parseInt(process.env.BLUN_PORT || "3200", 10);
@@ -67,6 +68,7 @@ app.use("/auth", authRoutes);
 app.use("/billing", billingRoutes);
 app.use("/admin-panel", adminPanelRoutes);
 app.use("/privacy", privacyRoutes);
+app.use("/canvas", authenticate, canvasRoutes);
 
 app.use("/api", apiRoutes);
 app.use("/api/chat", chatRoutes);
@@ -100,9 +102,13 @@ app.get("/admin-panel", authenticate, function (req, res) {
 });
 
 app.get("/privacy-settings", authenticate, function (req, res) {
+app.get("/canvas", authenticate, function (req, res) {  if (!req.user) return res.redirect("/login");  res.sendFile(path.join(__dirname, "dashboard", "canvas.html"));});
   if (!req.user) return res.redirect("/login");
+app.get("/canvas", authenticate, function (req, res) {  if (!req.user) return res.redirect("/login");  res.sendFile(path.join(__dirname, "dashboard", "canvas.html"));});
   res.sendFile(path.join(__dirname, "dashboard", "privacy.html"));
+app.get("/canvas", authenticate, function (req, res) {  if (!req.user) return res.redirect("/login");  res.sendFile(path.join(__dirname, "dashboard", "canvas.html"));});
 });
+app.get("/canvas", authenticate, function (req, res) {  if (!req.user) return res.redirect("/login");  res.sendFile(path.join(__dirname, "dashboard", "canvas.html"));});
 app.get("/telegram", authenticate, function (req, res) {
   if (!req.user) return res.redirect("/login");
   res.sendFile(path.join(__dirname, "dashboard", "telegram.html"));
