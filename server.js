@@ -25,6 +25,7 @@ const chatRoutes = require("./src/routes/chat");
 const adminRoutes = require("./src/routes/admin");
 const authRoutes = require("./src/routes/auth");
 const { authenticate } = require("./src/middleware/auth");
+const billingRoutes = require("./src/routes/billing");
 
 const PORT = parseInt(process.env.BLUN_PORT || "3200", 10);
 const API_KEY = process.env.BLUN_API_KEY || "blun-dev-key";
@@ -33,6 +34,9 @@ const app = express();
 
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors());
+// Stripe webhook needs raw body before JSON parser
+app.use("/billing/webhook", express.raw({ type: "application/json" }));
+
 app.use(express.json({ limit: "10mb" }));
 app.use(morgan("short"));
 app.use(cookieParser());
@@ -48,6 +52,7 @@ app.use("/api", function (req, res, next) {
 });
 
 app.use("/auth", authRoutes);
+app.use("/billing", billingRoutes);
 
 app.use("/api", apiRoutes);
 app.use("/api/chat", chatRoutes);
@@ -56,6 +61,7 @@ app.use("/api/admin", adminRoutes);
 app.get("/login", function (req, res) {
   res.sendFile(path.join(__dirname, "dashboard", "login.html"));
 });
+
 
 app.get("/dashboard", authenticate, function (req, res) {
   if (!req.user) return res.redirect("/login");

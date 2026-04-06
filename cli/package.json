@@ -1,0 +1,17 @@
+{
+  "name": "blun",
+  "version": "0.1.0",
+  "description": "BLUN - AI Organisator CLI",
+  "bin": {
+    "blun": "./bin/blun.js"
+  },
+  "files": [
+    "bin/",
+    "lib/",
+    "templates/"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  }
+}

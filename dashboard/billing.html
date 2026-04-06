@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BLUN — Billing</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0a;color:#e5e5e5;font-family:'Inter',system-ui,-apple-system,sans-serif;min-height:100vh}
+a{color:#f59e0b;text-decoration:none}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:1rem 2rem;border-bottom:1px solid #1a1a1a}
+.topbar h1{font-size:1.25rem;font-weight:700;color:#fff}
+.topbar a{font-size:.875rem;color:#a3a3a3}.topbar a:hover{color:#fff}
+.container{max-width:1100px;margin:0 auto;padding:2rem}
+h2{font-size:1.5rem;font-weight:700;color:#fff;margin-bottom:.5rem}
+.subtitle{color:#737373;margin-bottom:2rem;font-size:.875rem}
+.current-plan{background:#141414;border:1px solid #262626;border-radius:12px;padding:1.5rem;margin-bottom:2rem;display:flex;align-items:center;justify-content:space-between}
+.current-plan .plan-name{font-size:1.125rem;font-weight:600;color:#f59e0b}
+.current-plan .plan-info{color:#a3a3a3;font-size:.8rem;margin-top:.25rem}
+.badge{display:inline-block;padding:.25rem .75rem;border-radius:20px;font-size:.75rem;font-weight:600;background:#292524;color:#f59e0b}
+.plans-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:1rem;margin-bottom:2.5rem}
+.plan-card{background:#141414;border:1px solid #262626;border-radius:12px;padding:1.5rem;transition:border-color .2s}
+.plan-card:hover{border-color:#404040}
+.plan-card.active{border-color:#f59e0b}
+.plan-card h3{font-size:1rem;font-weight:600;color:#fff;margin-bottom:.25rem}
+.plan-card .price{font-size:1.75rem;font-weight:700;color:#fff;margin:.75rem 0}
+.plan-card .price span{font-size:.875rem;font-weight:400;color:#737373}
+.plan-card ul{list-style:none;margin:.75rem 0 1rem}
+.plan-card li{font-size:.8rem;color:#a3a3a3;padding:.25rem 0;padding-left:1.25rem;position:relative}
+.plan-card li::before{content:'\2713';position:absolute;left:0;color:#22c55e;font-size:.75rem}
+.plan-card li.no::before{content:'\2717';color:#525252}
+.plan-card li.no{color:#525252}
+.btn{display:inline-block;width:100%;padding:.625rem;text-align:center;border-radius:8px;font-size:.8rem;font-weight:600;border:none;cursor:pointer;transition:all .2s}
+.btn-primary{background:#f59e0b;color:#0a0a0a}.btn-primary:hover{background:#d97706}
+.btn-outline{background:transparent;border:1px solid #404040;color:#a3a3a3}.btn-outline:hover{border-color:#737373;color:#fff}
+.btn-current{background:#262626;color:#737373;cursor:default}
+.btn-contact{background:#1e1b4b;color:#818cf8}.btn-contact:hover{background:#312e81}
+.section-title{font-size:1.125rem;font-weight:600;color:#fff;margin-bottom:1rem}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:.75rem;color:#737373;font-weight:500;padding:.75rem;border-bottom:1px solid #262626}
+td{padding:.75rem;font-size:.8rem;color:#a3a3a3;border-bottom:1px solid #1a1a1a}
+.status-paid{color:#22c55e}.status-pending{color:#f59e0b}
+.manage-row{display:flex;gap:1rem;margin-top:1.5rem}
+.empty{text-align:center;padding:2rem;color:#525252;font-size:.875rem}
+.usage-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:2rem}
+.usage-card{background:#141414;border:1px solid #262626;border-radius:8px;padding:1rem}
+.usage-card .label{font-size:.75rem;color:#737373;margin-bottom:.25rem}
+.usage-card .value{font-size:1.25rem;font-weight:600;color:#fff}
+.usage-card .limit{font-size:.75rem;color:#525252}
+#loading{text-align:center;padding:3rem;color:#525252}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <h1>BLUN</h1>
+  <div><a href="/dashboard">&larr; Dashboard</a></div>
+</div>
+<div class="container">
+  <h2>Billing &amp; Plans</h2>
+  <p class="subtitle">Manage your subscription, view invoices, and compare plans.</p>
+  <div id="loading">Loading...</div>
+  <div id="content" style="display:none">
+    <div class="current-plan" id="currentPlan"></div>
+    <div class="section-title">Usage</div>
+    <div class="usage-grid" id="usageGrid"></div>
+    <div class="section-title">Plans</div>
+    <div class="plans-grid" id="plansGrid"></div>
+    <div class="manage-row">
+      <button class="btn btn-outline" onclick="openPortal()">Manage Subscription</button>
+    </div>
+    <div style="margin-top:2.5rem">
+      <div class="section-title">Invoice History</div>
+      <table>
+        <thead><tr><th>Date</th><th>Amount</th><th>Status</th><th>PDF</th></tr></thead>
+        <tbody id="invoiceBody"></tbody>
+      </table>
+      <div id="noInvoices" class="empty" style="display:none">No invoices yet.</div>
+    </div>
+  </div>
+</div>
+<script>
+var currentPlan="free";
+function apiFetch(u,o){return fetch(u,Object.assign({credentials:"include",headers:{"Content-Type":"application/json"}},o||{})).then(function(r){return r.json()})}
+async function load(){
+  var d=await Promise.all([apiFetch("/billing/subscription"),apiFetch("/billing/plans"),apiFetch("/billing/invoices")]);
+  var subData=d[0],plansData=d[1],invData=d[2];
+  currentPlan=(subData.subscription&&subData.subscription.plan)||"free";
+  var det=subData.plan_details||{};
+  var cp=document.getElementById("currentPlan");
+  var end=subData.subscription&&subData.subscription.current_period_end?new Date(subData.subscription.current_period_end).toLocaleDateString():"";
+  cp.innerHTML="<div><div class=\"plan-name\">"+(det.name||"Free")+" Plan</div><div class=\"plan-info\">"+(end?"Renews "+end:"No active subscription")+"</div></div><span class=\"badge\">"+currentPlan.toUpperCase()+"</span>";
+  var limits=det.limits||{};
+  var ug=document.getElementById("usageGrid");
+  ug.innerHTML=[{l:"Agents",k:"agents"},{l:"Companies",k:"companies"},{l:"Messages / Day",k:"messages_per_day"}].map(function(u){var lim=limits[u.k];var lt=lim===-1?"Unlimited":lim;return "<div class=\"usage-card\"><div class=\"label\">"+u.l+"</div><div class=\"value\">&mdash;</div><div class=\"limit\">Limit: "+lt+"</div></div>"}).join("");
+  var pg=document.getElementById("plansGrid");
+  pg.innerHTML=(plansData.plans||[]).map(function(p){
+    var ic=p.id===currentPlan;
+    var pr=p.price_cents===0?"Free":p.price_cents===-1?"Custom":"&euro;"+(p.price_cents/100).toFixed(0);
+    var pe=p.price_cents>0?"<span>/mo</span>":"";
+    var l=p.limits;
+    var feats=[
+      {t:(l.agents===-1?"Unlimited":l.agents)+" agents",ok:true},
+      {t:(l.companies===-1?"Unlimited":l.companies)+" companies",ok:true},
+      {t:(l.messages_per_day===-1?"Unlimited":l.messages_per_day)+" msgs/day",ok:true},
+      {t:"Shared projects",ok:l.shared_projects},
+      {t:"Federation",ok:l.federation},
+      {t:"Admin panel",ok:l.admin_panel}
+    ];
+    var bc=ic?"btn btn-current":(p.id==="enterprise"?"btn btn-contact":"btn btn-primary");
+    var bt=ic?"Current Plan":(p.id==="enterprise"?"Contact Us":(p.id==="free"?"Downgrade":"Upgrade"));
+    var oc=ic||p.id==="enterprise"?"":" onclick=\"checkout('"+p.id+"')\"";
+    return "<div class=\"plan-card"+(ic?" active":"")+"\"><h3>"+p.name+"</h3><div class=\"price\">"+pr+pe+"</div><ul>"+feats.map(function(f){return "<li class=\""+(f.ok?"":"no")+"\">"+f.t+"</li>"}).join("")+"</ul><button class=\""+bc+"\""+oc+">"+bt+"</button></div>"
+  }).join("");
+  var invs=invData.invoices||[];
+  var ib=document.getElementById("invoiceBody");
+  var ni=document.getElementById("noInvoices");
+  if(!invs.length){ni.style.display=""}else{
+    ib.innerHTML=invs.map(function(i){var dt=new Date(i.created_at).toLocaleDateString();var am="&euro;"+((i.amount_cents||0)/100).toFixed(2);var sc=i.status==="paid"?"status-paid":"status-pending";var pdf=i.pdf_url?"<a href=\""+i.pdf_url+"\" target=\"_blank\">Download</a>":"&mdash;";return "<tr><td>"+dt+"</td><td>"+am+"</td><td class=\""+sc+"\">"+i.status+"</td><td>"+pdf+"</td></tr>"}).join("")}
+  document.getElementById("loading").style.display="none";
+  document.getElementById("content").style.display="";
+}
+async function checkout(plan){var d=await apiFetch("/billing/checkout",{method:"POST",body:JSON.stringify({plan:plan})});if(d.url)window.location.href=d.url;else alert(d.error||"Checkout failed")}
+async function openPortal(){var d=await apiFetch("/billing/portal",{method:"POST"});if(d.url)window.location.href=d.url;else alert(d.error||"No subscription to manage")}
+load();
+</script>
+</body>
+</html>
