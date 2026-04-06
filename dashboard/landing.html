@@ -203,6 +203,15 @@ footer { border-top: 1px solid var(--border); padding: 40px 0; }
   .laptop-section .mobile-screen { display: none !important; }
 }
 
+/* Language Switcher */
+.lang-switcher { position: relative; display: flex; align-items: center; }
+.lang-toggle { display: flex; align-items: center; gap: 4px; background: none; border: 1px solid var(--border); border-radius: 6px; color: var(--text-muted); font-size: 0.75rem; font-family: var(--font); padding: 6px 10px; cursor: pointer; transition: all 0.2s; }
+.lang-toggle:hover { border-color: var(--text-muted); color: var(--text); }
+.lang-toggle svg { flex-shrink: 0; }
+.lang-dropdown { display: none; position: absolute; top: 100%; right: 0; margin-top: 6px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 4px; flex-direction: column; gap: 2px; min-width: 60px; z-index: 200; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+.lang-option { background: none; border: none; color: var(--text-muted); font-size: 0.75rem; font-family: var(--font); padding: 6px 12px; cursor: pointer; border-radius: 4px; text-align: center; transition: all 0.15s; }
+.lang-option:hover { background: rgba(59,130,246,0.1); color: var(--text); }
+.lang-option.active { color: var(--blue); background: rgba(59,130,246,0.08); }
 </style>
 </head>
 <body>
@@ -212,13 +221,14 @@ footer { border-top: 1px solid var(--border); padding: 40px 0; }
   <div class="nav-inner">
     <a href="/" class="nav-logo"><span>B</span>LUN</a>
     <div class="nav-links">
-      <a href="#features">Features</a>
-      <a href="#pricing">Pricing</a>
-      <a href="#faq">FAQ</a>
+      <a href="#features" data-i18n="nav.features">Features</a>
+      <a href="#pricing" data-i18n="nav.pricing">Pricing</a>
+      <a href="#faq" data-i18n="nav.faq">FAQ</a>
     </div>
     <div class="nav-right">
-      <a href="/login" class="btn btn-ghost btn-sm">Log in</a>
-      <a href="/register" class="btn btn-primary btn-sm">Start free</a>
+      <div class="lang-switcher"></div>
+      <a href="/login" class="btn btn-ghost btn-sm" data-i18n="nav.login">Log in</a>
+      <a href="/register" class="btn btn-primary btn-sm" data-i18n="nav.start">Start free</a>
     </div>
     <button class="nav-toggle" onclick="document.querySelector('.nav-links').style.display=document.querySelector('.nav-links').style.display==='flex'?'none':'flex'" aria-label="Menu">&#9776;</button>
   </div>
@@ -227,12 +237,12 @@ footer { border-top: 1px solid var(--border); padding: 40px 0; }
 <!-- Hero -->
 <section class="hero">
   <div class="container">
-    <div class="badge"><span class="badge-dot"></span> Open Source — Free forever</div>
-    <h1>Your AI team that does<br>everything for you</h1>
-    <p class="hero-sub">Build websites, apps, and businesses — without knowing how to code. Just describe what you want.</p>
+    <div class="badge"><span class="badge-dot"></span> <span data-i18n="hero.badge">Open Source — Free forever</span></div>
+    <h1 data-i18n="hero.title">Your AI team that does<br>everything for you</h1>
+    <p class="hero-sub" data-i18n="hero.subtitle">Build websites, apps, and businesses — without knowing how to code. Just describe what you want.</p>
     <div class="hero-buttons">
-      <a href="/register" class="btn btn-primary">Start for free</a>
-      <a href="#how" class="btn btn-outline">See how it works</a>
+      <a href="/register" class="btn btn-primary" data-i18n="hero.cta">Start for free</a>
+      <a href="#how" class="btn btn-outline" data-i18n="hero.cta2">See how it works</a>
     </div>
   </div>
 
@@ -284,7 +294,7 @@ footer { border-top: 1px solid var(--border); padding: 40px 0; }
 <section id="features">
   <div class="container section-center">
     <div class="section-label">Features</div>
-    <h2 class="section-title">What can BLUN do?</h2>
+    <h2 class="section-title" data-i18n="features.title">What can BLUN do?</h2>
     <p class="section-sub">Everything you need to build, launch, and run your project — in one place.</p>
     <div class="grid-3">
       <a href="/feature/websites" class="card card-link">
@@ -381,7 +391,7 @@ footer { border-top: 1px solid var(--border); padding: 40px 0; }
 <section id="pricing" style="border-top: 1px solid var(--border);">
   <div class="container section-center">
     <div class="section-label">Pricing</div>
-    <h2 class="section-title">Simple, transparent pricing</h2>
+    <h2 class="section-title" data-i18n="pricing.title">Simple, transparent pricing</h2>
     <p class="section-sub">Start free. Upgrade when you need more.</p>
     <div class="pricing-grid">
       <div class="price-card">
@@ -442,7 +452,7 @@ footer { border-top: 1px solid var(--border); padding: 40px 0; }
 <section id="faq" style="border-top: 1px solid var(--border);">
   <div class="container section-center">
     <div class="section-label">FAQ</div>
-    <h2 class="section-title">Questions? Answers.</h2>
+    <h2 class="section-title" data-i18n="faq.title">Questions? Answers.</h2>
     <p class="section-sub">Everything you need to know before getting started.</p>
     <div class="faq-list">
       <div class="faq-item">
@@ -492,7 +502,7 @@ footer { border-top: 1px solid var(--border); padding: 40px 0; }
       <a href="/contact">Contact</a>
       <a href="https://github.com/blun-ai" target="_blank" rel="noopener">GitHub</a>
     </div>
-    <div class="footer-made">Made in Austria</div>
+    <div class="footer-made" data-i18n="footer.made">Made in Austria</div>
   </div>
 </footer>
 
@@ -825,5 +835,7 @@ function handleCookies(accepted){
   });
 })();
 </script>
+<script src="/i18n-loader.js"></script>
+<script>document.addEventListener("DOMContentLoaded", function() { blunI18n.init(); });</script>
 </body>
 </html>

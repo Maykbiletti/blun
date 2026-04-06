@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BLUN - Teams</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0a0a0a;color:#e5e5e5;min-height:100vh;display:flex}
+.sidebar{width:260px;background:#1a1a1a;border-right:1px solid #2a2a2a;display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100}
+.sidebar-header{padding:20px;border-bottom:1px solid #2a2a2a}
+.sidebar-logo{font-size:20px;font-weight:700;color:#3b82f6}
+.sidebar-user{margin-top:12px;font-size:13px;color:#a3a3a3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sidebar-nav{flex:1;padding:12px 0}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 20px;color:#a3a3a3;font-size:14px;font-weight:500;cursor:pointer;transition:all .15s;text-decoration:none}
+.nav-item:hover{color:#e5e5e5;background:#2a2a2a}
+.nav-item.active{color:#3b82f6;background:rgba(59,130,246,.1);border-right:3px solid #3b82f6}
+.nav-item svg{width:20px;height:20px;flex-shrink:0}
+.sidebar-footer{padding:16px 20px;border-top:1px solid #2a2a2a}
+.logout-btn{width:100%;padding:10px;background:transparent;color:#ef4444;border:1px solid #ef4444;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;transition:all .15s}
+.logout-btn:hover{background:#ef4444;color:#fff}
+.main{flex:1;margin-left:260px;min-height:100vh}
+.topbar{height:60px;background:#1a1a1a;border-bottom:1px solid #2a2a2a;display:flex;align-items:center;padding:0 24px}
+.topbar h1{font-size:18px;font-weight:600}
+.content{padding:24px;max-width:900px}
+.card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:20px;margin-bottom:16px}
+.card h3{font-size:16px;font-weight:600;margin-bottom:4px}
+.card-meta{font-size:13px;color:#a3a3a3}
+.btn{padding:8px 16px;border-radius:8px;border:none;font-size:14px;font-weight:500;cursor:pointer;transition:all .15s}
+.btn-primary{background:#3b82f6;color:#fff}.btn-primary:hover{background:#2563eb}
+.btn-danger{background:transparent;color:#ef4444;border:1px solid #ef4444}.btn-danger:hover{background:#ef4444;color:#fff}
+.btn-sm{padding:5px 12px;font-size:12px}
+input,select{background:#0a0a0a;border:1px solid #2a2a2a;border-radius:8px;padding:10px 14px;color:#e5e5e5;font-size:14px;width:100%}
+input:focus,select:focus{outline:none;border-color:#3b82f6}
+.form-row{display:flex;gap:12px;margin-bottom:12px}
+.form-row input{flex:1}
+.badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;text-transform:uppercase}
+.badge-owner{background:rgba(59,130,246,.15);color:#3b82f6}
+.badge-admin{background:rgba(168,85,247,.15);color:#a855f7}
+.badge-member{background:rgba(163,163,163,.15);color:#a3a3a3}
+.member-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #1a1a1a}
+.member-row:last-child{border-bottom:none}
+.member-info{display:flex;align-items:center;gap:10px}
+.member-actions{display:flex;gap:8px;align-items:center}
+.team-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-top:16px}
+.team-card{cursor:pointer;transition:border-color .15s}
+.team-card:hover{border-color:#3b82f6}
+.back-btn{background:none;border:none;color:#a3a3a3;font-size:14px;cursor:pointer;margin-bottom:16px;padding:0}
+.back-btn:hover{color:#e5e5e5}
+.invite-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #1a1a1a;font-size:13px;color:#a3a3a3}
+.copy-btn{background:none;border:1px solid #2a2a2a;color:#a3a3a3;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer}
+.copy-btn:hover{border-color:#3b82f6;color:#3b82f6}
+.section-title{font-size:14px;font-weight:600;color:#a3a3a3;margin:20px 0 10px;text-transform:uppercase;letter-spacing:.5px}
+.empty{text-align:center;padding:40px;color:#525252;font-size:14px}
+</style>
+</head>
+<body>
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo">BLUN</div>
+    <div class="sidebar-user" id="userEmail">Loading...</div>
+  </div>
+  <nav class="sidebar-nav">
+    <a class="nav-item" href="/dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Dashboard</a>
+    <a class="nav-item active" href="/dashboard/teams"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>Teams</a>
+    <a class="nav-item" href="/dashboard/blun-code"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 9l3 3-3 3"/><path d="M13 15h3"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg>BLUN Code</a>
+    <a class="nav-item" href="/profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Profile</a>
+  </nav>
+  <div class="sidebar-footer">
+    <button class="logout-btn" onclick="fetch('/auth/logout',{method:'POST',credentials:'include'}).then(function(){location.href='/login'})">Logout</button>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar"><h1>Teams</h1></div>
+  <div class="content">
+    <!-- List View -->
+    <div id="listView">
+      <div class="card">
+        <h3>Create a Team</h3>
+        <div class="form-row" style="margin-top:12px">
+          <input type="text" id="newTeamName" placeholder="Team name...">
+          <button class="btn btn-primary" onclick="createTeam()">Create</button>
+        </div>
+      </div>
+      <div id="teamCards" class="team-cards"></div>
+      <div id="emptyState" class="empty" style="display:none">No teams yet. Create one above.</div>
+    </div>
+
+    <!-- Detail View -->
+    <div id="detailView" style="display:none">
+      <button class="back-btn" onclick="showList()">Back to Teams</button>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <h3 id="teamName"></h3>
+            <div class="card-meta" id="teamMeta"></div>
+          </div>
+          <div style="display:flex;gap:8px" id="teamActions"></div>
+        </div>
+      </div>
+
+      <div class="section-title">Members</div>
+      <div class="card" id="membersCard"></div>
+
+      <div id="inviteSection">
+        <div class="section-title">Invite Member</div>
+        <div class="card">
+          <div class="form-row">
+            <input type="email" id="inviteEmail" placeholder="Email address...">
+            <select id="inviteRole" style="width:120px;flex:none"><option value="member">Member</option><option value="admin">Admin</option></select>
+            <button class="btn btn-primary" onclick="inviteMember()">Invite</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="pendingInvites" style="display:none">
+        <div class="section-title">Pending Invites</div>
+        <div class="card" id="invitesCard"></div>
+      </div>
+
+      <div class="section-title">Shared Agents</div>
+      <div class="card" id="agentsCard"><div class="empty">No agents shared yet.</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+var currentTeam = null;
+
+async function api(method, path, body) {
+  var opts = { method: method, credentials: "include", headers: {} };
+  if (body) { opts.headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(body); }
+  var r = await fetch(path, opts);
+  return r.json();
+}
+
+async function loadUser() {
+  try {
+    var r = await fetch("/api/profile", { credentials: "include" });
+    var u = await r.json();
+    document.getElementById("userEmail").textContent = u.email || u.name || "User";
+  } catch(e) {}
+}
+
+async function loadTeams() {
+  var teams = await api("GET", "/api/teams");
+  var container = document.getElementById("teamCards");
+  var empty = document.getElementById("emptyState");
+  if (!teams.length) { container.innerHTML = ""; empty.style.display = "block"; return; }
+  empty.style.display = "none";
+  container.innerHTML = teams.map(function(t) {
+    return '<div class="card team-card" onclick="showTeam(\'' + t.id + '\')">' +
+      '<h3>' + esc(t.name) + '</h3>' +
+      '<div class="card-meta">' + t.member_count + ' member' + (t.member_count > 1 ? 's' : '') +
+      ' &middot; <span class="badge badge-' + t.my_role + '">' + t.my_role + '</span></div></div>';
+  }).join("");
+}
+
+async function createTeam() {
+  var name = document.getElementById("newTeamName").value.trim();
+  if (!name) return;
+  await api("POST", "/api/teams", { name: name });
+  document.getElementById("newTeamName").value = "";
+  loadTeams();
+}
+
+async function showTeam(id) {
+  var team = await api("GET", "/api/teams/" + id);
+  currentTeam = team;
+  document.getElementById("listView").style.display = "none";
+  document.getElementById("detailView").style.display = "block";
+  document.getElementById("teamName").textContent = team.name;
+  document.getElementById("teamMeta").textContent = team.members.length + " member" + (team.members.length > 1 ? "s" : "") + " | Plan: " + (team.plan || "free");
+
+  var isOwnerOrAdmin = team.my_role === "owner" || team.my_role === "admin";
+  var isOwner = team.my_role === "owner";
+
+  // Actions
+  var actions = "";
+  if (isOwner) actions += '<button class="btn btn-danger btn-sm" onclick="deleteTeam()">Delete Team</button>';
+  document.getElementById("teamActions").innerHTML = actions;
+
+  // Members
+  document.getElementById("membersCard").innerHTML = team.members.map(function(m) {
+    var roleSelect = "";
+    var removeBtn = "";
+    if (isOwner && m.role !== "owner") {
+      roleSelect = '<select class="btn-sm" style="background:#0a0a0a;border:1px solid #2a2a2a;color:#e5e5e5;border-radius:6px;padding:4px 8px;font-size:12px" onchange="changeRole(\'' + m.user_id + '\',this.value)">' +
+        '<option value="member"' + (m.role === "member" ? " selected" : "") + '>Member</option>' +
+        '<option value="admin"' + (m.role === "admin" ? " selected" : "") + '>Admin</option></select>';
+      removeBtn = '<button class="btn btn-danger btn-sm" onclick="removeMember(\'' + m.user_id + '\')">Remove</button>';
+    }
+    if (isOwnerOrAdmin && !isOwner && m.role === "member") {
+      removeBtn = '<button class="btn btn-danger btn-sm" onclick="removeMember(\'' + m.user_id + '\')">Remove</button>';
+    }
+    return '<div class="member-row"><div class="member-info"><span>' + esc(m.user_name || m.email) + '</span>' +
+      '<span class="badge badge-' + m.role + '">' + m.role + '</span></div>' +
+      '<div class="member-actions">' + roleSelect + removeBtn + '</div></div>';
+  }).join("");
+
+  // Invite section visibility
+  document.getElementById("inviteSection").style.display = isOwnerOrAdmin ? "block" : "none";
+
+  // Pending invites
+  if (team.invites && team.invites.length) {
+    document.getElementById("pendingInvites").style.display = "block";
+    document.getElementById("invitesCard").innerHTML = team.invites.map(function(inv) {
+      var link = location.origin + "/api/teams/" + team.id + "/join?token=" + (inv.token || "");
+      return '<div class="invite-row"><span>' + esc(inv.email) + ' (' + inv.role + ')</span>' +
+        '<button class="copy-btn" onclick="copyLink(this,\'' + esc(link) + '\')">Copy Link</button></div>';
+    }).join("");
+  } else {
+    document.getElementById("pendingInvites").style.display = "none";
+  }
+
+  // Agents
+  var agents = await api("GET", "/api/teams/" + id + "/agents");
+  if (agents.length) {
+    document.getElementById("agentsCard").innerHTML = agents.map(function(a) {
+      return '<div class="member-row"><span>' + esc(a.name || a.id) + '</span><span class="card-meta">' + (a.model || "") + '</span></div>';
+    }).join("");
+  } else {
+    document.getElementById("agentsCard").innerHTML = '<div class="empty">No agents shared yet.</div>';
+  }
+}
+
+function showList() {
+  document.getElementById("detailView").style.display = "none";
+  document.getElementById("listView").style.display = "block";
+  currentTeam = null;
+  loadTeams();
+}
+
+async function inviteMember() {
+  if (!currentTeam) return;
+  var email = document.getElementById("inviteEmail").value.trim();
+  var role = document.getElementById("inviteRole").value;
+  if (!email) return;
+  await api("POST", "/api/teams/" + currentTeam.id + "/invite", { email: email, role: role });
+  document.getElementById("inviteEmail").value = "";
+  showTeam(currentTeam.id);
+}
+
+async function changeRole(userId, role) {
+  if (!currentTeam) return;
+  await api("PUT", "/api/teams/" + currentTeam.id + "/members/" + userId, { role: role });
+  showTeam(currentTeam.id);
+}
+
+async function removeMember(userId) {
+  if (!currentTeam || !confirm("Remove this member?")) return;
+  await api("DELETE", "/api/teams/" + currentTeam.id + "/members/" + userId);
+  showTeam(currentTeam.id);
+}
+
+async function deleteTeam() {
+  if (!currentTeam || !confirm("Delete this team? This cannot be undone.")) return;
+  await api("DELETE", "/api/teams/" + currentTeam.id);
+  showList();
+}
+
+function copyLink(btn, link) {
+  navigator.clipboard.writeText(link).then(function() {
+    btn.textContent = "Copied!";
+    setTimeout(function() { btn.textContent = "Copy Link"; }, 2000);
+  });
+}
+
+function esc(s) {
+  if (!s) return "";
+  var d = document.createElement("div");
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+loadUser();
+loadTeams();
+</script>
+</body>
+</html>

@@ -43,6 +43,8 @@ const contactRoutes = require("./src/routes/contact");
 const newsletterRoutes = require("./src/routes/newsletter");
 const voiceRoutes = require("./src/routes/voice");
 const blunCodeRoutes = require("./src/routes/blun-code");
+const i18nRoutes = require("./src/routes/i18n");
+const teamsRoutes = require("./src/routes/teams");
 const { startAllBots, activeBots } = require("./src/channels/telegram");
 
 const PORT = parseInt(process.env.BLUN_PORT || "3200", 10);
@@ -56,6 +58,7 @@ app.get('/', (req, res) => {
 });
 
 // Impressum page (public)
+app.get("/:lang(en|de|es|fr|pt|tr)", function(req, res) { res.redirect("/?lang=" + req.params.lang); });
 app.get("/impressum", (req, res) => {
   res.sendFile(__dirname + "/dashboard/impressum.html");
 });
@@ -72,6 +75,7 @@ app.use(express.json({ limit: "10mb" }));
 app.use(morgan("short"));
 app.use(cookieParser());
 
+app.use("/api/i18n", i18nRoutes);
 // Auth middleware — accept cookie session OR x-blun-key header
 app.use("/api", function (req, res, next) {
   if (req.path === "/health" || req.path === "/admin/health" || req.path === "/contact" || req.path === "/newsletter/subscribe" || req.path === "/newsletter/unsubscribe") return next();
@@ -99,8 +103,10 @@ app.use("/api/models", modelsRoutes);
 app.use("/api/profile", authenticate, profileRoutes);
 app.use("/api/voice", voiceRoutes);
 app.use("/api/blun-code", blunCodeRoutes);
+app.use("/api/teams", teamsRoutes);
 app.use("/support", supportChatRoutes);
 app.get("/support-widget.js", function(req, res) { res.sendFile(__dirname + "/dashboard/support-widget.js"); });
+app.get("/i18n-loader.js", function(req, res) { res.sendFile(__dirname + "/dashboard/i18n-loader.js"); });
 
 app.use("/api", apiRoutes);
 app.use("/api/contact", contactRoutes);
@@ -165,6 +171,7 @@ app.get("/profile", authenticate, function (req, res) { if (!req.user) return re
 app.get("/voice", authenticate, function (req, res) { if (!req.user) return res.redirect("/login"); res.sendFile(path.join(__dirname, "dashboard", "voice.html")); });
 app.get("/dashboard/models", authenticate, function (req, res) { if (!req.user) return res.redirect("/login"); res.sendFile(path.join(__dirname, "dashboard", "models.html")); });
 app.get("/dashboard/blun-code", authenticate, function (req, res) { if (!req.user) return res.redirect("/login"); res.sendFile(path.join(__dirname, "dashboard", "blun-code.html")); });
+app.get("/dashboard/teams", authenticate, function (req, res) { if (!req.user) return res.redirect("/login"); res.sendFile(path.join(__dirname, "dashboard", "teams.html")); });
 app.get("/dashboard", authenticate, function (req, res) {
   if (!req.user) return res.redirect("/login");
   res.sendFile(path.join(__dirname, "dashboard", "index.html"));
