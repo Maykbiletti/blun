@@ -130,6 +130,61 @@ footer { border-top: 1px solid var(--border); padding: 40px 0; }
 @media (min-width: 769px) and (max-width: 1024px) {
   .grid-3, .pricing-grid { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* Laptop Mockup */
+.laptop-section { padding: 60px 0 0; text-align: center; }
+.laptop-wrapper { position: relative; max-width: 900px; width: 80%; margin: 0 auto; }
+.laptop-glow { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 70%; height: 70%; background: radial-gradient(ellipse, rgba(59,130,246,0.12) 0%, transparent 70%); pointer-events: none; z-index: 0; }
+.laptop-frame { position: relative; z-index: 1; background: #2a2a2a; border-radius: 12px 12px 0 0; padding: 10px 10px 0; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+.laptop-screen { background: #0a0a0a; border-radius: 6px 6px 0 0; aspect-ratio: 16/10; overflow: hidden; display: flex; }
+.laptop-chin { position: relative; z-index: 1; background: #2a2a2a; height: 18px; border-radius: 0 0 12px 12px; display: flex; align-items: center; justify-content: center; }
+.laptop-chin::after { content: ""; width: 40px; height: 4px; background: #3a3a3a; border-radius: 2px; }
+.lp-sidebar { width: 140px; min-width: 140px; background: #111; border-right: 1px solid #222; padding: 12px 0; display: flex; flex-direction: column; gap: 2px; }
+.lp-menu-item { padding: 8px 14px; font-size: 10px; font-family: var(--font); color: #888; cursor: pointer; transition: all 0.2s; border-left: 2px solid transparent; white-space: nowrap; }
+.lp-menu-item.active { color: #fff; background: rgba(59,130,246,0.1); border-left-color: #3b82f6; }
+.lp-menu-item:hover { color: #ccc; }
+.lp-content { flex: 1; padding: 16px; position: relative; overflow: hidden; }
+.lp-panel { position: absolute; inset: 16px; opacity: 0; transition: opacity 0.4s; pointer-events: none; display: flex; flex-direction: column; gap: 8px; }
+.lp-panel.active { opacity: 1; pointer-events: auto; }
+.lp-input { background: #1a1a1a; border: 1px solid #333; border-radius: 6px; padding: 8px 10px; font-size: 9px; font-family: var(--mono); color: #666; width: 100%; text-align: left; }
+.lp-input .typed { color: #fff; }
+.lp-label { font-size: 9px; color: #888; font-family: var(--font); text-align: left; }
+.lp-preview { flex: 1; background: #1a1a1a; border-radius: 6px; border: 1px solid #222; overflow: hidden; display: flex; flex-direction: column; }
+.lp-preview-bar { height: 20px; background: #222; display: flex; align-items: center; gap: 4px; padding: 0 8px; }
+.lp-preview-dot { width: 5px; height: 5px; border-radius: 50%; background: #444; }
+.lp-preview-body { flex: 1; padding: 8px; display: flex; flex-direction: column; gap: 4px; }
+.lp-skel { height: 6px; background: #333; border-radius: 3px; animation: lpPulse 1.5s infinite; }
+.lp-skel.w60 { width: 60%; }
+.lp-skel.w80 { width: 80%; }
+.lp-skel.w40 { width: 40%; }
+.lp-skel.blue { background: rgba(59,130,246,0.3); }
+.lp-skel.tall { height: 30px; }
+@keyframes lpPulse { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
+.lp-code-line { font-family: var(--mono); font-size: 8px; color: #666; text-align: left; opacity: 0; animation: lpFadeIn 0.3s forwards; white-space: nowrap; }
+@keyframes lpFadeIn { to { opacity: 1; } }
+.lp-platform-icons { display: flex; gap: 12px; justify-content: center; margin: 8px 0; }
+.lp-picon { width: 36px; height: 36px; border-radius: 8px; background: #1a1a1a; border: 1px solid #333; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+.lp-progress { height: 6px; background: #1a1a1a; border-radius: 3px; overflow: hidden; width: 100%; }
+.lp-progress-bar { height: 100%; background: #3b82f6; border-radius: 3px; width: 0; animation: lpProgress 3s forwards; }
+@keyframes lpProgress { to { width: 100%; } }
+.lp-chat-msg { padding: 6px 10px; border-radius: 8px; font-size: 9px; font-family: var(--font); max-width: 80%; opacity: 0; animation: lpFadeIn 0.4s forwards; text-align: left; }
+.lp-chat-msg.user { background: #3b82f6; color: #fff; align-self: flex-end; }
+.lp-chat-msg.bot { background: #1a1a1a; color: #ccc; align-self: flex-start; }
+.lp-model-card { background: #1a1a1a; border: 1px solid #222; border-radius: 6px; padding: 8px; display: flex; align-items: center; gap: 8px; }
+.lp-model-icon { width: 24px; height: 24px; border-radius: 6px; background: rgba(59,130,246,0.15); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #3b82f6; font-family: var(--mono); }
+.lp-model-info { flex: 1; text-align: left; }
+.lp-model-name { font-size: 9px; color: #fff; font-weight: 600; }
+.lp-model-size { font-size: 8px; color: #666; }
+.lp-model-status { font-size: 8px; color: #22c55e; opacity: 0; animation: lpFadeIn 0.3s forwards; }
+@media (max-width: 768px) {
+  .laptop-wrapper { width: 95%; }
+  .laptop-frame, .laptop-chin, .laptop-glow { display: none; }
+  .laptop-section .mobile-screen { display: flex !important; background: #0a0a0a; border-radius: 12px; border: 1px solid #222; aspect-ratio: 16/10; overflow: hidden; }
+}
+@media (min-width: 769px) {
+  .laptop-section .mobile-screen { display: none !important; }
+}
+
 </style>
 </head>
 <body>
@@ -162,6 +217,38 @@ footer { border-top: 1px solid var(--border); padding: 40px 0; }
       <a href="#how" class="btn btn-outline">See how it works</a>
     </div>
   </div>
+
+    <!-- Laptop Mockup -->
+    <div class="laptop-section">
+      <div class="container">
+        <div class="laptop-wrapper">
+          <div class="laptop-glow"></div>
+          <div class="laptop-frame">
+            <div class="laptop-screen" id="laptopScreen">
+              <div class="lp-sidebar">
+                <div class="lp-menu-item active" data-panel="website">New Website</div>
+                <div class="lp-menu-item" data-panel="app">New App</div>
+                <div class="lp-menu-item" data-panel="software">New Software</div>
+                <div class="lp-menu-item" data-panel="assistants">AI Assistants</div>
+                <div class="lp-menu-item" data-panel="models">AI Models</div>
+              </div>
+              <div class="lp-content" id="lpContent"></div>
+            </div>
+          </div>
+          <div class="laptop-chin"></div>
+          <div class="mobile-screen" id="laptopScreenMobile">
+            <div class="lp-sidebar">
+              <div class="lp-menu-item active" data-panel="website">New Website</div>
+              <div class="lp-menu-item" data-panel="app">New App</div>
+              <div class="lp-menu-item" data-panel="software">New Software</div>
+              <div class="lp-menu-item" data-panel="assistants">AI Assistants</div>
+              <div class="lp-menu-item" data-panel="models">AI Models</div>
+            </div>
+            <div class="lp-content" id="lpContentMobile"></div>
+          </div>
+        </div>
+      </div>
+    </div>
 </section>
 
 <!-- Features -->
@@ -292,7 +379,7 @@ footer { border-top: 1px solid var(--border); padding: 40px 0; }
           <li>10 projects</li>
           <li>Team collaboration</li>
         </ul>
-        <a href="/register" class="btn btn-primary" style="width:100%;">Start free trial</a>
+        <a href="/register" class="btn btn-primary" style="width:100%;">Subscribe</a>
       </div>
       <div class="price-card">
         <div class="price-name">Max</div>
@@ -304,7 +391,7 @@ footer { border-top: 1px solid var(--border); padding: 40px 0; }
           <li>Priority support</li>
           <li>All current and future features</li>
         </ul>
-        <a href="/register" class="btn btn-outline" style="width:100%;">Start free trial</a>
+        <a href="/register" class="btn btn-outline" style="width:100%;">Subscribe</a>
       </div>
       <div class="price-card">
         <div class="price-name">Enterprise</div>
@@ -402,6 +489,166 @@ function handleCookies(accepted){
     gtag('consent','update',{analytics_storage:'granted',ad_storage:'granted',ad_user_data:'granted',ad_personalization:'granted'});
   }
 }
+
+// Laptop mockup animation
+(function(){
+  var panels = {
+    website: function(){
+      return '<div class="lp-label">What is your website about?</div>'
+        +'<div class="lp-input"><span class="typed" id="lpTyped"></span><span style="animation:blink 1s infinite;color:#3b82f6">|</span></div>'
+        +'<div class="lp-preview"><div class="lp-preview-bar"><div class="lp-preview-dot"></div><div class="lp-preview-dot"></div><div class="lp-preview-dot"></div></div>'
+        +'<div class="lp-preview-body" id="lpPreviewBody"></div></div>';
+    },
+    app: function(){
+      return '<div class="lp-label">Choose platform</div>'
+        +'<div class="lp-platform-icons"><div class="lp-picon">\u{1F4F1}</div><div class="lp-picon">\u{1F5A5}\uFE0F</div><div class="lp-picon">\u{1F310}</div></div>'
+        +'<div class="lp-label" style="margin-top:8px">Generating code...</div>'
+        +'<div id="lpCodeLines" style="display:flex;flex-direction:column;gap:3px;flex:1;overflow:hidden"></div>';
+    },
+    software: function(){
+      return '<div class="lp-label">Describe your software</div>'
+        +'<div class="lp-input"><span class="typed">A CRM for small teams</span></div>'
+        +'<div class="lp-label" style="margin-top:12px">Building...</div>'
+        +'<div class="lp-progress"><div class="lp-progress-bar"></div></div>'
+        +'<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap" id="lpBuildSteps"></div>';
+    },
+    assistants: function(){
+      return '<div style="display:flex;flex-direction:column;gap:6px;flex:1;justify-content:flex-end" id="lpChat"></div>';
+    },
+    models: function(){
+      return '<div class="lp-label">Available Models</div>'
+        +'<div style="display:flex;flex-direction:column;gap:6px" id="lpModels"></div>';
+    }
+  };
+
+  var activePanel = "website";
+  var cycleTimer = null;
+  var animTimers = [];
+  var order = ["website","app","software","assistants","models"];
+
+  function clearAnimTimers(){animTimers.forEach(function(t){clearTimeout(t);});animTimers=[];}
+
+  function setPanel(name, root){
+    if(!root) return;
+    activePanel = name;
+    clearAnimTimers();
+    var contents = root.querySelectorAll(".lp-content");
+    contents.forEach(function(content){
+      content.innerHTML = '<div class="lp-panel active">'+panels[name]()+'</div>';
+    });
+    root.querySelectorAll(".lp-menu-item").forEach(function(m){
+      m.classList.toggle("active", m.getAttribute("data-panel")===name);
+    });
+    if(name==="website") contents.forEach(function(c){animWebsite(c);});
+    if(name==="app") contents.forEach(function(c){animApp(c);});
+    if(name==="software") contents.forEach(function(c){animSoftware(c);});
+    if(name==="assistants") contents.forEach(function(c){animChat(c);});
+    if(name==="models") contents.forEach(function(c){animModels(c);});
+  }
+
+  function animWebsite(ct){
+    var text="A bakery in Vienna";var i=0;
+    var typed=ct.querySelector("#lpTyped");
+    if(!typed)return;
+    function typeNext(){
+      if(i<text.length){typed.textContent+=text[i];i++;animTimers.push(setTimeout(typeNext,80));}
+      else{animTimers.push(setTimeout(function(){showPreview(ct);},400));}
+    }
+    typeNext();
+  }
+  function showPreview(ct){
+    var body=ct.querySelector("#lpPreviewBody");
+    if(!body)return;
+    body.innerHTML='<div class="lp-skel blue tall" style="width:100%"></div>'
+      +'<div class="lp-skel w80"></div><div class="lp-skel w60"></div>'
+      +'<div style="display:flex;gap:4px;margin-top:4px"><div class="lp-skel tall" style="width:48%"></div><div class="lp-skel tall" style="width:48%"></div></div>'
+      +'<div class="lp-skel w40"></div>';
+  }
+
+  function animApp(ct){
+    var lines=["import React from 'react';","","function App() {","  return (","    <View style={styles.main}>","      <Header />","      <Content />","    </View>","  );","}"];
+    var box=ct.querySelector("#lpCodeLines");if(!box)return;
+    var i=0;
+    function addLine(){
+      if(i<lines.length){
+        var el=document.createElement("div");
+        el.className="lp-code-line";
+        el.style.animationDelay=(i*0.15)+"s";
+        el.innerHTML=lines[i].replace(/</g,"&lt;").replace(/>/g,"&gt;")||"&nbsp;";
+        box.appendChild(el);i++;animTimers.push(setTimeout(addLine,200));
+      }
+    }
+    addLine();
+  }
+
+  function animSoftware(ct){
+    var steps=["Database","API","Frontend","Auth","Deploy"];
+    var box=ct.querySelector("#lpBuildSteps");if(!box)return;
+    var i=0;
+    function addStep(){
+      if(i<steps.length){
+        var el=document.createElement("span");
+        el.style.cssText="font-size:8px;padding:3px 8px;border-radius:4px;background:rgba(59,130,246,0.15);color:#3b82f6;opacity:0;animation:lpFadeIn 0.3s "+(i*0.5)+"s forwards";
+        el.textContent=steps[i];box.appendChild(el);i++;animTimers.push(setTimeout(addStep,500));
+      }
+    }
+    addStep();
+  }
+
+  function animChat(ct){
+    var msgs=[{t:"Create a support bot for my shop",u:true},{t:"Got it! Setting up your assistant...",u:false},{t:"Your bot is ready. It knows your products and can handle returns.",u:false}];
+    var box=ct.querySelector("#lpChat");if(!box)return;
+    var i=0;
+    function addMsg(){
+      if(i<msgs.length){
+        var el=document.createElement("div");
+        el.className="lp-chat-msg "+(msgs[i].u?"user":"bot");
+        el.style.animationDelay=(i*0.8)+"s";
+        el.textContent=msgs[i].t;box.appendChild(el);i++;animTimers.push(setTimeout(addMsg,1000));
+      }
+    }
+    addMsg();
+  }
+
+  function animModels(ct){
+    var models=[{n:"Llama 3.1",s:"8B",i:"L"},{n:"Mistral",s:"7B",i:"M"},{n:"Phi-3",s:"3.8B",i:"P"}];
+    var box=ct.querySelector("#lpModels");if(!box)return;
+    models.forEach(function(m,idx){
+      var card=document.createElement("div");
+      card.className="lp-model-card";
+      card.style.cssText="opacity:0;animation:lpFadeIn 0.3s "+(idx*0.3)+"s forwards";
+      card.innerHTML='<div class="lp-model-icon">'+m.i+'</div><div class="lp-model-info"><div class="lp-model-name">'+m.n+'</div><div class="lp-model-size">'+m.s+' params</div></div><div class="lp-model-status" style="animation-delay:'+(idx*0.3+0.8)+'s">\u2713 Installed</div>';
+      box.appendChild(card);
+    });
+  }
+
+  function startCycle(root){
+    var idx=0;
+    clearInterval(cycleTimer);
+    cycleTimer=setInterval(function(){
+      idx=(idx+1)%order.length;
+      setPanel(order[idx],root);
+    },5000);
+  }
+
+  function init(){
+    var wrapper=document.querySelector(".laptop-wrapper");
+    if(!wrapper)return;
+    wrapper.querySelectorAll(".lp-menu-item").forEach(function(m){
+      m.addEventListener("click",function(){
+        clearInterval(cycleTimer);
+        setPanel(m.getAttribute("data-panel"),wrapper);
+        startCycle(wrapper);
+      });
+    });
+    setPanel("website",wrapper);
+    startCycle(wrapper);
+  }
+
+  if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",init);}else{init();}
+  var s=document.createElement("style");s.textContent="@keyframes blink{0%,50%{opacity:1}51%,100%{opacity:0}}";document.head.appendChild(s);
+})();
+
 </script>
 <script src="/support-widget.js"></script>
 </body>
