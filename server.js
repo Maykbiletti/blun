@@ -34,6 +34,7 @@ const adminPanelRoutes = require("./src/routes/admin-panel");
 const privacyRoutes = require("./src/routes/privacy");
 const canvasRoutes = require("./src/routes/canvas");
 const websitesRoutes = require("./src/routes/websites");
+const softwareRoutes = require("./src/routes/software");
 const { startAllBots, activeBots } = require("./src/channels/telegram");
 
 const PORT = parseInt(process.env.BLUN_PORT || "3200", 10);
@@ -71,6 +72,7 @@ app.use("/admin-panel", adminPanelRoutes);
 app.use("/privacy", privacyRoutes);
 app.use("/canvas", authenticate, canvasRoutes);
 app.use("/websites", websitesRoutes);
+app.use("/software", softwareRoutes);
 
 app.use("/api", apiRoutes);
 app.use("/api/chat", chatRoutes);
@@ -122,6 +124,7 @@ app.get("/login", function (req, res) {
 
 
 app.get("/dashboard/websites", authenticate, function (req, res) { if (!req.user) return res.redirect("/login"); res.sendFile(path.join(__dirname, "dashboard", "websites.html")); });
+app.get("/dashboard/software", authenticate, function (req, res) { if (!req.user) return res.redirect("/login"); res.sendFile(path.join(__dirname, "dashboard", "software.html")); });
 app.get("/dashboard", authenticate, function (req, res) {
   if (!req.user) return res.redirect("/login");
   res.sendFile(path.join(__dirname, "dashboard", "index.html"));
