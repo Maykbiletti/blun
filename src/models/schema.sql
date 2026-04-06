@@ -205,35 +205,4 @@ CREATE TABLE IF NOT EXISTS heartbeats (
 
 CREATE INDEX IF NOT EXISTS idx_heartbeats_agent ON heartbeats(agent_id);
 
--- ============================================================
--- TELEGRAM CHANNELS
--- ============================================================
-CREATE TABLE IF NOT EXISTS telegram_channels (
-  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id         UUID,
-  bot_token       TEXT NOT NULL UNIQUE,
-  bot_username    TEXT,
-  agent_id        UUID REFERENCES agents(id) ON DELETE SET NULL,
-  chat_whitelist  JSONB DEFAULT '[]',
-  enabled         BOOLEAN DEFAULT true,
-  created_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_telegram_channels_user ON telegram_channels(user_id);
-
--- ============================================================
--- TELEGRAM MESSAGES
--- ============================================================
-CREATE TABLE IF NOT EXISTS telegram_messages (
-  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  channel_id  UUID REFERENCES telegram_channels(id) ON DELETE CASCADE,
-  chat_id     TEXT NOT NULL,
-  direction   TEXT NOT NULL CHECK (direction IN ('in', 'out')),
-  text        TEXT,
-  created_at  TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_telegram_messages_channel ON telegram_messages(channel_id);
-CREATE INDEX IF NOT EXISTS idx_telegram_messages_chat ON telegram_messages(chat_id);
-
 -- Done

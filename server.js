@@ -29,6 +29,7 @@ const billingRoutes = require("./src/routes/billing");
 const { router: skillsRoutes, getAgentSkills } = require("./src/routes/skills");
 const organisatorRoutes = require("./src/routes/organisator");
 const telegramRoutes = require("./src/routes/telegram");
+const federationRoutes = require("./src/routes/federation");
 const { startAllBots, activeBots } = require("./src/channels/telegram");
 
 const PORT = parseInt(process.env.BLUN_PORT || "3200", 10);
@@ -69,6 +70,14 @@ app.use("/organisator", organisatorRoutes);
 
 // Telegram channel integration (API)
 app.use("/telegram/api", telegramRoutes);
+
+// Federation (receive is public, rest requires auth)
+app.use("/federation", federationRoutes);
+
+app.get("/federation-dashboard", authenticate, function (req, res) {
+  if (!req.user) return res.redirect("/login");
+  res.sendFile(path.join(__dirname, "dashboard", "federation.html"));
+});
 
 app.get("/organisator", authenticate, function (req, res) {
   if (!req.user) return res.redirect("/login");
