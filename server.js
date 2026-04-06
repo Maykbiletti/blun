@@ -52,6 +52,7 @@ app.get('/', (req, res) => {
 app.get("/impressum", (req, res) => {
   res.sendFile(__dirname + "/dashboard/impressum.html");
 });
+app.get("/datenschutz", (req, res) => { res.sendFile(__dirname + "/dashboard/datenschutz.html"); });
 
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors());

@@ -1,0 +1,1757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BLUN - Your AI Team, Organized</title>
+<meta name="description" content="Open-source AI agent orchestration. Like having a CTO that never sleeps. One command to install.">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #09090b;
+  --bg-elevated: #18181b;
+  --bg-card: #1c1c20;
+  --border: #27272a;
+  --border-light: #3f3f46;
+  --text: #fafafa;
+  --text-muted: #a1a1aa;
+  --text-dim: #71717a;
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --accent-glow: rgba(59, 130, 246, 0.15);
+  --green: #22c55e;
+  --radius: 12px;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; text-decoration: none; }
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.container-wide {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* ---- Nav ---- */
+nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: rgba(9, 9, 11, 0.85);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+}
+
+nav .container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 60px;
+}
+
+nav .logo {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+
+nav .nav-center {
+  display: flex;
+  gap: 32px;
+  list-style: none;
+}
+
+nav .nav-center a {
+  font-size: 14px;
+  color: var(--text-muted);
+  transition: color 0.2s;
+}
+
+nav .nav-center a:hover { color: var(--text); }
+
+nav .nav-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+nav .nav-right a {
+  font-size: 14px;
+  color: var(--text-muted);
+  transition: color 0.2s;
+}
+
+nav .nav-right a:hover { color: var(--text); }
+
+.nav-btn {
+  background: var(--accent);
+  color: #fff !important;
+  padding: 7px 18px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.nav-btn:hover { background: var(--accent-hover); }
+
+/* ---- Hero ---- */
+.hero {
+  padding: 160px 0 100px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -200px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 800px;
+  height: 800px;
+  background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.hero-badge {
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--accent);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 100px;
+  padding: 6px 16px;
+  margin-bottom: 32px;
+  letter-spacing: 0.5px;
+}
+
+.hero h1 {
+  font-size: clamp(48px, 8vw, 80px);
+  font-weight: 800;
+  letter-spacing: -2px;
+  line-height: 1;
+  margin-bottom: 20px;
+}
+
+.hero .tagline {
+  font-size: clamp(18px, 2.5vw, 24px);
+  font-weight: 300;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.hero .subtitle {
+  font-size: 16px;
+  color: var(--text-dim);
+  max-width: 520px;
+  margin: 0 auto 40px;
+  line-height: 1.7;
+}
+
+.cta-group {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 56px;
+  flex-wrap: wrap;
+}
+
+.btn-primary {
+  display: inline-block;
+  background: var(--accent);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 500;
+  padding: 12px 32px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-primary:hover { background: var(--accent-hover); }
+
+.btn-secondary {
+  display: inline-block;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 15px;
+  font-weight: 500;
+  padding: 12px 32px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.btn-secondary:hover { border-color: var(--text-dim); color: var(--text); }
+
+.btn-green {
+  display: inline-block;
+  background: var(--green);
+  color: #000;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 12px 32px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.btn-green:hover { opacity: 0.9; }
+
+/* ---- Animated Terminal ---- */
+.hero-terminal {
+  max-width: 560px;
+  margin: 0 auto;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  text-align: left;
+}
+
+.terminal-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.terminal-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--border);
+}
+
+.terminal-dot:first-child { background: #ef4444; }
+.terminal-dot:nth-child(2) { background: #eab308; }
+.terminal-dot:nth-child(3) { background: #22c55e; }
+
+.terminal-body {
+  padding: 24px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  line-height: 2.2;
+  min-height: 140px;
+}
+
+.terminal-line {
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.terminal-line::before {
+  content: '$ ';
+  color: var(--green);
+}
+
+.terminal-line.typing {
+  border-right: 2px solid var(--accent);
+  animation: blink-caret 0.7s step-end infinite;
+  width: 0;
+  display: inline-block;
+}
+
+.terminal-line.line-1 {
+  animation: type-line1 1.5s steps(28) 0.5s forwards, blink-caret 0.7s step-end 0.5s 3;
+  width: 0;
+  overflow: hidden;
+  display: block;
+  border-right: 2px solid var(--accent);
+}
+
+.terminal-line.line-2 {
+  animation: type-line2 1.2s steps(22) 2.5s forwards, blink-caret 0.7s step-end 2.5s 3;
+  width: 0;
+  overflow: hidden;
+  display: block;
+  border-right: 2px solid var(--accent);
+  opacity: 0;
+  animation: show-line2 0s 2.5s forwards, type-line2 1.2s steps(22) 2.5s forwards, blink-caret 0.7s step-end 2.5s 3;
+}
+
+.terminal-line.line-3 {
+  opacity: 0;
+  animation: show-line3 0s 4.2s forwards;
+  color: var(--green);
+}
+
+.terminal-line.line-3::before {
+  content: '> ';
+  color: var(--accent);
+}
+
+@keyframes type-line1 {
+  from { width: 0; }
+  to { width: 100%; border-right-color: transparent; }
+}
+
+@keyframes type-line2 {
+  from { width: 0; }
+  to { width: 100%; border-right-color: transparent; }
+}
+
+@keyframes show-line2 {
+  to { opacity: 1; }
+}
+
+@keyframes show-line3 {
+  to { opacity: 1; }
+}
+
+@keyframes blink-caret {
+  50% { border-color: transparent; }
+}
+
+/* ---- Trusted By ---- */
+.trusted {
+  padding: 60px 0;
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+
+.trusted p {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-dim);
+  margin-bottom: 32px;
+}
+
+.trusted-logos {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 48px;
+  flex-wrap: wrap;
+  opacity: 0.4;
+}
+
+.trusted-logos span {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+}
+
+/* ---- Section shared ---- */
+section { padding: 100px 0; }
+
+.section-label {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 16px;
+}
+
+.section-title {
+  font-size: clamp(28px, 4vw, 40px);
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  margin-bottom: 16px;
+}
+
+.section-desc {
+  color: var(--text-dim);
+  font-size: 16px;
+  max-width: 520px;
+  line-height: 1.7;
+}
+
+.section-header {
+  text-align: center;
+  margin-bottom: 64px;
+}
+
+.section-header .section-desc {
+  margin: 0 auto;
+}
+
+/* ---- Features Grid (14 systems) ---- */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.feature-card {
+  background: var(--bg);
+  padding: 32px 28px;
+  transition: background 0.2s;
+}
+
+.feature-card:hover { background: var(--bg-elevated); }
+
+.feature-num {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 12px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.feature-card h3 {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.feature-card p {
+  font-size: 13px;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+
+.feature-tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--accent);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  border-radius: 4px;
+  padding: 2px 8px;
+  margin-top: 10px;
+}
+
+.feature-tag.soon {
+  color: #eab308;
+  border-color: rgba(234, 179, 8, 0.25);
+}
+
+/* ---- Comparison ---- */
+.comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.comparison-table th {
+  text-align: left;
+  padding: 14px 16px;
+  font-weight: 600;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.comparison-table th:first-child { color: var(--text); }
+
+.comparison-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-dim);
+}
+
+.comparison-table td:first-child {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.comparison-table .check { color: var(--green); font-weight: 600; }
+.comparison-table .cross { color: var(--text-dim); }
+.comparison-table .partial { color: #eab308; }
+
+.comparison-table tr:hover td { background: var(--bg-elevated); }
+
+/* ---- Pricing ---- */
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.pricing-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 36px 28px;
+  position: relative;
+}
+
+.pricing-card.featured {
+  border-color: var(--accent);
+  box-shadow: 0 0 40px var(--accent-glow);
+}
+
+.pricing-card .plan-badge {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 12px;
+  border-radius: 100px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.pricing-card h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.pricing-card .price {
+  font-size: 36px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.pricing-card .price span {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-dim);
+}
+
+.pricing-card .price-note {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-bottom: 24px;
+}
+
+.pricing-card ul {
+  list-style: none;
+  margin-bottom: 28px;
+}
+
+.pricing-card ul li {
+  font-size: 14px;
+  color: var(--text-muted);
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(39, 39, 42, 0.5);
+}
+
+.pricing-card ul li::before {
+  content: '-- ';
+  color: var(--text-dim);
+}
+
+.pricing-btn {
+  display: block;
+  text-align: center;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  transition: all 0.2s;
+}
+
+.pricing-btn:hover { border-color: var(--text-dim); color: var(--text); }
+
+.pricing-btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.pricing-btn.primary:hover { background: var(--accent-hover); }
+
+/* ---- Testimonials ---- */
+.testimonials-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.testimonial-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px;
+}
+
+.testimonial-card blockquote {
+  font-size: 15px;
+  color: var(--text-muted);
+  line-height: 1.7;
+  margin-bottom: 20px;
+  font-style: italic;
+}
+
+.testimonial-author {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.testimonial-role {
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+/* ---- FAQ ---- */
+.faq-list {
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.faq-item {
+  border-bottom: 1px solid var(--border);
+}
+
+.faq-question {
+  width: 100%;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 500;
+  text-align: left;
+  padding: 20px 0;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: inherit;
+}
+
+.faq-question:hover { color: var(--accent); }
+
+.faq-question::after {
+  content: '+';
+  font-size: 20px;
+  font-weight: 300;
+  color: var(--text-dim);
+  transition: transform 0.2s;
+}
+
+.faq-item.open .faq-question::after {
+  content: '-';
+}
+
+.faq-answer {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.faq-item.open .faq-answer {
+  max-height: 300px;
+}
+
+.faq-answer p {
+  font-size: 15px;
+  color: var(--text-dim);
+  line-height: 1.7;
+  padding-bottom: 20px;
+}
+
+/* ---- Newsletter ---- */
+.newsletter {
+  text-align: center;
+  padding: 80px 0;
+  border-top: 1px solid var(--border);
+}
+
+.newsletter h2 {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.newsletter p {
+  color: var(--text-dim);
+  margin-bottom: 28px;
+}
+
+.newsletter-form {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.newsletter-form input {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+}
+
+.newsletter-form input:focus { border-color: var(--accent); }
+
+.newsletter-form button {
+  padding: 12px 24px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.2s;
+}
+
+.newsletter-form button:hover { background: var(--accent-hover); }
+
+/* ---- Footer ---- */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 48px 0;
+}
+
+.footer-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 48px;
+  margin-bottom: 48px;
+}
+
+.footer-brand .logo {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  margin-bottom: 12px;
+}
+
+.footer-brand p {
+  font-size: 14px;
+  color: var(--text-dim);
+  line-height: 1.6;
+  max-width: 280px;
+}
+
+.footer-col h4 {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.footer-col ul {
+  list-style: none;
+}
+
+.footer-col ul li {
+  margin-bottom: 10px;
+}
+
+.footer-col ul li a {
+  font-size: 14px;
+  color: var(--text-dim);
+  transition: color 0.2s;
+}
+
+.footer-col ul li a:hover { color: var(--text); }
+
+.footer-bottom {
+  border-top: 1px solid var(--border);
+  padding-top: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.footer-bottom p {
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.footer-bottom-links {
+  display: flex;
+  gap: 24px;
+}
+
+.footer-bottom-links a {
+  font-size: 13px;
+  color: var(--text-dim);
+  transition: color 0.2s;
+}
+
+.footer-bottom-links a:hover { color: var(--text); }
+
+/* ---- Responsive ---- */
+@media (max-width: 900px) {
+  .pricing-grid { grid-template-columns: repeat(2, 1fr); }
+  .testimonials-grid { grid-template-columns: 1fr; }
+  .footer-grid { grid-template-columns: 1fr 1fr; gap: 32px; }
+}
+
+@media (max-width: 768px) {
+  .features-grid { grid-template-columns: 1fr; }
+  .hero { padding: 140px 0 80px; }
+  section { padding: 64px 0; }
+  nav .nav-center { display: none; }
+  .cta-group { flex-direction: column; align-items: center; }
+  .comparison-table { font-size: 12px; }
+  .comparison-table th, .comparison-table td { padding: 8px 6px; }
+}
+
+@media (max-width: 600px) {
+  .pricing-grid { grid-template-columns: 1fr; }
+  .footer-grid { grid-template-columns: 1fr; }
+  nav .nav-right .nav-gh { display: none; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="container">
+    <div class="logo">BLUN</div>
+    <ul class="nav-center">
+      <li><a href="#features">Features</a></li>
+      <li><a href="#in-action">Preview</a></li>
+      <li><a href="#pricing">Pricing</a></li>
+      <li><a href="#faq">FAQ</a></li>
+      <li><a href="https://github.com/Maykbiletti/blun" target="_blank">GitHub</a></li>
+    </ul>
+    <div class="nav-right">
+      <a href="https://github.com/Maykbiletti/blun" target="_blank" class="nav-gh">Docs</a>
+      <a href="/login">Login</a>
+      <a href="/dashboard" class="nav-btn">Live Demo</a>
+    </div>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-badge">Open Source / MIT License</div>
+    <h1>BLUN</h1>
+    <p class="tagline">Your AI team, organized.</p>
+    <p class="subtitle">Like having a CTO that never sleeps. An open-source framework that turns scattered AI agents into a coordinated, productive team.</p>
+    <div class="cta-group">
+      <a href="#install" class="btn-primary">Get Started</a>
+      <a href="/dashboard" class="btn-green">Live Demo</a>
+      <a href="https://github.com/Maykbiletti/blun" class="btn-secondary" target="_blank">View on GitHub</a>
+    </div>
+
+    <div class="hero-terminal">
+      <div class="terminal-bar">
+        <div class="terminal-dot"></div>
+        <div class="terminal-dot"></div>
+        <div class="terminal-dot"></div>
+      </div>
+      <div class="terminal-body">
+        <div class="terminal-line line-1">npx create-blun my-project</div>
+        <div class="terminal-line line-2">cd my-project && blun start</div>
+        <div class="terminal-line line-3">Dashboard live at http://localhost:3000</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Trusted By -->
+<section class="trusted" style="padding: 60px 0;">
+  <div class="container">
+    <p>Trusted by teams building the future</p>
+    <div class="trusted-logos">
+      <span>AUTOFLASHER</span>
+      <span>TUNINGFILES</span>
+      <span>BITCHIP</span>
+      <span>WEBCONSULTING</span>
+      <!-- Add more logos as adoption grows -->
+    </div>
+  </div>
+</section>
+
+<!-- Features (14 Systems) -->
+<section id="features">
+  <div class="container">
+    <div class="section-header">
+      <p class="section-label">14 Systems</p>
+      <h2 class="section-title">Everything you need to orchestrate AI</h2>
+      <p class="section-desc">A complete platform. Not a library. Not a wrapper. A full operating system for AI teams.</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-num">01</div>
+        <h3>KI-Organisator</h3>
+        <p>A meta-AI above your agents. It recruits, delegates, and coordinates like a CTO.</p>
+        <span class="feature-tag">Core</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-num">02</div>
+        <h3>Code Canvas</h3>
+        <p>Watch your agents write code in real time with syntax highlighting.</p>
+        <span class="feature-tag">Core</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-num">03</div>
+        <h3>Skills Marketplace</h3>
+        <p>Install skills from Git or build your own. Agents auto-discover what they need.</p>
+        <span class="feature-tag">Core</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-num">04</div>
+        <h3>Federation</h3>
+        <p>Connect BLUN instances across servers. Agents collaborate cross-network.</p>
+        <span class="feature-tag">Core</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-num">05</div>
+        <h3>Telegram Bridge</h3>
+        <p>One-click bot integration. Agents respond directly in Telegram chats.</p>
+        <span class="feature-tag">Integration</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-num">06</div>
+        <h3>Voice and Avatar</h3>
+        <p>Give agents a face and voice. Video-call your AI team.</p>
+        <span class="feature-tag soon">Coming Soon</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-num">07</div>
+        <h3>Multi-Model Router</h3>
+        <p>GPT-4, Claude, Gemini, Ollama -- assign different models per agent.</p>
+        <span class="feature-tag">Core</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-num">08</div>
+        <h3>Local Runtime</h3>
+        <p>SQLite, offline-first. Scale to PostgreSQL and Redis when ready.</p>
+        <span class="feature-tag">Core</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-num">09</div>
+        <h3>Billing Engine</h3>
+        <p>Stripe subscriptions, invoices, plan limits. Monetize from day one.</p>
+        <span class="feature-tag">Business</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-num">10</div>
+        <h3>Dashboard</h3>
+        <p>Real-time React UI. Monitor agents, tasks, and system health.</p>
+        <span class="feature-tag">Core</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-num">11</div>
+        <h3>WebSocket Layer</h3>
+        <p>Event-driven, zero-polling architecture for instant updates.</p>
+        <span class="feature-tag">Infrastructure</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-num">12</div>
+        <h3>Auth System</h3>
+        <p>JWT, OAuth, role-based access control. Production-ready security.</p>
+        <span class="feature-tag">Security</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-num">13</div>
+        <h3>Plugin API</h3>
+        <p>Extend anything with hooks. Build custom integrations in minutes.</p>
+        <span class="feature-tag">Extensibility</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-num">14</div>
+        <h3>CLI</h3>
+        <p>Full management from your terminal. Create, deploy, monitor.</p>
+        <span class="feature-tag">Developer</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ============ SEE BLUN IN ACTION ============ -->
+<section id="in-action" style="border-top: 1px solid var(--border);">
+<div class="container-wide">
+  <div class="section-header">
+    <p class="section-label">Live Preview</p>
+    <h2 class="section-title">See BLUN in Action</h2>
+    <p class="section-desc">Real interfaces. Real workflows. This is what orchestrating AI agents actually looks like.</p>
+  </div>
+
+  <style>
+  .mockup-grid { display: flex; flex-direction: column; gap: 64px; }
+  .mockup-block { background: #111113; border: 1px solid #27272a; border-radius: 16px; overflow: hidden; }
+  .mockup-titlebar { display: flex; align-items: center; gap: 8px; padding: 12px 16px; background: #0c0c0e; border-bottom: 1px solid #27272a; }
+  .mockup-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .mockup-dot.r { background: #ef4444; }
+  .mockup-dot.y { background: #f59e0b; }
+  .mockup-dot.g { background: #22c55e; }
+  .mockup-titlebar span { font-size: 12px; color: #71717a; margin-left: 8px; font-family: 'Inter', sans-serif; }
+  .mockup-body { padding: 20px; }
+
+  .dash-agents { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+  .dash-card { background: #1a1a1e; border: 1px solid #27272a; border-radius: 10px; padding: 16px; }
+  .dash-card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .dash-card-head h4 { font-size: 14px; font-weight: 600; color: #fafafa; }
+  .dash-status { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .dash-status.online { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+  .dash-status.busy { background: #f59e0b; box-shadow: 0 0 6px #f59e0b; }
+  .dash-status.offline { background: #71717a; }
+  .dash-meta { font-size: 12px; color: #71717a; margin-bottom: 4px; }
+  .dash-meta b { color: #a1a1aa; }
+  .dash-bar { height: 4px; background: #27272a; border-radius: 2px; margin-top: 8px; overflow: hidden; }
+  .dash-bar-fill { height: 100%; border-radius: 2px; background: #3b82f6; }
+  .dash-stats { display: flex; gap: 24px; margin-bottom: 16px; flex-wrap: wrap; }
+  .dash-stat { text-align: center; }
+  .dash-stat .num { font-size: 28px; font-weight: 700; color: #fafafa; }
+  .dash-stat .lbl { font-size: 11px; color: #71717a; text-transform: uppercase; letter-spacing: 1px; }
+
+  .term-body { font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.8; padding: 16px 20px; background: #0a0a0c; min-height: 260px; }
+  .term-line { opacity: 0; animation: termFadeIn 0.3s forwards; }
+  .term-line .ts { color: #3f3f46; margin-right: 8px; }
+  .term-line .claude { color: #a78bfa; }
+  .term-line .gpt { color: #4ade80; }
+  .term-line .gemini { color: #60a5fa; }
+  .term-line .sys { color: #f59e0b; }
+  .term-line .dim { color: #52525b; }
+  .term-cursor { display: inline-block; width: 8px; height: 15px; background: #f59e0b; animation: blink 1s step-end infinite; vertical-align: middle; margin-left: 2px; }
+  @keyframes blink { 50% { opacity: 0; } }
+  @keyframes termFadeIn { to { opacity: 1; } }
+
+  .canvas-layout { display: grid; grid-template-columns: 180px 1fr 200px; min-height: 300px; }
+  .canvas-tree { background: #0e0e10; border-right: 1px solid #27272a; padding: 12px; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+  .canvas-tree-item { padding: 4px 8px; border-radius: 4px; color: #71717a; cursor: default; white-space: nowrap; }
+  .canvas-tree-item.active { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
+  .canvas-tree-item.folder { color: #a1a1aa; }
+  .canvas-code { padding: 16px; font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.7; overflow-x: auto; }
+  .canvas-code .ln { color: #3f3f46; display: inline-block; width: 30px; text-align: right; margin-right: 16px; user-select: none; }
+  .canvas-code .kw { color: #c084fc; }
+  .canvas-code .fn { color: #60a5fa; }
+  .canvas-code .str { color: #4ade80; }
+  .canvas-code .cm { color: #52525b; }
+  .canvas-code .op { color: #f59e0b; }
+  .canvas-agents { background: #0e0e10; border-left: 1px solid #27272a; padding: 12px; }
+  .canvas-agent-indicator { padding: 10px; border-radius: 8px; background: #141416; border: 1px solid #27272a; margin-bottom: 8px; }
+  .canvas-agent-indicator .name { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+  .canvas-agent-indicator .action { font-size: 11px; color: #71717a; }
+  .canvas-agent-indicator .name.purple { color: #a78bfa; }
+  .canvas-agent-indicator .name.green { color: #4ade80; }
+  .canvas-agent-indicator .name.blue { color: #60a5fa; }
+  .canvas-agent-cursor { display: inline-block; width: 2px; height: 14px; animation: blink 0.8s step-end infinite; vertical-align: middle; }
+
+  /* Interactive Race Demo */
+  .irace-container { position: relative; }
+  .irace-intro { text-align: center; margin-bottom: 24px; }
+  .irace-intro h3 { font-size: 18px; font-weight: 600; color: #fafafa; margin-bottom: 6px; }
+  .irace-intro p { font-size: 13px; color: #71717a; }
+  .irace-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
+  .irace-panel { background: #111113; border: 1px solid #27272a; border-radius: 12px; overflow: hidden; transition: border-color 0.3s; }
+  .irace-panel:hover { border-color: #3f3f46; }
+  .irace-panel-head { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid #1e1e22; }
+  .irace-panel-head .irace-model { font-size: 13px; font-weight: 600; }
+  .irace-panel-head .irace-badge { font-size: 10px; padding: 2px 8px; border-radius: 100px; background: rgba(255,255,255,0.06); color: #71717a; }
+  .irace-site { cursor: pointer; position: relative; }
+  .irace-section { padding: 0; transition: all 0.25s; position: relative; border: 2px solid transparent; }
+  .irace-section:hover { background: rgba(255,255,255,0.02); }
+  .irace-section.selected { border-color: var(--sel-color); box-shadow: 0 0 12px var(--sel-glow); }
+  .irace-section .irace-sel-tag { display: none; position: absolute; top: 4px; right: 4px; font-size: 9px; padding: 1px 6px; border-radius: 4px; background: var(--sel-color); color: #0a0a0a; font-weight: 700; z-index: 2; }
+  .irace-section.selected .irace-sel-tag { display: block; }
+  .irace-section-label { position: absolute; top: 4px; left: 6px; font-size: 9px; color: #52525b; text-transform: uppercase; letter-spacing: 0.5px; z-index: 1; pointer-events: none; }
+  .bk-header { height: 36px; display: flex; align-items: center; padding: 0 12px; gap: 8px; }
+  .bk-logo { font-size: 11px; font-weight: 700; }
+  .bk-nav { display: flex; gap: 8px; margin-left: auto; }
+  .bk-nav span { width: 28px; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.12); }
+  .bk-hero { height: 70px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 6px; }
+  .bk-hero-title { font-size: 12px; font-weight: 700; }
+  .bk-hero-sub { font-size: 8px; color: #71717a; }
+  .bk-hero-btn { font-size: 8px; padding: 3px 10px; border-radius: 4px; display: inline-block; }
+  .bk-menu { padding: 8px 10px; min-height: 60px; }
+  .bk-menu-title { font-size: 9px; font-weight: 600; text-align: center; margin-bottom: 6px; }
+  .bk-menu-items { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+  .bk-menu-item { height: 20px; border-radius: 3px; display: flex; align-items: center; padding: 0 6px; font-size: 7px; }
+  .bk-about { padding: 8px 10px; min-height: 40px; display: flex; align-items: center; gap: 8px; }
+  .bk-about-img { width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0; }
+  .bk-about-lines { flex: 1; }
+  .bk-about-line { height: 3px; border-radius: 2px; margin-bottom: 3px; }
+  .bk-footer { height: 28px; display: flex; align-items: center; justify-content: center; font-size: 7px; color: #52525b; border-top: 1px solid rgba(255,255,255,0.05); }
+  .irace-picks { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; margin-bottom: 16px; min-height: 36px; }
+  .irace-pick-chip { display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: #141416; border: 1px solid #27272a; border-radius: 8px; font-size: 12px; color: #a1a1aa; }
+  .irace-pick-chip .pick-section { color: #fafafa; font-weight: 500; }
+  .irace-pick-chip .pick-model { font-weight: 600; }
+  .irace-picks-empty { font-size: 13px; color: #3f3f46; }
+  .irace-actions { display: flex; justify-content: center; gap: 12px; margin-bottom: 20px; }
+  .irace-generate-btn { padding: 10px 28px; background: #f59e0b; color: #0a0a0a; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.2s; opacity: 0.4; pointer-events: none; }
+  .irace-generate-btn.active { opacity: 1; pointer-events: auto; }
+  .irace-generate-btn.active:hover { transform: scale(1.03); background: #d97706; }
+  .irace-reset-btn { padding: 10px 20px; background: transparent; color: #71717a; border: 1px solid #27272a; border-radius: 8px; font-size: 13px; cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.2s; }
+  .irace-reset-btn:hover { border-color: #3f3f46; color: #a1a1aa; }
+  .irace-result { display: none; margin-top: 20px; }
+  .irace-result.visible { display: block; animation: iraceSlideUp 0.5s ease-out; }
+  .irace-result-site { max-width: 480px; margin: 0 auto; background: #111113; border: 1px solid #27272a; border-radius: 0 0 12px 12px; overflow: hidden; }
+  .irace-result-section { animation: iraceSecFade 0.4s ease-out both; }
+  .irace-result-label { text-align: center; margin-top: 16px; }
+  .irace-result-label p { font-size: 14px; color: #71717a; margin-bottom: 12px; }
+  .irace-result-label a { display: inline-block; padding: 10px 24px; background: #f59e0b; color: #0a0a0a; border-radius: 8px; font-size: 14px; font-weight: 600; text-decoration: none; transition: transform 0.15s; }
+  .irace-result-label a:hover { transform: scale(1.03); }
+  @keyframes iraceSlideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes iraceSecFade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  @media (max-width: 768px) {
+    .irace-grid { grid-template-columns: 1fr; }
+    .irace-panel { max-width: 400px; margin: 0 auto; }
+  }
+
+  .builder-steps { display: flex; align-items: center; justify-content: center; gap: 0; margin-bottom: 32px; flex-wrap: wrap; }
+  .builder-step { text-align: center; padding: 16px 24px; }
+  .builder-step .step-num { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: #27272a; color: #71717a; font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+  .builder-step.active .step-num { background: #f59e0b; color: #0a0a0a; }
+  .builder-step.done .step-num { background: #22c55e; color: #0a0a0a; }
+  .builder-step .step-label { display: block; font-size: 13px; color: #71717a; }
+  .builder-step.active .step-label { color: #fafafa; }
+  .builder-arrow { color: #3f3f46; font-size: 18px; margin: 0 4px; }
+  .builder-prompt { background: #141416; border: 1px solid #27272a; border-radius: 10px; padding: 16px 20px; margin-bottom: 20px; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #a1a1aa; }
+  .builder-prompt .typed { color: #fafafa; }
+  .builder-progress { background: #27272a; border-radius: 6px; height: 10px; overflow: hidden; margin-bottom: 12px; }
+  .builder-progress-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #f59e0b); border-radius: 6px; width: 0%; animation: buildProgress 4s ease-in-out infinite; }
+  @keyframes buildProgress { 0% { width: 0%; } 60% { width: 92%; } 80% { width: 97%; } 100% { width: 100%; } }
+  .builder-progress-label { font-size: 12px; color: #71717a; text-align: right; margin-bottom: 20px; }
+  .builder-platforms { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; }
+  .builder-platform { display: flex; align-items: center; gap: 6px; padding: 8px 16px; background: #1a1a1e; border: 1px solid #27272a; border-radius: 8px; font-size: 13px; color: #a1a1aa; }
+  .builder-platform svg { width: 18px; height: 18px; fill: currentColor; }
+
+  @media (max-width: 768px) {
+    .canvas-layout { grid-template-columns: 1fr; }
+    .canvas-tree, .canvas-agents { display: none; }
+    .builder-steps { gap: 4px; }
+    .builder-arrow { display: none; }
+  }
+  </style>
+
+  <div class="mockup-grid">
+
+  <!-- 1. DASHBOARD PREVIEW -->
+  <div class="mockup-block">
+    <div class="mockup-titlebar">
+      <div class="mockup-dot r"></div><div class="mockup-dot y"></div><div class="mockup-dot g"></div>
+      <span>BLUN Dashboard -- agents.local:3000</span>
+    </div>
+    <div class="mockup-body">
+      <div class="dash-stats">
+        <div class="dash-stat"><div class="num">16</div><div class="lbl">Agents</div></div>
+        <div class="dash-stat"><div class="num">3</div><div class="lbl">Companies</div></div>
+        <div class="dash-stat"><div class="num">2,847</div><div class="lbl">Messages Today</div></div>
+        <div class="dash-stat"><div class="num">99.7%</div><div class="lbl">Uptime</div></div>
+      </div>
+      <div class="dash-agents">
+        <div class="dash-card">
+          <div class="dash-card-head"><h4>DevOps Agent</h4><span class="dash-status online"></span></div>
+          <div class="dash-meta"><b>Claude Sonnet</b> -- WebConsulting</div>
+          <div class="dash-meta">342 msgs | 1.2s avg</div>
+          <div class="dash-bar"><div class="dash-bar-fill" style="width:87%"></div></div>
+        </div>
+        <div class="dash-card">
+          <div class="dash-card-head"><h4>Code Reviewer</h4><span class="dash-status online"></span></div>
+          <div class="dash-meta"><b>GPT-4o</b> -- FinTech Corp</div>
+          <div class="dash-meta">518 msgs | 0.8s avg</div>
+          <div class="dash-bar"><div class="dash-bar-fill" style="width:94%"></div></div>
+        </div>
+        <div class="dash-card">
+          <div class="dash-card-head"><h4>QA Tester</h4><span class="dash-status busy"></span></div>
+          <div class="dash-meta"><b>Gemini Pro</b> -- DataVault</div>
+          <div class="dash-meta">127 msgs | 2.1s avg</div>
+          <div class="dash-bar"><div class="dash-bar-fill" style="width:63%"></div></div>
+        </div>
+        <div class="dash-card">
+          <div class="dash-card-head"><h4>API Builder</h4><span class="dash-status online"></span></div>
+          <div class="dash-meta"><b>Claude Opus</b> -- WebConsulting</div>
+          <div class="dash-meta">891 msgs | 1.5s avg</div>
+          <div class="dash-bar"><div class="dash-bar-fill" style="width:78%"></div></div>
+        </div>
+        <div class="dash-card">
+          <div class="dash-card-head"><h4>Doc Writer</h4><span class="dash-status offline"></span></div>
+          <div class="dash-meta"><b>GPT-4o mini</b> -- FinTech Corp</div>
+          <div class="dash-meta">45 msgs | idle</div>
+          <div class="dash-bar"><div class="dash-bar-fill" style="width:12%"></div></div>
+        </div>
+        <div class="dash-card">
+          <div class="dash-card-head"><h4>Security Scan</h4><span class="dash-status online"></span></div>
+          <div class="dash-meta"><b>Gemini Flash</b> -- DataVault</div>
+          <div class="dash-meta">203 msgs | 0.4s avg</div>
+          <div class="dash-bar"><div class="dash-bar-fill" style="width:91%"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. MULTI-AGENT TERMINAL -->
+  <div class="mockup-block">
+    <div class="mockup-titlebar">
+      <div class="mockup-dot r"></div><div class="mockup-dot y"></div><div class="mockup-dot g"></div>
+      <span>Terminal -- blun orchestrate --project api-gateway</span>
+    </div>
+    <div class="term-body" id="mockup-terminal">
+      <div class="term-line" style="animation-delay:0.2s"><span class="ts">09:14:02</span><span class="sys">[BLUN]</span> Orchestrating 3 agents on project api-gateway...</div>
+      <div class="term-line" style="animation-delay:0.6s"><span class="ts">09:14:03</span><span class="claude">[Claude]</span> Scaffolding route handlers in /src/routes/</div>
+      <div class="term-line" style="animation-delay:1.0s"><span class="ts">09:14:03</span><span class="gpt">[GPT-4o]</span> Writing unit tests for auth middleware</div>
+      <div class="term-line" style="animation-delay:1.4s"><span class="ts">09:14:04</span><span class="gemini">[Gemini]</span> Generating OpenAPI spec from route definitions</div>
+      <div class="term-line" style="animation-delay:1.8s"><span class="ts">09:14:06</span><span class="claude">[Claude]</span> <span class="dim">Created 12 endpoints across 4 modules</span></div>
+      <div class="term-line" style="animation-delay:2.2s"><span class="ts">09:14:07</span><span class="gpt">[GPT-4o]</span> <span class="dim">48 tests passing, 0 failures</span></div>
+      <div class="term-line" style="animation-delay:2.6s"><span class="ts">09:14:08</span><span class="gemini">[Gemini]</span> <span class="dim">OpenAPI 3.1 spec generated -- 847 lines</span></div>
+      <div class="term-line" style="animation-delay:3.0s"><span class="ts">09:14:09</span><span class="sys">[BLUN]</span> Merging outputs... conflict resolution: 0 conflicts</div>
+      <div class="term-line" style="animation-delay:3.4s"><span class="ts">09:14:10</span><span class="sys">[BLUN]</span> Build complete. 3 agents, 14 files, 2,340 lines in 8.2s</div>
+      <div class="term-line" style="animation-delay:3.8s"><span class="ts">09:14:10</span><span class="dim">$</span> <span class="term-cursor"></span></div>
+    </div>
+  </div>
+
+  <!-- 3. CODE CANVAS -->
+  <div class="mockup-block">
+    <div class="mockup-titlebar">
+      <div class="mockup-dot r"></div><div class="mockup-dot y"></div><div class="mockup-dot g"></div>
+      <span>BLUN Canvas -- api-gateway/src/routes/auth.ts</span>
+    </div>
+    <div class="canvas-layout">
+      <div class="canvas-tree">
+        <div class="canvas-tree-item folder">src/</div>
+        <div class="canvas-tree-item" style="padding-left:20px">index.ts</div>
+        <div class="canvas-tree-item" style="padding-left:20px">config.ts</div>
+        <div class="canvas-tree-item folder" style="padding-left:20px">routes/</div>
+        <div class="canvas-tree-item active" style="padding-left:32px">auth.ts</div>
+        <div class="canvas-tree-item" style="padding-left:32px">users.ts</div>
+        <div class="canvas-tree-item" style="padding-left:32px">billing.ts</div>
+        <div class="canvas-tree-item folder" style="padding-left:20px">middleware/</div>
+        <div class="canvas-tree-item" style="padding-left:32px">rateLimit.ts</div>
+        <div class="canvas-tree-item" style="padding-left:32px">cors.ts</div>
+        <div class="canvas-tree-item folder" style="padding-left:20px">tests/</div>
+        <div class="canvas-tree-item" style="padding-left:32px">auth.test.ts</div>
+      </div>
+      <div class="canvas-code">
+        <div><span class="ln">38</span><span class="kw">import</span> { <span class="fn">validateToken</span> } <span class="kw">from</span> <span class="str">'../middleware/auth'</span>;</div>
+        <div><span class="ln">39</span></div>
+        <div><span class="ln">40</span><span class="kw">export const</span> <span class="fn">authRouter</span> <span class="op">=</span> <span class="fn">createRouter</span>();</div>
+        <div><span class="ln">41</span></div>
+        <div style="background:rgba(167,139,250,0.08);border-left:2px solid #a78bfa;padding-left:4px"><span class="ln">42</span>authRouter.<span class="fn">post</span>(<span class="str">'/login'</span>, <span class="kw">async</span> (ctx) <span class="op">=&gt;</span> {</div>
+        <div style="background:rgba(167,139,250,0.06)"><span class="ln">43</span>  <span class="kw">const</span> { email, password } <span class="op">=</span> ctx.body;</div>
+        <div style="background:rgba(167,139,250,0.06)"><span class="ln">44</span>  <span class="kw">const</span> user <span class="op">=</span> <span class="kw">await</span> <span class="fn">findUser</span>(email);</div>
+        <div style="background:rgba(167,139,250,0.06)"><span class="ln">45</span>  <span class="kw">const</span> token <span class="op">=</span> <span class="fn">signJWT</span>({ sub: user.id });<span class="canvas-agent-cursor" style="background:#a78bfa"></span></div>
+        <div><span class="ln">46</span>  ctx.json({ token, <span class="fn">expiresIn</span>: <span class="str">'24h'</span> });</div>
+        <div><span class="ln">47</span>});</div>
+        <div><span class="ln">48</span></div>
+        <div><span class="ln">49</span><span class="cm">// Rate-limited refresh endpoint</span></div>
+        <div style="background:rgba(74,222,128,0.06);border-left:2px solid #4ade80;padding-left:4px"><span class="ln">50</span>authRouter.<span class="fn">post</span>(<span class="str">'/refresh'</span>, <span class="fn">rateLimit</span>(<span class="str">'5/min'</span>), <span class="kw">async</span> (ctx) <span class="op">=&gt;</span> {</div>
+        <div style="background:rgba(74,222,128,0.04)"><span class="ln">51</span>  <span class="kw">const</span> decoded <span class="op">=</span> <span class="fn">verifyJWT</span>(ctx.headers.authorization);</div>
+        <div style="background:rgba(74,222,128,0.04)"><span class="ln">52</span>  <span class="kw">return</span> ctx.json({ token: <span class="fn">signJWT</span>(decoded) });<span class="canvas-agent-cursor" style="background:#4ade80"></span></div>
+        <div><span class="ln">53</span>});</div>
+      </div>
+      <div class="canvas-agents">
+        <div class="canvas-agent-indicator">
+          <div class="name purple">Claude Opus</div>
+          <div class="action">Editing line 42-45</div>
+          <div class="action" style="color:#a78bfa;margin-top:4px">Writing login handler</div>
+        </div>
+        <div class="canvas-agent-indicator">
+          <div class="name green">GPT-4o</div>
+          <div class="action">Reviewing line 50-52</div>
+          <div class="action" style="color:#4ade80;margin-top:4px">Adding rate limiting</div>
+        </div>
+        <div class="canvas-agent-indicator">
+          <div class="name blue">Gemini Pro</div>
+          <div class="action">Watching all files</div>
+          <div class="action" style="color:#60a5fa;margin-top:4px">Generating API docs</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. INTERACTIVE MODEL RACE DEMO -->
+  <div class="mockup-block" id="race-demo">
+    <div class="mockup-titlebar">
+      <div class="mockup-dot r"></div><div class="mockup-dot y"></div><div class="mockup-dot g"></div>
+      <span>BLUN Race -- "Build a bakery website"</span>
+    </div>
+    <div class="mockup-body">
+      <div class="irace-container">
+        <div class="irace-intro">
+          <h3>Visual Cherry-Pick</h3>
+          <p>Click any section from any model. Mix the best parts into one site.</p>
+        </div>
+
+        <div class="irace-grid" id="iraceGrid"></div>
+
+        <div class="irace-picks" id="iracePicks">
+          <span class="irace-picks-empty">Click sections above to start cherry-picking</span>
+        </div>
+
+        <div class="irace-actions">
+          <button class="irace-reset-btn" onclick="iraceReset()">Reset</button>
+          <button class="irace-generate-btn" id="iraceGenBtn" onclick="iraceGenerate()">Generate My Mix</button>
+        </div>
+
+        <div class="irace-result" id="iraceResult">
+          <div class="mockup-titlebar" style="border-radius:12px 12px 0 0">
+            <div class="mockup-dot r"></div><div class="mockup-dot y"></div><div class="mockup-dot g"></div>
+            <span>Your Cherry-Picked Mix</span>
+          </div>
+          <div class="irace-result-site" id="iraceResultSite"></div>
+          <div class="irace-result-label">
+            <p>Your custom mix -- built from the best of three AI models</p>
+            <a href="#cta">Start building yours -- free</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    var MODELS = [
+      { id:"claude", name:"Claude", color:"#a78bfa", glow:"rgba(167,139,250,0.3)" },
+      { id:"gpt", name:"GPT", color:"#4ade80", glow:"rgba(74,222,128,0.3)" },
+      { id:"gemini", name:"Gemini", color:"#60a5fa", glow:"rgba(96,165,250,0.3)" }
+    ];
+    var SECTIONS = ["header","hero","menu","about","footer"];
+    var picks = {};
+
+    var designs = {
+      claude: {
+        header: '<div class="bk-header" style="background:#13082a"><span class="bk-logo" style="color:#a78bfa">Sweet Dreams</span><div class="bk-nav"><span style="background:#a78bfa40"></span><span style="background:#a78bfa40"></span><span style="background:#a78bfa40"></span></div></div>',
+        hero: '<div class="bk-hero" style="background:linear-gradient(135deg,#1e1b4b,#2e1065)"><span class="bk-hero-title" style="color:#e9d5ff">Artisan Baked Goods</span><span class="bk-hero-sub">Handcrafted daily with organic ingredients</span><span class="bk-hero-btn" style="background:#a78bfa;color:#0a0a0a">Order Now</span></div>',
+        menu: '<div class="bk-menu" style="background:#110d20"><div class="bk-menu-title" style="color:#c4b5fd">Our Menu</div><div class="bk-menu-items"><div class="bk-menu-item" style="background:#1e1b4b;color:#c4b5fd">Sourdough</div><div class="bk-menu-item" style="background:#1e1b4b;color:#c4b5fd">Croissant</div><div class="bk-menu-item" style="background:#1e1b4b;color:#c4b5fd">Brioche</div><div class="bk-menu-item" style="background:#1e1b4b;color:#c4b5fd">Baguette</div></div></div>',
+        about: '<div class="bk-about" style="background:#0f0a1a"><div class="bk-about-img" style="background:#2e1065"></div><div class="bk-about-lines"><div class="bk-about-line" style="background:#1e1b4b;width:90%"></div><div class="bk-about-line" style="background:#1e1b4b;width:70%"></div><div class="bk-about-line" style="background:#1e1b4b;width:80%"></div></div></div>',
+        footer: '<div class="bk-footer" style="background:#0a0618;color:#6d28d9">Sweet Dreams Bakery -- Est. 2024</div>'
+      },
+      gpt: {
+        header: '<div class="bk-header" style="background:#071a0b"><span class="bk-logo" style="color:#4ade80">SWEET DREAMS</span><div class="bk-nav"><span style="background:#4ade8040"></span><span style="background:#4ade8040"></span><span style="background:#4ade8040"></span></div></div>',
+        hero: '<div class="bk-hero" style="background:linear-gradient(180deg,#052e16,#14532d)"><span class="bk-hero-title" style="color:#bbf7d0">Fresh From the Oven</span><span class="bk-hero-sub">Family recipes since 1987</span><span class="bk-hero-btn" style="background:#4ade80;color:#052e16">View Menu</span></div>',
+        menu: '<div class="bk-menu" style="background:#091a0d"><div class="bk-menu-title" style="color:#86efac">Daily Specials</div><div class="bk-menu-items"><div class="bk-menu-item" style="background:#052e16;color:#86efac">Rye Loaf</div><div class="bk-menu-item" style="background:#052e16;color:#86efac">Danish</div><div class="bk-menu-item" style="background:#052e16;color:#86efac">Eclair</div><div class="bk-menu-item" style="background:#052e16;color:#86efac">Pretzel</div></div></div>',
+        about: '<div class="bk-about" style="background:#0a1a0f"><div class="bk-about-img" style="background:#14532d;border-radius:4px"></div><div class="bk-about-lines"><div class="bk-about-line" style="background:#052e16;width:85%"></div><div class="bk-about-line" style="background:#052e16;width:95%"></div><div class="bk-about-line" style="background:#052e16;width:60%"></div></div></div>',
+        footer: '<div class="bk-footer" style="background:#04120a;color:#166534">Sweet Dreams -- Baked with Love</div>'
+      },
+      gemini: {
+        header: '<div class="bk-header" style="background:#081225;border-bottom:1px solid #1e3a5f"><span class="bk-logo" style="color:#60a5fa">sweet dreams</span><div class="bk-nav"><span style="background:#60a5fa40"></span><span style="background:#60a5fa40"></span><span style="background:#60a5fa40"></span></div></div>',
+        hero: '<div class="bk-hero" style="background:linear-gradient(135deg,#0c1a3a,#172554)"><span class="bk-hero-title" style="color:#bfdbfe">The Art of Baking</span><span class="bk-hero-sub">Modern techniques, timeless flavors</span><span class="bk-hero-btn" style="background:transparent;color:#60a5fa;border:1px solid #60a5fa">Explore</span></div>',
+        menu: '<div class="bk-menu" style="background:#0b1526"><div class="bk-menu-title" style="color:#93c5fd">Selections</div><div class="bk-menu-items"><div class="bk-menu-item" style="background:#172554;color:#93c5fd">Focaccia</div><div class="bk-menu-item" style="background:#172554;color:#93c5fd">Muffin</div><div class="bk-menu-item" style="background:#172554;color:#93c5fd">Scone</div><div class="bk-menu-item" style="background:#172554;color:#93c5fd">Tart</div></div></div>',
+        about: '<div class="bk-about" style="background:#0a1628"><div class="bk-about-img" style="background:#1e3a5f"></div><div class="bk-about-lines"><div class="bk-about-line" style="background:#172554;width:100%"></div><div class="bk-about-line" style="background:#172554;width:75%"></div><div class="bk-about-line" style="background:#172554;width:88%"></div></div></div>',
+        footer: '<div class="bk-footer" style="background:#070f1e;color:#1e40af">sweetdreamsbakery.com</div>'
+      }
+    };
+
+    function buildPanels() {
+      var grid = document.getElementById("iraceGrid");
+      grid.innerHTML = "";
+      MODELS.forEach(function(m) {
+        var panel = document.createElement("div");
+        panel.className = "irace-panel";
+        var head = '<div class="irace-panel-head"><span class="irace-model" style="color:'+m.color+'">'+m.name+'</span><span class="irace-badge">AI Model</span></div>';
+        var site = '<div class="irace-site">';
+        SECTIONS.forEach(function(sec) {
+          site += '<div class="irace-section" style="--sel-color:'+m.color+';--sel-glow:'+m.glow+'" data-model="'+m.id+'" data-section="'+sec+'" onclick="iraceSelect(this)">';
+          site += '<span class="irace-section-label">'+sec+'</span>';
+          site += '<span class="irace-sel-tag">PICK</span>';
+          site += designs[m.id][sec];
+          site += '</div>';
+        });
+        site += '</div>';
+        panel.innerHTML = head + site;
+        grid.appendChild(panel);
+      });
+    }
+
+    window.iraceSelect = function(el) {
+      var model = el.getAttribute("data-model");
+      var section = el.getAttribute("data-section");
+      picks[section] = model;
+      document.querySelectorAll(".irace-section").forEach(function(e) {
+        var s = e.getAttribute("data-section");
+        var m = e.getAttribute("data-model");
+        if (picks[s] === m) { e.classList.add("selected"); }
+        else { e.classList.remove("selected"); }
+      });
+      updatePicks();
+    };
+
+    function updatePicks() {
+      var cont = document.getElementById("iracePicks");
+      var btn = document.getElementById("iraceGenBtn");
+      var keys = Object.keys(picks);
+      if (keys.length === 0) {
+        cont.innerHTML = '<span class="irace-picks-empty">Click sections above to start cherry-picking</span>';
+        btn.classList.remove("active");
+        return;
+      }
+      var html = "";
+      SECTIONS.forEach(function(sec) {
+        if (picks[sec]) {
+          var m = MODELS.filter(function(x){return x.id===picks[sec]})[0];
+          html += '<div class="irace-pick-chip"><span class="pick-section">'+sec.charAt(0).toUpperCase()+sec.slice(1)+'</span><span class="pick-model" style="color:'+m.color+'">'+m.name+'</span></div>';
+        }
+      });
+      cont.innerHTML = html;
+      btn.classList.toggle("active", keys.length >= 2);
+    }
+
+    window.iraceReset = function() {
+      picks = {};
+      document.querySelectorAll(".irace-section").forEach(function(e) { e.classList.remove("selected"); });
+      document.getElementById("iraceResult").classList.remove("visible");
+      updatePicks();
+    };
+
+    window.iraceGenerate = function() {
+      var result = document.getElementById("iraceResultSite");
+      var html = "";
+      var delay = 0;
+      SECTIONS.forEach(function(sec) {
+        var modelId = picks[sec] || "claude";
+        html += '<div class="irace-result-section" style="animation-delay:'+delay+'ms">' + designs[modelId][sec] + '</div>';
+        delay += 120;
+      });
+      result.innerHTML = html;
+      var resEl = document.getElementById("iraceResult");
+      resEl.classList.add("visible");
+      resEl.scrollIntoView({ behavior: "smooth", block: "center" });
+    };
+
+    buildPanels();
+  })();
+  </script>
+
+  <!-- 5. SOFTWARE BUILDER -->
+  <div class="mockup-block">
+    <div class="mockup-titlebar">
+      <div class="mockup-dot r"></div><div class="mockup-dot y"></div><div class="mockup-dot g"></div>
+      <span>BLUN Build -- Software Builder</span>
+    </div>
+    <div class="mockup-body">
+      <div class="builder-steps">
+        <div class="builder-step done"><div class="step-num">1</div><span class="step-label">Describe</span></div>
+        <span class="builder-arrow">--&gt;</span>
+        <div class="builder-step active"><div class="step-num">2</div><span class="step-label">AI Builds</span></div>
+        <span class="builder-arrow">--&gt;</span>
+        <div class="builder-step"><div class="step-num">3</div><span class="step-label">Download</span></div>
+      </div>
+      <div class="builder-prompt">
+        <span class="dim">$</span> <span class="typed">blun build "A password manager with AES-256 encryption, auto-fill browser extension, and cloud sync"</span>
+      </div>
+      <div class="builder-progress"><div class="builder-progress-fill"></div></div>
+      <div class="builder-progress-label">Claude: backend | GPT-4o: extension | Gemini: cloud sync -- Compiling...</div>
+      <div class="builder-platforms">
+        <div class="builder-platform"><svg viewBox="0 0 24 24"><path d="M3 5.5L10.7 4.1 10.7 11.3 3 11.4zM10.7 12.5L10.7 19.8 3 18.4 3 12.5zM11.8 3.9L21 2.5 21 11.2 11.8 11.3zM21 12.5L21 21.5 11.8 20 11.8 12.5z"/></svg>Windows .exe</div>
+        <div class="builder-platform"><svg viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83z"/></svg>macOS .dmg</div>
+        <div class="builder-platform"><svg viewBox="0 0 24 24"><path d="M12.5 2L2 7.5 12.5 13 23 7.5zM2 12l10.5 5.5L23 12M2 16.5l10.5 5.5L23 16.5"/></svg>Linux .AppImage</div>
+        <div class="builder-platform"><svg viewBox="0 0 24 24"><path d="M17.523 2H6.477C5.1 2 4 3.1 4 4.477v15.046C4 20.9 5.1 22 6.477 22h11.046C18.9 22 20 20.9 20 19.523V4.477C20 3.1 18.9 2 17.523 2zM12 20.5a1 1 0 110-2 1 1 0 010 2zM18 17H6V5h12v12z"/></svg>Android .apk</div>
+        <div class="builder-platform"><svg viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83z"/></svg>iOS .ipa</div>
+      </div>
+    </div>
+  </div>
+
+  </div>
+</div>
+</section>
+
+<!-- Comparison -->
+<section id="comparison" style="border-top: 1px solid var(--border);">
+  <div class="container">
+    <div class="section-header">
+      <p class="section-label">Comparison</p>
+      <h2 class="section-title">Why teams choose BLUN</h2>
+    </div>
+    <div style="overflow-x: auto;">
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th>BLUN</th>
+            <th>CrewAI</th>
+            <th>AutoGen</th>
+            <th>LangGraph</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Built-in Dashboard</td><td class="check">Yes</td><td class="cross">No</td><td class="cross">No</td><td class="cross">No</td></tr>
+          <tr><td>One-command setup</td><td class="check">Yes</td><td class="cross">No</td><td class="cross">No</td><td class="cross">No</td></tr>
+          <tr><td>Telegram integration</td><td class="check">Yes</td><td class="cross">No</td><td class="cross">No</td><td class="cross">No</td></tr>
+          <tr><td>Federation</td><td class="check">Yes</td><td class="cross">No</td><td class="cross">No</td><td class="cross">No</td></tr>
+          <tr><td>Skills marketplace</td><td class="check">Yes</td><td class="cross">No</td><td class="cross">No</td><td class="cross">No</td></tr>
+          <tr><td>Multi-model per agent</td><td class="check">Yes</td><td class="partial">Partial</td><td class="partial">Partial</td><td class="partial">Partial</td></tr>
+          <tr><td>Real-time WebSocket</td><td class="check">Yes</td><td class="cross">No</td><td class="cross">No</td><td class="cross">No</td></tr>
+          <tr><td>Works offline</td><td class="check">Yes</td><td class="cross">No</td><td class="cross">No</td><td class="cross">No</td></tr>
+          <tr><td>Built-in billing</td><td class="check">Yes</td><td class="cross">No</td><td class="cross">No</td><td class="cross">No</td></tr>
+          <tr><td>No Python required</td><td class="check">Yes</td><td class="cross">No</td><td class="cross">No</td><td class="cross">No</td></tr>
+          <tr><td>Open source (MIT)</td><td class="check">Yes</td><td class="check">Yes</td><td class="check">Yes</td><td class="check">Yes</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- Install -->
+<section id="install" style="border-top: 1px solid var(--border);">
+  <div class="container">
+    <div class="section-header">
+      <p class="section-label">Quick Start</p>
+      <h2 class="section-title">Up and running in 30 seconds</h2>
+      <p class="section-desc">One command to scaffold. One command to launch. No configuration required.</p>
+    </div>
+    <div class="hero-terminal" style="max-width: 600px; margin: 0 auto;">
+      <div class="terminal-bar">
+        <div class="terminal-dot"></div>
+        <div class="terminal-dot"></div>
+        <div class="terminal-dot"></div>
+      </div>
+      <div class="terminal-body">
+        <div class="terminal-line" style="width: 100%; border: none;">npx create-blun my-project</div>
+        <div class="terminal-line" style="width: 100%; border: none;">cd my-project</div>
+        <div class="terminal-line" style="width: 100%; border: none;">blun start</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Pricing -->
+<section id="pricing" style="border-top: 1px solid var(--border);">
+  <div class="container-wide">
+    <div class="section-header">
+      <p class="section-label">Pricing</p>
+      <h2 class="section-title">Start free. Scale when ready.</h2>
+      <p class="section-desc">Self-host forever for free. Cloud plans include hosting and automatic updates.</p>
+    </div>
+    <div class="pricing-grid">
+
+      <div class="pricing-card">
+        <h3>Free</h3>
+        <div class="price">0 EUR <span>/ month</span></div>
+        <p class="price-note">Perfect for trying BLUN out</p>
+        <ul>
+          <li>3 Agents</li>
+          <li>5 Skills</li>
+          <li>Dashboard</li>
+          <li>SQLite storage</li>
+          <li>Community support</li>
+        </ul>
+        <a href="#install" class="pricing-btn">Get Started</a>
+      </div>
+
+      <div class="pricing-card featured">
+        <div class="plan-badge">Popular</div>
+        <h3>Pro</h3>
+        <div class="price">5 EUR <span>/ month</span></div>
+        <p class="price-note">For serious builders</p>
+        <ul>
+          <li>10 Agents</li>
+          <li>Unlimited Skills</li>
+          <li>Federation</li>
+          <li>PostgreSQL support</li>
+          <li>Email support</li>
+        </ul>
+        <a href="/register" class="pricing-btn primary">Start Free Trial</a>
+      </div>
+
+      <div class="pricing-card">
+        <h3>Team</h3>
+        <div class="price">15 EUR <span>/ month</span></div>
+        <p class="price-note">For teams and agencies</p>
+        <ul>
+          <li>Unlimited Agents</li>
+          <li>Unlimited Skills</li>
+          <li>Custom branding</li>
+          <li>Priority support</li>
+          <li>Team management</li>
+        </ul>
+        <a href="/register" class="pricing-btn">Start Free Trial</a>
+      </div>
+
+      <div class="pricing-card">
+        <h3>Enterprise</h3>
+        <div class="price">Custom</div>
+        <p class="price-note">For organizations</p>
+        <ul>
+          <li>Everything in Team</li>
+          <li>Dedicated infrastructure</li>
+          <li>SLA guarantee</li>
+          <li>SSO / SAML</li>
+          <li>Onboarding support</li>
+        </ul>
+        <a href="mailto:hello@blun.at" class="pricing-btn">Contact Sales</a>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- Testimonials -->
+<section id="testimonials" style="border-top: 1px solid var(--border);">
+  <div class="container">
+    <div class="section-header">
+      <p class="section-label">Testimonials</p>
+      <h2 class="section-title">What builders are saying</h2>
+    </div>
+    <div class="testimonials-grid">
+      <div class="testimonial-card">
+        <blockquote>"BLUN replaced three different tools for us. The KI-Organisator is genuinely impressive -- it coordinates our agents better than we could manually."</blockquote>
+        <div class="testimonial-author">-- Early Adopter</div>
+        <div class="testimonial-role">AI Engineering Team</div>
+      </div>
+      <div class="testimonial-card">
+        <blockquote>"We went from zero to a working agent team in under five minutes. The Telegram integration alone was worth switching."</blockquote>
+        <div class="testimonial-author">-- Beta User</div>
+        <div class="testimonial-role">Startup CTO</div>
+      </div>
+      <div class="testimonial-card">
+        <blockquote>"Finally an agent framework that ships with a real UI. No more cobbling together dashboards from scratch."</blockquote>
+        <div class="testimonial-author">-- Community Member</div>
+        <div class="testimonial-role">Full-Stack Developer</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section id="faq" style="border-top: 1px solid var(--border);">
+  <div class="container">
+    <div class="section-header">
+      <p class="section-label">FAQ</p>
+      <h2 class="section-title">Frequently asked questions</h2>
+    </div>
+    <div class="faq-list">
+
+      <div class="faq-item">
+        <button class="faq-question">What is an AI agent?</button>
+        <div class="faq-answer">
+          <p>An AI agent is a program powered by a language model (like ChatGPT or Claude) that can perform tasks autonomously. Instead of just answering questions, agents can write code, do research, send messages, and make decisions. BLUN organizes multiple agents into a coordinated team.</p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question">Do I need to know how to code?</button>
+        <div class="faq-answer">
+          <p>You need basic command-line skills to install and run BLUN. But once it is running, you interact with your agents through the dashboard or Telegram -- no coding required for day-to-day use.</p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question">Which AI models does BLUN support?</button>
+        <div class="faq-answer">
+          <p>OpenAI (GPT-4, GPT-4o), Anthropic (Claude), Google (Gemini), and any local model via Ollama. You can assign different models to different agents and switch anytime.</p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question">Is BLUN really free?</button>
+        <div class="faq-answer">
+          <p>Yes. BLUN is MIT licensed and free to self-host forever. The paid plans are for managed cloud hosting with extra features like federation and priority support. You bring your own API keys for the AI models.</p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question">Can BLUN work without internet?</button>
+        <div class="faq-answer">
+          <p>Yes. BLUN uses SQLite by default and can run entirely offline if you pair it with a local model through Ollama. No cloud dependency whatsoever.</p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question">What is Federation?</button>
+        <div class="faq-answer">
+          <p>Federation lets multiple BLUN instances talk to each other across the internet. Your agents can collaborate with agents running on someone else's server -- like email, but for AI teams. Available on Pro plans and above.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- Newsletter -->
+<section class="newsletter">
+  <div class="container">
+    <h2>Stay in the loop</h2>
+    <p>Get notified about major releases and new features. No spam, ever.</p>
+    <form class="newsletter-form" onsubmit="return false;">
+      <input type="email" placeholder="you@example.com" />
+      <button type="submit">Subscribe</button>
+    </form>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <div class="logo">BLUN</div>
+        <p>Open-source AI agent orchestration. Built for developers who want organized, productive AI teams.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Product</h4>
+        <ul>
+          <li><a href="#features">Features</a></li>
+      <li><a href="#in-action">Preview</a></li>
+          <li><a href="#pricing">Pricing</a></li>
+          <li><a href="/dashboard">Dashboard</a></li>
+          <li><a href="#install">Quick Start</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Resources</h4>
+        <ul>
+          <li><a href="https://github.com/Maykbiletti/blun" target="_blank">GitHub</a></li>
+          <li><a href="#">Documentation</a></li>
+          <li><a href="#">Blog</a></li>
+          <li><a href="#">Changelog</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Community</h4>
+        <ul>
+          <li><a href="#">Discord</a></li>
+          <li><a href="#">Twitter / X</a></li>
+          <li><a href="https://github.com/Maykbiletti/blun/discussions" target="_blank">Discussions</a></li>
+          <li><a href="https://github.com/Maykbiletti/blun/issues" target="_blank">Issues</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>2026 BLUN. MIT License.</p>
+      <div class="footer-bottom-links">
+        <a href="/privacy">Datenschutz</a>
+        <a href="/impressum">Impressum</a>
+        <a href="https://github.com/Maykbiletti/blun" target="_blank">GitHub</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+// FAQ accordion
+document.querySelectorAll('.faq-question').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var item = this.parentElement;
+    var wasOpen = item.classList.contains('open');
+    document.querySelectorAll('.faq-item').forEach(function(i) { i.classList.remove('open'); });
+    if (!wasOpen) item.classList.add('open');
+  });
+});
+</script>
+
+<!-- Cookie Consent Banner --><div id="cookie-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;background:#18181b;border-top:1px solid #27272a;padding:16px 24px;font-family:Inter,sans-serif;">  <div style="max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">    <p style="font-size:14px;color:#a1a1aa;margin:0;flex:1;min-width:240px;">Wir verwenden Cookies, um unsere Website zu verbessern. Mehr dazu in unserer <a href="/privacy" style="color:#f59e0b;">Datenschutzerklaerung</a> und im <a href="/impressum" style="color:#f59e0b;">Impressum</a>.</p>    <div style="display:flex;gap:8px;">      <button onclick="cookieConsent(false)" style="background:transparent;border:1px solid #3f3f46;color:#a1a1aa;padding:8px 20px;border-radius:6px;font-size:13px;cursor:pointer;">Ablehnen</button>      <button onclick="cookieConsent(true)" style="background:#f59e0b;border:none;color:#000;padding:8px 20px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Akzeptieren</button>    </div>  </div></div><script>(function(){  window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}  gtag("consent","default",{ad_storage:"denied",analytics_storage:"denied",personalization_storage:"denied",wait_for_update:500});  var c=localStorage.getItem("cookie_consent");  if(c==="accepted"){gtag("consent","update",{ad_storage:"granted",analytics_storage:"granted",personalization_storage:"granted"});}  else if(c==="rejected"){/* already denied */}  else{document.getElementById("cookie-banner").style.display="block";}})();function cookieConsent(accept){  window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}  if(accept){    localStorage.setItem("cookie_consent","accepted");    gtag("consent","update",{ad_storage:"granted",analytics_storage:"granted",personalization_storage:"granted"});    /* Placeholder: load GTM here */  }else{    localStorage.setItem("cookie_consent","rejected");  }  document.getElementById("cookie-banner").style.display="none";}</script>
+<script src="/support-widget.js"></script>
+</body>
+</html>

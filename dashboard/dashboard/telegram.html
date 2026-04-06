@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0a0a0a">
+<title>BLUN - Telegram Integration</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0a0a0a;--card:#141414;--card-border:#1e1e1e;--fg:#fafafa;--fg2:#a1a1aa;--fg3:#52525b;--amber:#f59e0b;--amber-dim:#b45309;--amber-bg:rgba(245,158,11,.08);--green:#22c55e;--red:#ef4444;--radius:8px;--radius-lg:12px;--font:"Inter",-apple-system,sans-serif}
+html,body{height:100%;background:var(--bg);color:var(--fg);font-family:var(--font);font-size:14px;-webkit-font-smoothing:antialiased}
+a{color:var(--amber);text-decoration:none}
+.container{max-width:800px;margin:0 auto;padding:24px}
+.back{display:inline-flex;align-items:center;gap:6px;color:var(--fg2);font-size:13px;margin-bottom:20px;cursor:pointer}
+.back:hover{color:var(--fg)}
+h1{font-size:22px;font-weight:700;margin-bottom:6px}
+.subtitle{color:var(--fg2);font-size:13px;margin-bottom:28px}
+.card{background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius-lg);padding:20px;margin-bottom:16px}
+.card h2{font-size:15px;font-weight:600;margin-bottom:14px}
+.steps{list-style:none;counter-reset:s}
+.steps li{counter-increment:s;padding:8px 0;color:var(--fg2);font-size:13px;display:flex;align-items:flex-start;gap:10px}
+.steps li::before{content:counter(s);background:var(--amber-bg);color:var(--amber);width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0}
+.form-row{display:flex;gap:10px;margin-top:16px}
+input[type="text"]{flex:1;background:#1a1a1a;border:1px solid var(--card-border);border-radius:var(--radius);padding:10px 14px;color:var(--fg);font-size:13px;font-family:var(--font);outline:none}
+input[type="text"]:focus{border-color:var(--amber)}
+input[type="text"]::placeholder{color:var(--fg3)}
+.btn{background:var(--amber);color:#000;border:none;border-radius:var(--radius);padding:10px 20px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);white-space:nowrap}
+.btn:hover{background:var(--amber-dim);color:#fff}
+.btn-sm{padding:6px 14px;font-size:12px}
+.btn-outline{background:transparent;border:1px solid var(--card-border);color:var(--fg2)}
+.btn-outline:hover{border-color:var(--fg3);color:var(--fg);background:transparent}
+.btn-red{background:var(--red);color:#fff}
+.btn-red:hover{background:#dc2626}
+.bot-list{margin-top:8px}
+.bot-item{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--card-border)}
+.bot-item:last-child{border-bottom:none}
+.bot-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.bot-dot.online{background:var(--green)}
+.bot-dot.offline{background:var(--red)}
+.bot-info{flex:1;min-width:0}
+.bot-name{font-weight:600;font-size:14px}
+.bot-meta{font-size:12px;color:var(--fg3);margin-top:2px}
+.bot-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+select{background:#1a1a1a;border:1px solid var(--card-border);border-radius:var(--radius);padding:6px 10px;color:var(--fg);font-size:12px;font-family:var(--font);outline:none}
+.empty{text-align:center;padding:40px 20px;color:var(--fg3)}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);padding:12px 20px;font-size:13px;display:none;z-index:999}
+.toast.success{border-color:var(--green);color:var(--green)}
+.toast.error{border-color:var(--red);color:var(--red)}
+code{background:#1a1a1a;padding:2px 6px;border-radius:4px;font-size:12px}
+</style>
+</head>
+<body>
+<div class="container">
+  <a class="back" href="/dashboard">&larr; Back to Dashboard</a>
+  <h1>Telegram Integration</h1>
+  <p class="subtitle">Connect Telegram bots to your BLUN agents for direct messaging</p>
+
+  <div class="card">
+    <h2>Connect a Bot</h2>
+    <ol class="steps">
+      <li>Open <a href="https://t.me/BotFather" target="_blank">@BotFather</a> on Telegram</li>
+      <li>Send <code>/newbot</code> and follow the steps to create your bot</li>
+      <li>Copy the API token and paste it below</li>
+    </ol>
+    <div class="form-row">
+      <input type="text" id="tokenInput" placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11">
+      <button class="btn" id="connectBtn" onclick="connectBot()">Connect</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Connected Bots</h2>
+    <div id="botList" class="bot-list"><div class="empty">Loading...</div></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var agents = [];
+
+function toast(msg, type) {
+  var t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = "toast " + (type || "success");
+  t.style.display = "block";
+  setTimeout(function() { t.style.display = "none"; }, 3000);
+}
+
+async function apiFetch(method, path, body) {
+  var opts = { method: method, headers: { "Content-Type": "application/json" }, credentials: "include" };
+  if (body) opts.body = JSON.stringify(body);
+  var res = await fetch(path, opts);
+  var data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Request failed");
+  return data;
+}
+
+async function loadAgents() {
+  try {
+    var key = "";
+    var cookies = document.cookie.split(";");
+    for (var i = 0; i < cookies.length; i++) {
+      var c = cookies[i].trim();
+      if (c.indexOf("blun_api_key=") === 0) { key = c.substring(13); break; }
+    }
+    var res = await fetch("/api/agents", { headers: { "x-blun-key": key || "" } });
+    if (res.ok) agents = await res.json();
+  } catch(e) { console.error("Failed to load agents:", e); }
+}
+
+async function loadBots() {
+  try {
+    var bots = await apiFetch("GET", "/telegram/api");
+    var el = document.getElementById("botList");
+    if (!bots.length) {
+      el.innerHTML = '<div class="empty">No bots connected yet</div>';
+      return;
+    }
+    var html = "";
+    for (var i = 0; i < bots.length; i++) {
+      var b = bots[i];
+      var agentOpts = '<option value="">No agent</option>';
+      for (var j = 0; j < agents.length; j++) {
+        var a = agents[j];
+        agentOpts += '<option value="' + a.id + '"' + (b.agent_id === a.id ? ' selected' : '') + '>' + a.name + '</option>';
+      }
+      html += '<div class="bot-item">' +
+        '<span class="bot-dot ' + (b.online ? 'online' : 'offline') + '"></span>' +
+        '<div class="bot-info"><div class="bot-name">@' + (b.bot_username || 'unknown') + '</div>' +
+        '<div class="bot-meta">' + (b.online ? 'Online' : 'Offline') + ' &middot; ' + (b.enabled ? 'Enabled' : 'Disabled') + '</div></div>' +
+        '<div class="bot-actions">' +
+        "<select onchange=\"assignAgent('" + b.id + "', this.value)\">" + agentOpts + '</select>' +
+        "<button class=\"btn btn-sm btn-outline\" onclick=\"toggleBot('" + b.id + "', " + !b.enabled + ")\">" + (b.enabled ? 'Disable' : 'Enable') + '</button>' +
+        "<button class=\"btn btn-sm btn-red\" onclick=\"disconnectBot('" + b.id + "')\">Remove</button>" +
+        '</div></div>';
+    }
+    el.innerHTML = html;
+  } catch (err) {
+    toast(err.message, "error");
+  }
+}
+
+async function connectBot() {
+  var token = document.getElementById("tokenInput").value.trim();
+  if (!token) return toast("Please enter a bot token", "error");
+  try {
+    document.getElementById("connectBtn").textContent = "Connecting...";
+    await apiFetch("POST", "/telegram/api/connect", { bot_token: token });
+    document.getElementById("tokenInput").value = "";
+    toast("Bot connected successfully!");
+    loadBots();
+  } catch (err) {
+    toast(err.message, "error");
+  } finally {
+    document.getElementById("connectBtn").textContent = "Connect";
+  }
+}
+
+async function assignAgent(channelId, agentId) {
+  try {
+    await apiFetch("PATCH", "/telegram/api/" + channelId, { agent_id: agentId || null });
+    toast("Agent assigned");
+  } catch (err) { toast(err.message, "error"); }
+}
+
+async function toggleBot(channelId, enabled) {
+  try {
+    await apiFetch("PATCH", "/telegram/api/" + channelId, { enabled: enabled });
+    toast(enabled ? "Bot enabled" : "Bot disabled");
+    loadBots();
+  } catch (err) { toast(err.message, "error"); }
+}
+
+async function disconnectBot(channelId) {
+  if (!confirm("Remove this bot?")) return;
+  try {
+    await apiFetch("DELETE", "/telegram/api/" + channelId);
+    toast("Bot removed");
+    loadBots();
+  } catch (err) { toast(err.message, "error"); }
+}
+
+loadAgents().then(loadBots);
+</script>
+</body>
+</html>

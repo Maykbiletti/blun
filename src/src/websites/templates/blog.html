@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{siteName}}</title>
+<link href="https://fonts.googleapis.com/css2?family={{font}}:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--primary:{{primary}};--bg:{{background}};--card:{{card}};--text:{{textColor}};--muted:{{muted}}}
+body{font-family:'{{font}}',sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+a{color:var(--primary);text-decoration:none}
+.container{max-width:1100px;margin:0 auto;padding:0 24px}
+header{padding:40px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+header h1{font-size:1.5rem;font-weight:700;letter-spacing:-0.02em}
+header p{color:var(--muted);font-size:.9rem;margin-top:4px}
+.layout{display:grid;grid-template-columns:1fr 300px;gap:48px;padding:60px 0}
+@media(max-width:768px){.layout{grid-template-columns:1fr;gap:32px}}
+.featured{background:var(--card);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:40px;margin-bottom:40px}
+.featured .label{color:var(--primary);font-size:.8rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px}
+.featured h2{font-size:1.75rem;font-weight:700;margin-bottom:12px;letter-spacing:-0.02em}
+.featured p{color:var(--muted);font-size:1rem;margin-bottom:12px}
+.featured .date{color:var(--muted);font-size:.8rem}
+.post-list{display:flex;flex-direction:column;gap:16px}
+.post-card{background:var(--card);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:24px;transition:border-color .2s}
+.post-card:hover{border-color:var(--primary)}
+.post-card h3{font-size:1.1rem;font-weight:600;margin-bottom:6px}
+.post-card p{color:var(--muted);font-size:.9rem;margin-bottom:8px}
+.post-meta{display:flex;gap:12px;font-size:.8rem;color:var(--muted)}
+.post-meta .cat{color:var(--primary);font-weight:500}
+.sidebar h3{font-size:1rem;font-weight:600;margin-bottom:12px}
+.sidebar p{color:var(--muted);font-size:.9rem;margin-bottom:24px;line-height:1.7}
+.sidebar .categories{list-style:none;display:flex;flex-direction:column;gap:8px}
+.sidebar .categories li{padding:8px 16px;background:var(--card);border:1px solid rgba(255,255,255,.06);border-radius:8px;font-size:.9rem;cursor:pointer;transition:border-color .2s}
+.sidebar .categories li:hover{border-color:var(--primary)}
+footer{padding:40px 0;text-align:center;color:var(--muted);font-size:.85rem;border-top:1px solid rgba(255,255,255,.06)}
+</style>
+</head>
+<body>
+<script>var SECTIONS = {{sectionsJSON}};</script>
+
+<header><div class="container"><h1 id="hdr-title"></h1><p id="hdr-tag"></p></div></header>
+
+<div class="container layout">
+  <main>
+    <div class="featured" id="featured"></div>
+    <div class="post-list" id="posts"></div>
+  </main>
+  <aside class="sidebar" id="sidebar"></aside>
+</div>
+
+<footer><div class="container" id="footer-text"></div></footer>
+
+<script>
+(function(){
+  var s=SECTIONS;
+  if(s.header){document.getElementById('hdr-title').textContent=s.header.title||'';document.getElementById('hdr-tag').textContent=s.header.tagline||'';}
+  if(s.featured){
+    var f=document.getElementById('featured');
+    f.innerHTML='<div class="label">'+s.featured.title+'</div><h2>'+s.featured.headline+'</h2><p>'+s.featured.excerpt+'</p><span class="date">'+s.featured.date+'</span>';
+  }
+  if(s.posts){
+    var pl=document.getElementById('posts');
+    (s.posts.items||[]).forEach(function(p){var d=document.createElement('div');d.className='post-card';d.innerHTML='<h3>'+p.title+'</h3><p>'+p.excerpt+'</p><div class="post-meta"><span class="cat">'+p.category+'</span><span>'+p.date+'</span></div>';pl.appendChild(d);});
+  }
+  if(s.sidebar){
+    var sb=document.getElementById('sidebar');
+    var h='<h3>About</h3><p>'+s.sidebar.about+'</p><h3>Categories</h3><ul class="categories">';
+    (s.sidebar.categories||[]).forEach(function(c){h+='<li>'+c+'</li>';});
+    sb.innerHTML=h+'</ul>';
+  }
+  if(s.footer)document.getElementById('footer-text').textContent=s.footer.text||'';
+})();
+</script>
+</body>
+</html>
