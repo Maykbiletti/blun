@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Compare 3 AI Results — BLUN</title>
+<meta name="description" content="Let 3 different AIs build the same thing. Pick the best parts from each.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--blue:#3b82f6;--blue-hover:#2563eb;--blue-glow:rgba(59,130,246,0.15);--bg:#0a0a0a;--card:#1a1a1a;--border:#27272a;--text:#fafafa;--muted:#a1a1aa;--font:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono',monospace}*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:1.6;-webkit-font-smoothing:antialiased}a{color:inherit;text-decoration:none}
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(10,10,10,0.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+.nav-inner{display:flex;align-items:center;justify-content:space-between;height:64px;max-width:1200px;margin:0 auto;padding:0 24px}
+.nav-logo{font-weight:700;font-size:1.25rem;letter-spacing:-0.02em}.nav-logo span{color:var(--blue)}
+.nav-back{font-size:.875rem;color:var(--muted);transition:color .2s}.nav-back:hover{color:var(--text)}
+.container{max-width:1200px;margin:0 auto;padding:0 24px}
+.hero{padding:140px 0 80px;text-align:center}
+.hero h1{font-size:clamp(2rem,5vw,3.25rem);font-weight:700;letter-spacing:-0.03em;line-height:1.1;margin-bottom:16px}
+.hero p{font-size:1.1rem;color:var(--muted);max-width:560px;margin:0 auto}
+section{padding:80px 0}
+.label{font-family:var(--mono);font-size:.75rem;text-transform:uppercase;letter-spacing:.1em;color:var(--blue);margin-bottom:12px}
+h2{font-size:clamp(1.5rem,3.5vw,2rem);font-weight:700;letter-spacing:-0.02em;margin-bottom:16px}
+.sub{color:var(--muted);max-width:540px;margin-bottom:48px;font-size:.95rem}
+.btn{display:inline-flex;align-items:center;padding:10px 20px;border-radius:8px;font-size:.875rem;font-weight:500;font-family:var(--font);cursor:pointer;border:none;transition:all .2s}
+.btn-primary{background:var(--blue);color:#fff}.btn-primary:hover{background:var(--blue-hover)}
+.btn-outline{background:transparent;color:var(--text);border:1px solid var(--border)}
+
+.mockup{background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden;max-width:1000px;margin:0 auto 80px}
+.mockup-bar{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border);background:#141414}
+.mockup-dot{width:10px;height:10px;border-radius:50%}.dot-r{background:#ef4444}.dot-y{background:#eab308}.dot-g{background:#22c55e}
+.mockup-url{margin-left:12px;flex:1;background:var(--bg);border-radius:6px;padding:6px 12px;font-family:var(--mono);font-size:.75rem;color:var(--muted)}
+.mockup-body{padding:20px}
+
+/* Race Panels */
+.prompt-bar{display:flex;gap:8px;margin-bottom:20px}
+.prompt-bar input{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-family:var(--font);font-size:.8125rem;color:var(--text);outline:none}
+.prompt-bar input:focus{border-color:var(--blue)}
+
+.panels{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.panel{background:var(--bg);border:2px solid var(--border);border-radius:12px;overflow:hidden;transition:border-color .2s}
+.panel-head{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);font-size:.75rem;font-weight:600}
+.panel-head .model{color:var(--muted);font-family:var(--mono);font-weight:400}
+.panel-body{padding:14px}
+.panel-section{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px;font-size:.75rem;color:var(--muted);line-height:1.6;cursor:pointer;transition:all .2s}
+.panel-section:hover{border-color:#3f3f46}
+.panel-section.picked{border-color:var(--blue);background:rgba(59,130,246,0.05)}
+.panel-section.picked::after{content:' [selected]';color:var(--blue);font-weight:600;font-family:var(--mono);font-size:.625rem}
+
+/* Result */
+.result-bar{margin-top:16px;display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--bg);border:1px solid var(--border);border-radius:10px}
+.result-bar span{font-size:.8125rem;color:var(--muted)}
+.pick-count{font-family:var(--mono);font-size:.75rem;color:var(--blue)}
+
+/* Steps */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;max-width:900px;margin:0 auto}
+.step{text-align:center;padding:32px 16px}
+.step-num{font-family:var(--mono);font-size:.75rem;color:var(--blue);margin-bottom:14px}
+.step h3{font-size:1rem;font-weight:600;margin-bottom:8px}
+.step p{font-size:.8125rem;color:var(--muted)}
+
+footer{border-top:1px solid var(--border);padding:40px 0;text-align:center;font-size:.8125rem;color:var(--muted)}
+@media(max-width:768px){.panels,.steps{grid-template-columns:1fr}.hero{padding:100px 0 60px}section{padding:60px 0}}
+@media(min-width:769px) and (max-width:1024px){.panels{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<nav><div class="nav-inner"><a href="/" class="nav-logo"><span>B</span>LUN</a><a href="/" class="nav-back">Back to home</a></div></nav>
+
+<section class="hero">
+<div class="container">
+<div class="label">Model Race</div>
+<h1>Compare 3 AI results</h1>
+<p>Ask one question, get three different answers. Pick the best parts from each. BLUN combines them into one perfect result.</p>
+</div>
+</section>
+
+<div class="container">
+<div class="mockup">
+<div class="mockup-bar">
+<div class="mockup-dot dot-r"></div><div class="mockup-dot dot-y"></div><div class="mockup-dot dot-g"></div>
+<div class="mockup-url">blun.ai/race</div>
+</div>
+<div class="mockup-body">
+<div class="prompt-bar">
+<input type="text" value="Write a product description for handmade ceramic mugs" readonly>
+<button class="btn btn-primary" style="padding:10px 16px">Race</button>
+</div>
+<div class="panels">
+<div class="panel" id="p1">
+<div class="panel-head"><span>AI 1</span><span class="model">GPT-4o</span></div>
+<div class="panel-body">
+<div class="panel-section" onclick="pick(this)">Each mug is shaped by hand, making every piece one of a kind. Small imperfections are part of the charm.</div>
+<div class="panel-section" onclick="pick(this)">Microwave and dishwasher safe. Holds 350ml. Available in 6 earth-tone colors.</div>
+<div class="panel-section" onclick="pick(this)">Starting at $24.99. Free shipping on orders over $50.</div>
+</div>
+</div>
+<div class="panel" id="p2">
+<div class="panel-head"><span>AI 2</span><span class="model">Claude</span></div>
+<div class="panel-body">
+<div class="panel-section" onclick="pick(this)">Crafted in a small studio in Portland, these ceramic mugs bring warmth to your morning routine. No two are alike.</div>
+<div class="panel-section" onclick="pick(this)">Food-safe glaze, lead-free. Comfortable handle designed for daily use. 12oz capacity.</div>
+<div class="panel-section" onclick="pick(this)">$28 each or $75 for a set of three. Gift wrapping available.</div>
+</div>
+</div>
+<div class="panel" id="p3">
+<div class="panel-head"><span>AI 3</span><span class="model">Gemini</span></div>
+<div class="panel-body">
+<div class="panel-section" onclick="pick(this)">Handmade ceramic mugs for people who appreciate the little things. Perfect weight, perfect grip, perfect sip.</div>
+<div class="panel-section" onclick="pick(this)">Stoneware clay fired at 1200C. Retains heat longer than regular mugs. Durable enough for years of use.</div>
+<div class="panel-section" onclick="pick(this)">From $22. Subscribe for 10% off your first order.</div>
+</div>
+</div>
+</div>
+<div class="result-bar">
+<span>Click sections you like from any panel</span>
+<span class="pick-count" id="pickCount">0 selected</span>
+<button class="btn btn-primary" style="padding:8px 16px;font-size:.8125rem" onclick="combine()">Combine selections</button>
+</div>
+</div>
+</div>
+</div>
+
+<section>
+<div class="container" style="text-align:center">
+<div class="label">How it works</div>
+<h2>Cherry-pick the best parts</h2>
+<p class="sub" style="margin:0 auto 48px">Every AI has strengths. Use all of them.</p>
+<div class="steps">
+<div class="step"><div class="step-num">01</div><h3>Ask once</h3><p>Type your prompt. Three different AI models process it at the same time.</p></div>
+<div class="step"><div class="step-num">02</div><h3>Compare side by side</h3><p>See all three results next to each other. Click the parts you like best.</p></div>
+<div class="step"><div class="step-num">03</div><h3>BLUN combines them</h3><p>Your selections merge into one polished result. Better than any single AI.</p></div>
+</div>
+</div>
+</section>
+
+<footer><div class="container">BLUN — Open Source AI Platform</div></footer>
+
+<script>
+var picked=0;
+function pick(el){el.classList.toggle('picked');picked+=el.classList.contains('picked')?1:-1;document.getElementById('pickCount').textContent=picked+' selected'}
+function combine(){if(picked<1)return;var sels=document.querySelectorAll('.panel-section.picked');var r='Combined result: ';sels.forEach(function(s){r+=s.textContent.split('.')[0]+'. '});alert(r)}
+</script>
+</body>
+</html>

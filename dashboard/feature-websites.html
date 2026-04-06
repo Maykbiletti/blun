@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Build Your Website — BLUN</title>
+<meta name="description" content="Describe your website, pick a domain, done. No coding needed.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--blue:#3b82f6;--blue-hover:#2563eb;--blue-glow:rgba(59,130,246,0.15);--bg:#0a0a0a;--card:#1a1a1a;--border:#27272a;--text:#fafafa;--muted:#a1a1aa;--font:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono',monospace}*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:1.6;-webkit-font-smoothing:antialiased}a{color:inherit;text-decoration:none}
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(10,10,10,0.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+.nav-inner{display:flex;align-items:center;justify-content:space-between;height:64px;max-width:1200px;margin:0 auto;padding:0 24px}
+.nav-logo{font-weight:700;font-size:1.25rem;letter-spacing:-0.02em}.nav-logo span{color:var(--blue)}
+.nav-back{font-size:.875rem;color:var(--muted);transition:color .2s}.nav-back:hover{color:var(--text)}
+.container{max-width:1200px;margin:0 auto;padding:0 24px}
+.hero{padding:140px 0 80px;text-align:center}
+.hero h1{font-size:clamp(2rem,5vw,3.25rem);font-weight:700;letter-spacing:-0.03em;line-height:1.1;margin-bottom:16px}
+.hero p{font-size:1.1rem;color:var(--muted);max-width:540px;margin:0 auto}
+section{padding:80px 0}
+.label{font-family:var(--mono);font-size:.75rem;text-transform:uppercase;letter-spacing:.1em;color:var(--blue);margin-bottom:12px}
+h2{font-size:clamp(1.5rem,3.5vw,2rem);font-weight:700;letter-spacing:-0.02em;margin-bottom:16px}
+.sub{color:var(--muted);max-width:540px;margin-bottom:48px;font-size:.95rem}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:28px;transition:border-color .2s}.card:hover{border-color:#3f3f46}
+.btn{display:inline-flex;align-items:center;padding:10px 20px;border-radius:8px;font-size:.875rem;font-weight:500;font-family:var(--font);cursor:pointer;border:none;transition:all .2s}
+.btn-primary{background:var(--blue);color:#fff}.btn-primary:hover{background:var(--blue-hover);box-shadow:0 0 24px var(--blue-glow)}
+.btn-outline{background:transparent;color:var(--text);border:1px solid var(--border)}.btn-outline:hover{border-color:var(--muted)}
+
+/* Mockup */
+.mockup{background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden;max-width:900px;margin:0 auto 80px}
+.mockup-bar{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border);background:#141414}
+.mockup-dot{width:10px;height:10px;border-radius:50%}.dot-r{background:#ef4444}.dot-y{background:#eab308}.dot-g{background:#22c55e}
+.mockup-url{margin-left:12px;flex:1;background:var(--bg);border-radius:6px;padding:6px 12px;font-family:var(--mono);font-size:.75rem;color:var(--muted)}
+.mockup-body{padding:24px}
+
+/* Template Picker */
+.templates{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
+.tpl{background:var(--bg);border:2px solid var(--border);border-radius:10px;padding:16px;text-align:center;cursor:pointer;transition:all .2s;font-size:.8125rem;color:var(--muted)}
+.tpl.active{border-color:var(--blue);color:var(--text)}
+.tpl:hover{border-color:#3f3f46}
+.tpl-preview{height:80px;background:#141414;border-radius:6px;margin-bottom:10px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:.625rem;color:#3f3f46}
+.domain-row{display:flex;gap:8px;margin-top:16px}
+.domain-input{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-family:var(--font);font-size:.875rem;color:var(--text);outline:none}
+.domain-input:focus{border-color:var(--blue)}
+.domain-badge{display:inline-flex;align-items:center;padding:4px 10px;border-radius:6px;font-size:.6875rem;font-weight:600;background:rgba(34,197,94,.1);color:#22c55e}
+
+/* Steps */
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.step{text-align:center;padding:32px 16px}
+.step-num{font-family:var(--mono);font-size:.75rem;color:var(--blue);margin-bottom:14px}
+.step h3{font-size:1rem;font-weight:600;margin-bottom:8px}
+.step p{font-size:.8125rem;color:var(--muted)}
+
+/* Example Sites */
+.examples{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.example{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.example-preview{height:160px;background:linear-gradient(135deg,#141414 0%,#1f1f23 100%);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:.75rem;color:#3f3f46}
+.example-info{padding:16px}
+.example-info h4{font-size:.875rem;font-weight:600;margin-bottom:4px}
+.example-info p{font-size:.75rem;color:var(--muted)}
+
+footer{border-top:1px solid var(--border);padding:40px 0;text-align:center;font-size:.8125rem;color:var(--muted)}
+@media(max-width:768px){.templates,.steps,.examples{grid-template-columns:1fr}.hero{padding:100px 0 60px}section{padding:60px 0}}
+@media(min-width:769px) and (max-width:1024px){.templates{grid-template-columns:repeat(2,1fr)}.steps{grid-template-columns:repeat(2,1fr)}.examples{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<nav><div class="nav-inner"><a href="/" class="nav-logo"><span>B</span>LUN</a><a href="/" class="nav-back">Back to home</a></div></nav>
+
+<section class="hero">
+<div class="container">
+<div class="label">Websites</div>
+<h1>Build your website in minutes</h1>
+<p>Describe your business, pick a style, and BLUN builds a complete, professional website. No coding, no design skills, no waiting.</p>
+</div>
+</section>
+
+<div class="container">
+<div class="mockup">
+<div class="mockup-bar">
+<div class="mockup-dot dot-r"></div><div class="mockup-dot dot-y"></div><div class="mockup-dot dot-g"></div>
+<div class="mockup-url">blun.ai/websites/builder</div>
+</div>
+<div class="mockup-body">
+<div style="font-size:.8125rem;color:var(--muted);margin-bottom:14px">Choose a template to start</div>
+<div class="templates">
+<div class="tpl active" onclick="pickTpl(this)"><div class="tpl-preview">MINIMAL</div>Clean and simple</div>
+<div class="tpl" onclick="pickTpl(this)"><div class="tpl-preview">BUSINESS</div>Professional look</div>
+<div class="tpl" onclick="pickTpl(this)"><div class="tpl-preview">CREATIVE</div>Bold and colorful</div>
+</div>
+<div style="font-size:.8125rem;color:var(--muted);margin-bottom:8px">Your domain</div>
+<div class="domain-row">
+<input class="domain-input" type="text" placeholder="my-bakery" id="domainInput" oninput="checkDomain()">
+<span style="display:flex;align-items:center;font-size:.875rem;color:var(--muted)">.blun.site</span>
+<span class="domain-badge" id="domainBadge" style="opacity:0">Available</span>
+</div>
+<div style="margin-top:20px;display:flex;gap:12px">
+<button class="btn btn-primary" onclick="this.textContent='Building...';setTimeout(()=>this.textContent='View your site',1200)">Generate website</button>
+<button class="btn btn-outline">Preview</button>
+</div>
+</div>
+</div>
+</div>
+
+<section>
+<div class="container" style="text-align:center">
+<div class="label">How it works</div>
+<h2>Four steps. That is it.</h2>
+<p class="sub" style="margin:0 auto 48px">No accounts with hosting providers, no DNS settings, no FTP uploads. Just tell us what you need.</p>
+<div class="steps">
+<div class="step"><div class="step-num">01</div><h3>Pick a style</h3><p>Choose from minimal, business, creative, or let AI surprise you.</p></div>
+<div class="step"><div class="step-num">02</div><h3>Describe your business</h3><p>Tell us what you do, who your customers are, and what you want to say.</p></div>
+<div class="step"><div class="step-num">03</div><h3>AI builds it</h3><p>BLUN generates pages, images, text, and navigation in under a minute.</p></div>
+<div class="step"><div class="step-num">04</div><h3>Pick a domain, done</h3><p>Get a free .blun.site domain or connect your own. Your site is live.</p></div>
+</div>
+</div>
+</section>
+
+<section>
+<div class="container" style="text-align:center">
+<div class="label">Examples</div>
+<h2>Websites built with BLUN</h2>
+<p class="sub" style="margin:0 auto 48px">Real results from real descriptions. Each one took less than two minutes.</p>
+<div class="examples">
+<div class="example"><div class="example-preview">bakery-vienna.blun.site</div><div class="example-info"><h4>Local Bakery</h4><p>"I run a bakery in Vienna with organic bread"</p></div></div>
+<div class="example"><div class="example-preview">studio-photo.blun.site</div><div class="example-info"><h4>Photography Studio</h4><p>"Portfolio site for wedding photography"</p></div></div>
+<div class="example"><div class="example-preview">coach-lisa.blun.site</div><div class="example-info"><h4>Life Coach</h4><p>"Coaching business with booking calendar"</p></div></div>
+</div>
+</div>
+</section>
+
+<footer><div class="container">BLUN — Open Source AI Platform</div></footer>
+
+<script>
+function pickTpl(el){document.querySelectorAll('.tpl').forEach(t=>t.classList.remove('active'));el.classList.add('active')}
+function checkDomain(){var b=document.getElementById('domainBadge'),v=document.getElementById('domainInput').value;b.style.opacity=v.length>2?'1':'0'}
+</script>
+</body>
+</html>

@@ -37,6 +37,7 @@ const supportChatRoutes = require("./src/routes/support-chat");
 const websitesRoutes = require("./src/routes/websites");
 const softwareRoutes = require("./src/routes/software");
 const modelsRoutes = require("./src/routes/models");
+const profileRoutes = require("./src/routes/profile");
 const { startAllBots, activeBots } = require("./src/channels/telegram");
 
 const PORT = parseInt(process.env.BLUN_PORT || "3200", 10);
@@ -54,6 +55,7 @@ app.get("/impressum", (req, res) => {
   res.sendFile(__dirname + "/dashboard/impressum.html");
 });
 app.get("/datenschutz", (req, res) => { res.sendFile(__dirname + "/dashboard/datenschutz.html"); });
+app.get("/feature/websites", function(req, res) { res.sendFile(__dirname + "/dashboard/feature-websites.html"); });app.get("/feature/software", function(req, res) { res.sendFile(__dirname + "/dashboard/feature-software.html"); });app.get("/feature/assistants", function(req, res) { res.sendFile(__dirname + "/dashboard/feature-assistants.html"); });app.get("/feature/compare", function(req, res) { res.sendFile(__dirname + "/dashboard/feature-compare.html"); });app.get("/feature/local-ai", function(req, res) { res.sendFile(__dirname + "/dashboard/feature-local-ai.html"); });app.get("/feature/everything", function(req, res) { res.sendFile(__dirname + "/dashboard/feature-everything.html"); });
 
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors());
@@ -87,6 +89,7 @@ app.use("/canvas", authenticate, canvasRoutes);
 app.use("/websites", websitesRoutes);
 app.use("/software", softwareRoutes);
 app.use("/api/models", modelsRoutes);
+app.use("/api/profile", authenticate, profileRoutes);
 app.use("/support", supportChatRoutes);
 app.get("/support-widget.js", function(req, res) { res.sendFile(__dirname + "/dashboard/support-widget.js"); });
 
@@ -141,6 +144,7 @@ app.get("/login", function (req, res) {
 
 app.get("/dashboard/websites", authenticate, function (req, res) { if (!req.user) return res.redirect("/login"); res.sendFile(path.join(__dirname, "dashboard", "websites.html")); });
 app.get("/dashboard/software", authenticate, function (req, res) { if (!req.user) return res.redirect("/login"); res.sendFile(path.join(__dirname, "dashboard", "software.html")); });
+app.get("/profile", authenticate, function (req, res) { if (!req.user) return res.redirect("/login"); res.sendFile(path.join(__dirname, "dashboard", "profile.html")); });
 app.get("/dashboard/models", authenticate, function (req, res) { if (!req.user) return res.redirect("/login"); res.sendFile(path.join(__dirname, "dashboard", "models.html")); });
 app.get("/dashboard", authenticate, function (req, res) {
   if (!req.user) return res.redirect("/login");
