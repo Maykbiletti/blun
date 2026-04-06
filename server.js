@@ -33,6 +33,7 @@ const federationRoutes = require("./src/routes/federation");
 const adminPanelRoutes = require("./src/routes/admin-panel");
 const privacyRoutes = require("./src/routes/privacy");
 const canvasRoutes = require("./src/routes/canvas");
+const supportChatRoutes = require("./src/routes/support-chat");
 const websitesRoutes = require("./src/routes/websites");
 const softwareRoutes = require("./src/routes/software");
 const { startAllBots, activeBots } = require("./src/channels/telegram");
@@ -78,6 +79,8 @@ app.use("/privacy", privacyRoutes);
 app.use("/canvas", authenticate, canvasRoutes);
 app.use("/websites", websitesRoutes);
 app.use("/software", softwareRoutes);
+app.use("/support", supportChatRoutes);
+app.get("/support-widget.js", function(req, res) { res.sendFile(__dirname + "/dashboard/support-widget.js"); });
 
 app.use("/api", apiRoutes);
 app.use("/api/chat", chatRoutes);
