@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BLUN - Plan Verwaltung</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"Inter",sans-serif;background:#0a0a0a;color:#e5e5e5;min-height:100vh;padding:24px}
+a{color:#3b82f6;text-decoration:none}
+.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px}
+.header h1{font-size:22px;font-weight:700}
+.back-link{font-size:14px;color:#a3a3a3}
+.back-link:hover{color:#3b82f6}
+.plans-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:32px}
+.card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:20px}
+.card-title{font-size:18px;font-weight:700;margin-bottom:4px}
+.card-price{font-size:14px;color:#a3a3a3;margin-bottom:16px}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:12px;color:#a3a3a3;margin-bottom:4px}
+.field input,.field select{width:100%;background:#0a0a0a;border:1px solid #2a2a2a;color:#e5e5e5;padding:8px 12px;border-radius:8px;font-size:14px;font-family:inherit}
+.field input:focus,.field select:focus{border-color:#3b82f6;outline:none}
+.toggle-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0}
+.toggle-label{font-size:13px}
+.toggle{position:relative;width:40px;height:22px;cursor:pointer}
+.toggle input{opacity:0;width:0;height:0}
+.toggle .slider{position:absolute;inset:0;background:#2a2a2a;border-radius:11px;transition:.2s}
+.toggle .slider:before{content:"";position:absolute;height:16px;width:16px;left:3px;bottom:3px;background:#666;border-radius:50%;transition:.2s}
+.toggle input:checked+.slider{background:#3b82f6}
+.toggle input:checked+.slider:before{transform:translateX(18px);background:#fff}
+.btn{padding:10px 20px;border-radius:8px;font-size:14px;font-weight:500;border:none;cursor:pointer;transition:all .15s}
+.btn-primary{background:#3b82f6;color:#fff;width:100%;margin-top:12px}
+.btn-primary:hover{background:#2563eb}
+.btn-danger{background:#ef4444;color:#fff}
+.btn-outline{background:transparent;color:#3b82f6;border:1px solid #3b82f6}
+.section-title{font-size:18px;font-weight:600;margin-bottom:16px}
+.search-box{display:flex;gap:8px;margin-bottom:16px}
+.search-box input{flex:1;background:#1a1a1a;border:1px solid #2a2a2a;color:#e5e5e5;padding:10px 14px;border-radius:8px;font-size:14px}
+.search-box input:focus{border-color:#3b82f6;outline:none}
+.user-item{display:flex;justify-content:space-between;align-items:center;padding:12px;border-bottom:1px solid #2a2a2a;cursor:pointer}
+.user-item:hover{background:#2a2a2a;border-radius:8px}
+.user-name{font-weight:500}
+.user-email{font-size:13px;color:#a3a3a3}
+.user-plan{font-size:12px;padding:2px 8px;border-radius:6px;background:#1e3a5f;color:#3b82f6}
+.override-panel{display:none}
+.override-panel.show{display:block}
+.toast{position:fixed;bottom:24px;right:24px;background:#22c55e;color:#fff;padding:12px 20px;border-radius:8px;font-size:14px;font-weight:500;display:none;z-index:999}
+.toast.error{background:#ef4444}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Plan Verwaltung</h1>
+  <a href="/dashboard" class="back-link">Zurueck zum Dashboard</a>
+</div>
+
+<div class="plans-grid" id="plansGrid">Laden...</div>
+
+<div class="section-title">Benutzer Overrides</div>
+<div class="card" style="margin-bottom:16px">
+  <div class="search-box">
+    <input type="text" id="userSearch" placeholder="E-Mail oder Name suchen...">
+    <button class="btn btn-primary" style="width:auto;margin:0" onclick="searchUsers()">Suchen</button>
+  </div>
+  <div id="userList"></div>
+</div>
+
+<div class="card override-panel" id="overridePanel">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+    <div>
+      <div class="section-title" style="margin:0" id="overrideUserName">-</div>
+      <div style="font-size:13px;color:#a3a3a3" id="overrideUserEmail">-</div>
+    </div>
+    <button class="btn btn-outline" onclick="closeOverride()">Schliessen</button>
+  </div>
+  <div id="overrideFields"></div>
+  <div style="display:flex;gap:8px;margin-top:16px">
+    <button class="btn btn-primary" style="flex:1" onclick="saveOverride()">Override speichern</button>
+    <button class="btn btn-danger" onclick="deleteOverride()">Entfernen</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var currentPlans={};
+var selectedUserId=null;
+var FEATURES=["voice_chat","blun_code","website_builder","software_builder","federation"];
+var FIELDS=[
+  {key:"max_local_models",label:"Max Lokale Modelle",type:"number"},
+  {key:"max_cloud_models",label:"Max Cloud Modelle",type:"number"},
+  {key:"cloud_access",label:"Cloud Zugang",type:"bool"},
+  {key:"max_agents",label:"Max Agents",type:"number"},
+  {key:"max_domains",label:"Max Domains",type:"number"},
+  {key:"domain_budget",label:"Domain Budget ($/Jahr)",type:"number"},
+  {key:"max_team_members",label:"Max Team Mitglieder",type:"number"},
+  {key:"storage_gb",label:"Speicher (GB)",type:"number"}
+];
+
+function api(url,opts){opts=opts||{};opts.credentials="include";opts.headers=Object.assign({"Content-Type":"application/json"},opts.headers||{});return fetch(url,opts).then(function(r){if(r.status===401){window.location.href="/login";return Promise.reject("auth")}return r.json()})}
+function toast(msg,err){var t=document.getElementById("toast");t.textContent=msg;t.className="toast"+(err?" error":"");t.style.display="block";setTimeout(function(){t.style.display="none"},3000)}
+function esc(s){var d=document.createElement("div");d.textContent=String(s||"");return d.innerHTML}
+function closeOverride(){document.getElementById("overridePanel").classList.remove("show")}
+
+function loadPlans(){
+  api("/api/admin/plans").then(function(d){
+    currentPlans=d.plans;
+    var html="";
+    var keys=["free","pro","max","enterprise"];
+    for(var ki=0;ki<keys.length;ki++){
+      var key=keys[ki];
+      var p=d.plans[key];
+      if(!p)continue;
+      var priceText=p.price===-1?"Auf Anfrage":p.price===0?"Kostenlos":"$"+p.price+"/Monat";
+      html+="<div class=\"card\" data-plan=\""+key+"\">";
+      html+="<div class=\"card-title\">"+esc(p.label)+"</div>";
+      html+="<div class=\"card-price\">"+priceText+"</div>";
+      for(var i=0;i<FIELDS.length;i++){
+        var f=FIELDS[i];
+        if(f.type==="bool"){
+          html+="<div class=\"toggle-row\"><span class=\"toggle-label\">"+f.label+"</span><label class=\"toggle\"><input type=\"checkbox\" data-plan=\""+key+"\" data-field=\""+f.key+"\""+(p[f.key]?" checked":"")+"><span class=\"slider\"></span></label></div>";
+        }else{
+          html+="<div class=\"field\"><label>"+f.label+" (-1 = unbegrenzt)</label><input type=\"number\" data-plan=\""+key+"\" data-field=\""+f.key+"\" value=\""+(p[f.key]!=null?p[f.key]:"")+"\"></div>";
+        }
+      }
+      html+="<div style=\"margin-top:12px;font-size:13px;color:#a3a3a3\">Features</div>";
+      for(var j=0;j<FEATURES.length;j++){
+        var feat=FEATURES[j];
+        var on=p.features&&p.features[feat];
+        html+="<div class=\"toggle-row\"><span class=\"toggle-label\">"+feat.replace(/_/g," ")+"</span><label class=\"toggle\"><input type=\"checkbox\" data-plan=\""+key+"\" data-feature=\""+feat+"\""+(on?" checked":"")+"><span class=\"slider\"></span></label></div>";
+      }
+      html+="<button class=\"btn btn-primary\" onclick=\"savePlan('"+key+"')\">Speichern</button>";
+      html+="</div>";
+    }
+    document.getElementById("plansGrid").innerHTML=html;
+  });
+}
+
+function savePlan(planKey){
+  var config={features:{}};
+  document.querySelectorAll("[data-plan=\""+planKey+"\"][data-field]").forEach(function(el){
+    if(el.type==="checkbox")config[el.dataset.field]=el.checked;
+    else config[el.dataset.field]=parseInt(el.value)||0;
+  });
+  document.querySelectorAll("[data-plan=\""+planKey+"\"][data-feature]").forEach(function(el){
+    config.features[el.dataset.feature]=el.checked;
+  });
+  var p=currentPlans[planKey];
+  config.label=p.label;
+  config.price=p.price;
+  api("/api/admin/plans/"+planKey,{method:"PUT",body:JSON.stringify(config)}).then(function(r){
+    if(r.ok)toast("Plan gespeichert");else toast("Fehler",true);
+  }).catch(function(){toast("Fehler",true)});
+}
+
+function searchUsers(){
+  var q=document.getElementById("userSearch").value.trim();
+  if(q.length<2){toast("Mindestens 2 Zeichen",true);return}
+  api("/api/admin/plans/users/search?q="+encodeURIComponent(q)).then(function(d){
+    var html="";
+    if(!d.users||d.users.length===0){html="<div style=\"color:#a3a3a3;padding:12px\">Keine Benutzer gefunden</div>";}
+    else{d.users.forEach(function(u){html+="<div class=\"user-item\" onclick=\"selectUser('"+u.id+"')\"><div><div class=\"user-name\">"+esc(u.name||"-")+"</div><div class=\"user-email\">"+esc(u.email)+"</div></div><span class=\"user-plan\">"+(u.plan||"free")+"</span></div>";});}
+    document.getElementById("userList").innerHTML=html;
+  });
+}
+document.getElementById("userSearch").addEventListener("keydown",function(e){if(e.key==="Enter")searchUsers()});
+
+function selectUser(userId){
+  selectedUserId=userId;
+  api("/api/admin/plans/users/"+userId).then(function(d){
+    document.getElementById("overrideUserName").textContent=d.user.name||"-";
+    document.getElementById("overrideUserEmail").textContent=d.user.email+" (Plan: "+(d.user.plan||"free")+")";
+    var html="";
+    for(var i=0;i<FIELDS.length;i++){
+      var f=FIELDS[i];
+      var val=d.overrides[f.key]!=null?d.overrides[f.key]:"";
+      var eff=d.effective[f.key];
+      if(f.type==="bool"){
+        html+="<div class=\"toggle-row\"><span class=\"toggle-label\">"+f.label+" (Plan: "+(d.plan_config[f.key]?"Ja":"Nein")+")</span><label class=\"toggle\"><input type=\"checkbox\" data-override=\""+f.key+"\""+(val===true||(val===""&&eff)?" checked":"")+"><span class=\"slider\"></span></label></div>";
+      }else{
+        html+="<div class=\"field\"><label>"+f.label+" (Plan: "+eff+")</label><input type=\"number\" data-override=\""+f.key+"\" value=\""+val+"\" placeholder=\"Plan-Standard verwenden\"></div>";
+      }
+    }
+    document.getElementById("overrideFields").innerHTML=html;
+    document.getElementById("overridePanel").classList.add("show");
+  });
+}
+
+function saveOverride(){
+  if(!selectedUserId)return;
+  var overrides={};
+  document.querySelectorAll("[data-override]").forEach(function(el){
+    if(el.type==="checkbox")overrides[el.dataset.override]=el.checked;
+    else if(el.value!=="")overrides[el.dataset.override]=parseInt(el.value);
+  });
+  api("/api/admin/plans/users/"+selectedUserId+"/override",{method:"PUT",body:JSON.stringify(overrides)}).then(function(r){
+    if(r.ok)toast("Override gespeichert");else toast("Fehler",true);
+  }).catch(function(){toast("Fehler",true)});
+}
+
+function deleteOverride(){
+  if(!selectedUserId)return;
+  if(!confirm("Override wirklich entfernen?"))return;
+  api("/api/admin/plans/users/"+selectedUserId+"/override",{method:"DELETE"}).then(function(r){
+    if(r.ok){toast("Override entfernt");closeOverride();}
+    else toast("Fehler",true);
+  }).catch(function(){toast("Fehler",true)});
+}
+
+loadPlans();
+</script>
+</body>
+</html>

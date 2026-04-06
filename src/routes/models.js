@@ -1,5 +1,6 @@
 // BLUN — Model Browser API Routes (llama.cpp backend)
 var express = require("express");
+var os = require("os");
 var router = express.Router();
 var { spawn } = require("child_process");
 var fs = require("fs");
@@ -78,7 +79,8 @@ router.post("/:id/download", function(req, res) {
   var filePath = path.join(MODELS_DIR, model.filename);
   var tmpPath = filePath + ".tmp";
 
-  fetch(model.huggingface, { redirect: "follow" })
+  var hfHeaders = {}; var hfToken = process.env.HF_TOKEN; if (hfToken) hfHeaders["Authorization"] = "Bearer " + hfToken;
+  fetch(model.huggingface, { redirect: "follow", headers: hfHeaders })
     .then(function(response) {
       if (!response.ok) throw new Error("HTTP " + response.status);
       var totalBytes = parseInt(response.headers.get("content-length") || "0", 10);
@@ -159,6 +161,15 @@ router.post("/:id/load", function(req, res) {
   if (!isInstalled(model)) return res.status(400).json({ error: "Model not installed" });
   if (running[modelId]) return res.json({ message: "Already running", port: running[modelId].port });
 
+  // RAM check
+  var sizeStr = model.sizeGB || "0";
+  var needGB = parseFloat(sizeStr);
+  var freeBytes = os.freemem();
+  var freeGB = freeBytes / (1024 * 1024 * 1024);
+  if (needGB > freeGB) {
+    return res.status(400).json({ error: "Nicht genug RAM (braucht " + needGB.toFixed(1) + " GB, verfuegbar: " + freeGB.toFixed(1) + " GB)" });
+  }
+
   var port = nextPort++;
   var filePath = path.join(MODELS_DIR, model.filename);
 
@@ -180,11 +191,15 @@ router.post("/:id/load", function(req, res) {
     }
   });
 
-  proc.on("close", function() {
+  proc.on("error", function(err) {
     delete running[modelId];
+    downloads[modelId] = { status: "error", progress: 0, error: "Start fehlgeschlagen: " + err.message };
   });
 
-  proc.on("error", function() {
+  proc.on("close", function(code) {
+    if (code && code !== 0 && !running[modelId]) {
+      downloads[modelId] = { status: "error", progress: 0, error: "Modell abgestuerzt (exit " + code + ")" };
+    }
     delete running[modelId];
   });
 

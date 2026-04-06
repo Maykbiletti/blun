@@ -11,6 +11,16 @@ const { v4: uuid } = require('uuid');
 
 const router = Router();
 
+
+router.get("/health", async function (req, res) {
+  try {
+    var dbCheck = await query("SELECT NOW() AS ts");
+    res.json({ status: "ok", timestamp: dbCheck[0].ts, version: "2.0.0" });
+  } catch (err) {
+    res.status(500).json({ status: "error", error: err.message });
+  }
+});
+
 router.get('/companies', async function (req, res) {
   res.json(await query('SELECT * FROM companies ORDER BY created_at'));
 });

@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Verbindungen - BLUN</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"Inter",sans-serif;background:#0a0a0a;color:#e5e5e5;min-height:100vh;-webkit-font-smoothing:antialiased}
+a{text-decoration:none}
+
+.top-bar{display:flex;align-items:center;gap:16px;padding:20px 32px;border-bottom:1px solid rgba(255,255,255,.06)}
+.back-link{color:#a3a3a3;font-size:14px;font-weight:500;display:flex;align-items:center;gap:6px;transition:color .15s}
+.back-link:hover{color:#fff}
+.back-link svg{width:16px;height:16px}
+
+.container{max-width:760px;margin:0 auto;padding:40px 24px 80px}
+h1{font-size:24px;font-weight:700;color:#fff;margin-bottom:6px}
+.subtitle{color:#737373;font-size:15px;margin-bottom:40px;line-height:1.5}
+
+.providers{display:flex;flex-direction:column;gap:12px}
+.provider-card{background:#1a1a1a;border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:20px 24px;transition:border-color .2s,background .2s}
+.provider-card:hover{border-color:rgba(255,255,255,.1);background:#1e1e1e}
+.provider-card.connected{border-color:rgba(34,197,94,.2)}
+
+.card-top{display:flex;align-items:center;gap:16px}
+.logo{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;flex-shrink:0}
+.logo-claude{background:#d97706}
+.logo-chatgpt{background:#22c55e}
+.logo-google{background:#a855f7}
+.logo-mistral{background:#f97316}
+.logo-deepseek{background:#3b82f6}
+.logo-local{background:#525252}
+
+.provider-info{flex:1;min-width:0}
+.provider-name{font-size:15px;font-weight:600;color:#fff;display:flex;align-items:center;gap:8px}
+.provider-desc{font-size:13px;color:#737373;margin-top:2px}
+.provider-meta{display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap}
+.meta-tag{font-size:12px;color:#a3a3a3;background:rgba(255,255,255,.04);padding:3px 8px;border-radius:6px}
+.meta-usage{color:#525252}
+.meta-auth{color:#3b82f6;background:rgba(59,130,246,.08)}
+
+.badge{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;letter-spacing:.3px;text-transform:uppercase}
+.badge-connected{background:rgba(34,197,94,.12);color:#22c55e}
+.badge-disconnected{background:rgba(255,255,255,.04);color:#525252}
+
+.card-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.card-buttons{display:flex;gap:8px;margin-top:14px}
+
+.btn{padding:8px 18px;border-radius:9px;border:none;font-family:"Inter",sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:#3b82f6;color:#fff}
+.btn-primary:hover{background:#2563eb}
+.btn-outline{background:transparent;color:#a3a3a3;border:1px solid rgba(255,255,255,.1)}
+.btn-outline:hover{background:rgba(255,255,255,.05);color:#fff;border-color:rgba(255,255,255,.2)}
+.btn-danger{background:transparent;color:#ef4444;border:1px solid rgba(239,68,68,.2)}
+.btn-danger:hover{background:rgba(239,68,68,.08)}
+.btn-ghost{background:rgba(255,255,255,.05);color:#a3a3a3;border:1px solid rgba(255,255,255,.06)}
+.btn-ghost:hover{background:rgba(255,255,255,.08);color:#fff}
+.btn-sm{padding:6px 14px;font-size:12px}
+
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:100;align-items:center;justify-content:center;animation:fadeIn .15s}
+.overlay.show{display:flex}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+.modal{background:#1a1a1a;border:1px solid rgba(255,255,255,.08);border-radius:16px;width:90%;max-width:480px;animation:slideUp .2s;overflow:hidden;position:relative}
+.modal-header{padding:24px 24px 0;display:flex;align-items:center;gap:14px}
+.modal-header .logo{width:40px;height:40px;font-size:16px}
+.modal-header-text h2{font-size:17px;font-weight:600;color:#fff}
+.modal-header-text p{font-size:13px;color:#737373;margin-top:2px}
+.modal-body{padding:20px 24px 24px}
+.modal-close{position:absolute;top:16px;right:16px;background:none;border:none;color:#525252;cursor:pointer;padding:4px}
+.modal-close:hover{color:#fff}
+
+.field{margin-bottom:16px}
+.field label{display:block;font-size:12px;font-weight:600;color:#737373;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+.field input,.field select{width:100%;padding:10px 14px;border-radius:9px;border:1px solid rgba(255,255,255,.08);background:#0a0a0a;color:#fff;font-family:"Inter",sans-serif;font-size:14px;transition:border-color .15s}
+.field input:focus,.field select:focus{outline:none;border-color:#3b82f6}
+.field input::placeholder{color:#404040}
+.field select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 5l3 3 3-3' stroke='%23737373' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+.field select option{background:#1a1a1a;color:#fff}
+
+.provider-link{display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:9px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.03);color:#a3a3a3;font-size:13px;margin-bottom:16px;transition:all .15s;text-decoration:none}
+.provider-link:hover{background:rgba(255,255,255,.06);color:#fff;border-color:rgba(255,255,255,.1)}
+.provider-link svg{width:14px;height:14px;flex-shrink:0}
+
+.device-code-area{text-align:center;padding:16px 0}
+.device-code-display{font-family:monospace;font-size:28px;font-weight:700;color:#fff;letter-spacing:4px;padding:16px;background:#0a0a0a;border:1px solid rgba(255,255,255,.1);border-radius:12px;margin:12px 0;cursor:pointer;transition:border-color .15s}
+.device-code-display:hover{border-color:rgba(59,130,246,.4)}
+.device-code-link{font-size:13px;color:#3b82f6;margin-top:8px;display:block}
+.device-code-link:hover{color:#60a5fa}
+.device-code-status{font-size:13px;color:#737373;margin-top:12px;display:flex;align-items:center;justify-content:center;gap:8px}
+.device-code-status.success{color:#22c55e}
+.device-code-hint{font-size:12px;color:#525252;margin-top:8px;line-height:1.5}
+
+.test-msg{font-size:13px;padding:8px 12px;border-radius:8px;margin-top:12px;display:none}
+.test-msg.success{display:block;background:rgba(34,197,94,.08);color:#22c55e}
+.test-msg.error{display:block;background:rgba(239,68,68,.08);color:#ef4444}
+
+.spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.15);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;display:inline-block}
+.spinner-blue{border-color:rgba(59,130,246,.2);border-top-color:#3b82f6}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.loading-state{text-align:center;padding:60px 0;color:#525252;font-size:14px}
+
+.checkmark{display:inline-block;color:#22c55e;font-weight:700;font-size:18px}
+
+@media(max-width:600px){
+  .container{padding:24px 16px 60px}
+  .card-top{flex-wrap:wrap;gap:12px}
+  .card-actions{width:100%}
+  .card-actions .btn{flex:1;justify-content:center}
+  .card-buttons{flex-wrap:wrap}
+  .card-buttons .btn{flex:1;justify-content:center;min-width:140px}
+}
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <a href="/dashboard" class="back-link">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 3L5 8l5 5"/></svg>
+    Dashboard
+  </a>
+</div>
+
+<div class="container">
+  <h1>Verbindungen</h1>
+  <p class="subtitle">Verbinde deine AI-Konten per Account-Login oder API Key, um Agenten mit verschiedenen Modellen zu nutzen.</p>
+  <div class="providers" id="providers">
+    <div class="loading-state">Laden...</div>
+  </div>
+</div>
+
+<!-- OAuth / Device Auth Modal -->
+<div class="overlay" id="oauthOverlay" onclick="if(event.target===this)closeOAuth()">
+  <div class="modal">
+    <button class="modal-close" onclick="closeOAuth()"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 5l10 10M15 5L5 15"/></svg></button>
+    <div class="modal-header">
+      <div class="logo" id="oauthLogo"></div>
+      <div class="modal-header-text">
+        <h2 id="oauthTitle"></h2>
+        <p id="oauthSubtitle"></p>
+      </div>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:#a3a3a3;line-height:1.6;margin-bottom:16px" id="oauthExplanation"></p>
+      <div class="device-code-area" id="deviceCodeArea" style="display:none">
+        <div class="device-code-display" id="deviceCode" onclick="copyDeviceCode()" title="Klicken zum Kopieren"></div>
+        <a href="#" target="_blank" class="device-code-link" id="deviceCodeLink"></a>
+        <div class="device-code-hint" id="deviceCodeHint">Kopiere den Code, oeffne den Link und fuege ihn dort ein.</div>
+        <div class="device-code-status" id="deviceCodeStatus"></div>
+      </div>
+      <div id="oauthStartArea">
+        <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px" onclick="startDeviceAuth()" id="oauthStartBtn">Code anzeigen</button>
+      </div>
+      <div class="test-msg" id="oauthTestMsg"></div>
+    </div>
+  </div>
+</div>
+
+<!-- API Key Modal -->
+<div class="overlay" id="apikeyOverlay" onclick="if(event.target===this)closeApiKey()">
+  <div class="modal">
+    <button class="modal-close" onclick="closeApiKey()"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 5l10 10M15 5L5 15"/></svg></button>
+    <div class="modal-header">
+      <div class="logo" id="apikeyLogo"></div>
+      <div class="modal-header-text">
+        <h2 id="apikeyTitle"></h2>
+        <p id="apikeySubtitle"></p>
+      </div>
+    </div>
+    <div class="modal-body">
+      <a href="#" target="_blank" class="provider-link" id="apikeyProviderLink">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 1h7v7M13 1L6 8"/></svg>
+        <span id="apikeyLinkText"></span>
+      </a>
+      <div class="field">
+        <label>API Key</label>
+        <input type="password" id="apikeyInput" placeholder="Key hier einfuegen" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="field">
+        <label>Standard-Modell</label>
+        <select id="apikeyModel"></select>
+      </div>
+      <div class="test-msg" id="apikeyTestMsg"></div>
+      <div style="margin-top:20px;display:flex;gap:8px">
+        <button class="btn btn-ghost" style="flex:1" onclick="testApiKey()">Testen</button>
+        <button class="btn btn-primary" style="flex:1" onclick="saveApiKey()" id="apikeySaveBtn">Verbinden</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var PROVIDERS = {
+  claude: {
+    name: "Claude",
+    desc: "Anthropic",
+    logoClass: "logo-claude",
+    letter: "C",
+    backendKey: "anthropic",
+    supportsOAuth: true,
+    oauthName: "Anthropic",
+    oauthExplanation: "Melde dich bei Anthropic an und erlaube BLUN den Zugriff auf dein Konto. Du brauchst ein bestehendes Abo bei Anthropic.",
+    link: "https://console.anthropic.com/settings/keys",
+    linkText: "Bei Anthropic einloggen und Key erstellen",
+    models: [
+      { value: "claude-opus-4-6", label: "Opus 4.6" },
+      { value: "claude-sonnet-4-6", label: "Sonnet 4.6" },
+      { value: "claude-haiku-4-5", label: "Haiku 4.5" }
+    ]
+  },
+  chatgpt: {
+    name: "ChatGPT",
+    desc: "OpenAI",
+    logoClass: "logo-chatgpt",
+    letter: "G",
+    backendKey: "openai",
+    supportsOAuth: true,
+    oauthName: "OpenAI",
+    oauthExplanation: "Melde dich bei OpenAI an und erlaube BLUN den Zugriff. Du brauchst ein bestehendes OpenAI-Konto.",
+    link: "https://platform.openai.com/api-keys",
+    linkText: "Bei OpenAI einloggen und Key erstellen",
+    models: [
+      { value: "gpt-4o", label: "GPT-4o" },
+      { value: "gpt-4o-mini", label: "GPT-4o Mini" },
+      { value: "gpt-4.1", label: "GPT-4.1" },
+      { value: "o3", label: "o3" },
+      { value: "o4-mini", label: "o4-mini" }
+    ]
+  },
+  google: {
+    name: "Google AI",
+    desc: "Gemini",
+    logoClass: "logo-google",
+    letter: "G",
+    backendKey: "google",
+    supportsOAuth: true,
+    oauthName: "Google",
+    oauthExplanation: "Melde dich mit deinem Google-Konto an und erlaube BLUN den Zugriff auf die Gemini API.",
+    link: "https://aistudio.google.com/apikey",
+    linkText: "Bei Google AI Studio Key erstellen",
+    models: [
+      { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
+      { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
+      { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash" }
+    ]
+  },
+  mistral: {
+    name: "Mistral",
+    desc: "Mistral AI",
+    logoClass: "logo-mistral",
+    letter: "M",
+    backendKey: "mistral",
+    supportsOAuth: false,
+    link: "https://console.mistral.ai/api-keys",
+    linkText: "Bei Mistral einloggen und Key erstellen",
+    models: [
+      { value: "mistral-large-latest", label: "Mistral Large" },
+      { value: "mistral-medium-latest", label: "Mistral Medium" },
+      { value: "mistral-small-latest", label: "Mistral Small" },
+      { value: "codestral-latest", label: "Codestral" }
+    ]
+  },
+  deepseek: {
+    name: "DeepSeek",
+    desc: "DeepSeek AI",
+    logoClass: "logo-deepseek",
+    letter: "D",
+    backendKey: "deepseek",
+    supportsOAuth: false,
+    link: "https://platform.deepseek.com/api_keys",
+    linkText: "Bei DeepSeek einloggen und Key erstellen",
+    models: [
+      { value: "deepseek-chat", label: "DeepSeek V3" },
+      { value: "deepseek-reasoner", label: "DeepSeek R1" }
+    ]
+  },
+  local: {
+    name: "Lokale Modelle",
+    desc: "Ollama / LM Studio",
+    logoClass: "logo-local",
+    letter: "L",
+    backendKey: "local",
+    supportsOAuth: false
+  }
+};
+
+var connections = {};
+var currentProvider = null;
+var deviceAuthPollTimer = null;
+
+async function loadConnections() {
+  try {
+    var res = await fetch("/api/connections");
+    if (res.ok) {
+      var data = await res.json();
+      connections = {};
+      if (data.connections) {
+        data.connections.forEach(function(c) {
+          connections[c.provider] = c;
+        });
+      }
+    }
+  } catch (e) {}
+  render();
+}
+
+function render() {
+  var container = document.getElementById("providers");
+  container.innerHTML = "";
+
+  var keys = Object.keys(PROVIDERS);
+  for (var i = 0; i < keys.length; i++) {
+    var key = keys[i];
+    var prov = PROVIDERS[key];
+    var conn = connections[prov.backendKey];
+    var isConnected = conn && conn.status === "active";
+    var card = document.createElement("div");
+    card.className = "provider-card" + (isConnected ? " connected" : "");
+
+    var metaHTML = "";
+    if (isConnected) {
+      var modelLabel = "";
+      if (prov.models && conn.default_model) {
+        for (var j = 0; j < prov.models.length; j++) {
+          if (prov.models[j].value === conn.default_model) {
+            modelLabel = prov.models[j].label;
+            break;
+          }
+        }
+        if (!modelLabel) modelLabel = conn.default_model;
+      }
+      var authLabel = conn.auth_type === "oauth" ? "OAuth" : "API Key";
+      metaHTML = '<div class="provider-meta">' +
+        '<span class="meta-tag meta-auth">' + authLabel + '</span>' +
+        (modelLabel ? '<span class="meta-tag">' + modelLabel + '</span>' : "") +
+        (conn.tokens_used > 0 ? '<span class="meta-tag meta-usage">' + Number(conn.tokens_used).toLocaleString("de-DE") + ' Tokens</span>' : "") +
+        '</div>';
+    }
+
+    var actionsHTML = "";
+    if (key === "local") {
+      actionsHTML = '<a href="/dashboard/models" class="btn btn-ghost btn-sm">Modelle verwalten</a>';
+    } else if (isConnected) {
+      actionsHTML =
+        '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();testExisting(\x27' + prov.backendKey + '\x27)">Testen</button>' +
+        '<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();disconnect(\x27' + prov.backendKey + '\x27)">Trennen</button>';
+    }
+
+    var buttonsHTML = "";
+    if (key !== "local" && !isConnected) {
+      buttonsHTML = '<div class="card-buttons">';
+      if (prov.supportsOAuth) {
+        buttonsHTML += '<button class="btn btn-primary btn-sm" onclick="openOAuth(\x27' + key + '\x27)">Mit Account verbinden</button>';
+      }
+      buttonsHTML += '<button class="btn btn-outline btn-sm" onclick="openApiKeyModal(\x27' + key + '\x27)">Mit API Key verbinden</button>';
+      buttonsHTML += '</div>';
+    }
+
+    card.innerHTML =
+      '<div class="card-top">' +
+        '<div class="logo ' + prov.logoClass + '">' + prov.letter + '</div>' +
+        '<div class="provider-info">' +
+          '<div class="provider-name">' + prov.name +
+            ' <span class="badge ' + (isConnected ? "badge-connected" : "badge-disconnected") + '">' +
+            (isConnected ? "Verbunden" : "Nicht verbunden") + '</span>' +
+          '</div>' +
+          '<div class="provider-desc">' + prov.desc + '</div>' +
+          metaHTML +
+        '</div>' +
+        '<div class="card-actions">' + actionsHTML + '</div>' +
+      '</div>' +
+      buttonsHTML;
+    container.appendChild(card);
+  }
+}
+
+// --- OAuth / Device Auth ---
+function openOAuth(providerKey) {
+  currentProvider = providerKey;
+  var prov = PROVIDERS[providerKey];
+  document.getElementById("oauthLogo").className = "logo " + prov.logoClass;
+  document.getElementById("oauthLogo").textContent = prov.letter;
+  document.getElementById("oauthTitle").textContent = "Mit " + prov.oauthName + " verbinden";
+  document.getElementById("oauthSubtitle").textContent = prov.desc;
+  document.getElementById("oauthExplanation").textContent = prov.oauthExplanation;
+  document.getElementById("deviceCodeArea").style.display = "none";
+  document.getElementById("oauthStartArea").style.display = "block";
+  document.getElementById("oauthStartBtn").textContent = "Code anzeigen";
+  document.getElementById("oauthStartBtn").disabled = false;
+  document.getElementById("oauthTestMsg").className = "test-msg";
+  document.getElementById("oauthOverlay").classList.add("show");
+}
+
+function closeOAuth() {
+  document.getElementById("oauthOverlay").classList.remove("show");
+  if (deviceAuthPollTimer) { clearInterval(deviceAuthPollTimer); deviceAuthPollTimer = null; }
+  currentProvider = null;
+}
+
+function copyDeviceCode() {
+  var code = document.getElementById("deviceCode").textContent;
+  navigator.clipboard.writeText(code).then(function() {
+    document.getElementById("deviceCodeHint").textContent = "Code kopiert!";
+    setTimeout(function() {
+      document.getElementById("deviceCodeHint").textContent = "Kopiere den Code, oeffne den Link und fuege ihn dort ein.";
+    }, 2000);
+  });
+}
+
+async function startDeviceAuth() {
+  var prov = PROVIDERS[currentProvider];
+  var btn = document.getElementById("oauthStartBtn");
+  btn.innerHTML = '<span class="spinner"></span>';
+  btn.disabled = true;
+
+  try {
+    var res = await fetch("/api/connections/" + prov.backendKey + "/device-auth", { method: "POST" });
+    var data = await res.json();
+    if (!res.ok) {
+      showMsg("oauthTestMsg", (data.error || "Fehler beim Starten") + (data.fallback === "api_key" ? " Nutze den API Key Button unten." : ""), "error");
+      btn.textContent = "Code anzeigen";
+      btn.disabled = false;
+      return;
+    }
+
+    document.getElementById("oauthStartArea").style.display = "none";
+    document.getElementById("deviceCodeArea").style.display = "block";
+    document.getElementById("deviceCode").textContent = data.user_code;
+    document.getElementById("deviceCodeLink").href = data.verification_uri;
+    document.getElementById("deviceCodeLink").textContent = data.verification_uri;
+    document.getElementById("deviceCodeStatus").innerHTML = '<span class="spinner spinner-blue"></span> Warte auf Bestaetigung...';
+    document.getElementById("deviceCodeStatus").className = "device-code-status";
+
+    // Start polling
+    var pollProvider = prov.backendKey;
+    deviceAuthPollTimer = setInterval(async function() {
+      try {
+        var sr = await fetch("/api/connections/" + pollProvider + "/device-auth/status");
+        var sd = await sr.json();
+        if (sd.status === "complete") {
+          clearInterval(deviceAuthPollTimer);
+          deviceAuthPollTimer = null;
+          document.getElementById("deviceCodeStatus").innerHTML = '<span class="checkmark">&#10003;</span> Verbunden!';
+          document.getElementById("deviceCodeStatus").className = "device-code-status success";
+          setTimeout(function() { closeOAuth(); loadConnections(); }, 1500);
+        } else if (sd.status === "expired") {
+          clearInterval(deviceAuthPollTimer);
+          deviceAuthPollTimer = null;
+          document.getElementById("deviceCodeStatus").textContent = "Code abgelaufen. Bitte erneut versuchen.";
+          document.getElementById("oauthStartArea").style.display = "block";
+          document.getElementById("oauthStartBtn").textContent = "Neuen Code anzeigen";
+          document.getElementById("oauthStartBtn").disabled = false;
+        }
+      } catch (e) {}
+    }, 3000);
+  } catch (e) {
+    showMsg("oauthTestMsg", "Netzwerkfehler", "error");
+    btn.textContent = "Code anzeigen";
+    btn.disabled = false;
+  }
+}
+
+// --- API Key Modal ---
+function openApiKeyModal(providerKey) {
+  currentProvider = providerKey;
+  var prov = PROVIDERS[providerKey];
+  document.getElementById("apikeyLogo").className = "logo " + prov.logoClass;
+  document.getElementById("apikeyLogo").textContent = prov.letter;
+  document.getElementById("apikeyTitle").textContent = "API Key eingeben";
+  document.getElementById("apikeySubtitle").textContent = prov.name + " / " + prov.desc;
+  document.getElementById("apikeyProviderLink").href = prov.link;
+  document.getElementById("apikeyLinkText").textContent = prov.linkText;
+  var sel = document.getElementById("apikeyModel");
+  sel.innerHTML = "";
+  for (var i = 0; i < prov.models.length; i++) {
+    var opt = document.createElement("option");
+    opt.value = prov.models[i].value;
+    opt.textContent = prov.models[i].label;
+    sel.appendChild(opt);
+  }
+  document.getElementById("apikeyInput").value = "";
+  document.getElementById("apikeyTestMsg").className = "test-msg";
+  document.getElementById("apikeyTestMsg").textContent = "";
+  document.getElementById("apikeyOverlay").classList.add("show");
+  setTimeout(function(){ document.getElementById("apikeyInput").focus(); }, 100);
+}
+
+function closeApiKey() {
+  document.getElementById("apikeyOverlay").classList.remove("show");
+  currentProvider = null;
+}
+
+async function testApiKey() {
+  var key = document.getElementById("apikeyInput").value.trim();
+  if (!key) { showMsg("apikeyTestMsg", "Bitte Key eingeben", "error"); return; }
+  showMsg("apikeyTestMsg", "Teste...", "success");
+  var prov = PROVIDERS[currentProvider];
+  try {
+    var res = await fetch("/api/connections/" + prov.backendKey + "/test", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ api_key: key })
+    });
+    var data = await res.json().catch(function(){ return {}; });
+    if (res.ok && data.ok) showMsg("apikeyTestMsg", "Verbindung erfolgreich", "success");
+    else showMsg("apikeyTestMsg", data.error || "Test fehlgeschlagen", "error");
+  } catch (e) {
+    showMsg("apikeyTestMsg", "Netzwerkfehler", "error");
+  }
+}
+
+async function saveApiKey() {
+  var key = document.getElementById("apikeyInput").value.trim();
+  var model = document.getElementById("apikeyModel").value;
+  if (!key) { showMsg("apikeyTestMsg", "Bitte Key eingeben", "error"); return; }
+  var btn = document.getElementById("apikeySaveBtn");
+  btn.innerHTML = '<span class="spinner"></span>';
+  btn.disabled = true;
+  var prov = PROVIDERS[currentProvider];
+  try {
+    var res = await fetch("/api/connections/" + prov.backendKey, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ api_key: key, default_model: model, auth_type: "api_key" })
+    });
+    if (res.ok) {
+      closeApiKey();
+      loadConnections();
+    } else {
+      var data = await res.json().catch(function(){ return {}; });
+      showMsg("apikeyTestMsg", data.error || "Verbindung fehlgeschlagen", "error");
+    }
+  } catch (e) {
+    showMsg("apikeyTestMsg", "Netzwerkfehler", "error");
+  }
+  btn.textContent = "Verbinden";
+  btn.disabled = false;
+}
+
+async function testExisting(backendProvider) {
+  try {
+    var res = await fetch("/api/connections/" + backendProvider + "/test", { method: "POST" });
+    var data = await res.json().catch(function(){ return {}; });
+    if (res.ok && data.ok) alert("Verbindung OK");
+    else alert("Test fehlgeschlagen: " + (data.error || "Unbekannter Fehler"));
+  } catch (e) { alert("Netzwerkfehler"); }
+}
+
+async function disconnect(backendProvider) {
+  var name = backendProvider;
+  for (var k in PROVIDERS) { if (PROVIDERS[k].backendKey === backendProvider) { name = PROVIDERS[k].name; break; } }
+  if (!confirm(name + " wirklich trennen?")) return;
+  try {
+    await fetch("/api/connections/" + backendProvider, { method: "DELETE" });
+    delete connections[backendProvider];
+    render();
+  } catch (e) { alert("Fehler beim Trennen"); }
+}
+
+function showMsg(id, text, type) {
+  var el = document.getElementById(id);
+  el.className = "test-msg " + type;
+  el.textContent = text;
+}
+
+document.addEventListener("keydown", function(e) {
+  if (e.key === "Escape") { closeOAuth(); closeApiKey(); }
+});
+
+loadConnections();
+</script>
+</body>
+</html>

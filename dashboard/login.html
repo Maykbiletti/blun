@@ -11,6 +11,8 @@
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#0a0a0a;color:#e5e5e5;font-family:'Inter',system-ui,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center}
 .container{width:100%;max-width:400px;padding:1.5rem}
+.back-link{display:inline-flex;align-items:center;gap:.4rem;color:#737373;font-size:.85rem;text-decoration:none;margin-bottom:1.5rem;transition:color .2s}
+.back-link:hover{color:#3b82f6}
 .logo{text-align:center;margin-bottom:2rem}
 .logo h1{font-size:2.2rem;font-weight:700;color:#fff;letter-spacing:-.03em}
 .logo p{color:#737373;font-size:.85rem;margin-top:.25rem}
@@ -23,14 +25,17 @@ body{background:#0a0a0a;color:#e5e5e5;font-family:'Inter',system-ui,sans-serif;m
 .field input{width:100%;padding:.7rem .85rem;background:#0a0a0a;border:1px solid #262626;border-radius:8px;color:#fff;font-size:.9rem;outline:none;transition:border-color .2s}
 .field input:focus{border-color:#3b82f6}
 .field input::placeholder{color:#525252}
-.btn-submit{width:100%;padding:.8rem;background:#3b82f6;color:#0a0a0a;border:none;border-radius:8px;font-size:.9rem;font-weight:600;cursor:pointer;margin-top:.5rem;transition:background .2s}
-.btn-submit:hover{background:#d97706}
+.pw-wrapper{position:relative}
+.pw-wrapper input{padding-right:2.5rem}
+.pw-toggle{position:absolute;right:.7rem;top:50%;transform:translateY(-50%);background:none;border:none;color:#525252;cursor:pointer;font-size:.8rem;padding:.2rem;transition:color .2s}
+.pw-toggle:hover{color:#a3a3a3}
+.btn-submit{width:100%;padding:.8rem;background:#3b82f6;color:#fff;border:none;border-radius:8px;font-size:.9rem;font-weight:600;cursor:pointer;margin-top:.5rem;transition:background .2s}
+.btn-submit:hover{background:#2563eb}
 .btn-submit:disabled{opacity:.5;cursor:not-allowed}
 .divider{display:flex;align-items:center;gap:.75rem;margin:1.25rem 0;color:#525252;font-size:.75rem}
 .divider::before,.divider::after{content:'';flex:1;height:1px;background:#262626}
 .btn-oauth{width:100%;padding:.65rem;background:#141414;border:1px solid #262626;border-radius:8px;color:#e5e5e5;font-size:.8rem;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.5rem;margin-bottom:.5rem;transition:border-color .2s}
 .btn-oauth:hover{border-color:#404040}
-.btn-oauth svg{width:18px;height:18px}
 .error-msg{background:#451a03;border:1px solid #92400e;color:#fbbf24;padding:.65rem .85rem;border-radius:8px;font-size:.8rem;margin-bottom:1rem;display:none}
 .forgot{text-align:center;margin-top:1rem}
 .forgot a{color:#737373;font-size:.8rem;text-decoration:none;transition:color .2s}
@@ -40,8 +45,9 @@ body{background:#0a0a0a;color:#e5e5e5;font-family:'Inter',system-ui,sans-serif;m
 </head>
 <body>
 <div class="container">
+  <a href="/" class="back-link">&larr; Zurueck zur Startseite</a>
   <div class="logo">
-    <h1>BLUN</h1>
+    <h1><span style="color:#fff">BL</span><span style="color:#3b82f6">UN</span></h1>
     <p>AI Organisator</p>
   </div>
   <div class="card">
@@ -61,7 +67,10 @@ body{background:#0a0a0a;color:#e5e5e5;font-family:'Inter',system-ui,sans-serif;m
       </div>
       <div class="field">
         <label>Passwort</label>
-        <input type="password" id="password" placeholder="Mindestens 8 Zeichen" required autocomplete="current-password" minlength="8">
+        <div class="pw-wrapper">
+          <input type="password" id="password" placeholder="Mindestens 8 Zeichen" required autocomplete="current-password" minlength="8">
+          <button type="button" class="pw-toggle" onclick="togglePw()" title="Passwort anzeigen">Zeigen</button>
+        </div>
       </div>
       <button type="submit" class="btn-submit" id="submitBtn">Anmelden</button>
     </form>
@@ -80,6 +89,12 @@ function switchTab(m) {
   document.getElementById('forgotLink').style.display = m === 'login' ? '' : 'none';
   document.getElementById('error').style.display = 'none';
 }
+function togglePw() {
+  var inp = document.getElementById('password');
+  var btn = inp.parentElement.querySelector('.pw-toggle');
+  if (inp.type === 'password') { inp.type = 'text'; btn.textContent = 'Verbergen'; }
+  else { inp.type = 'password'; btn.textContent = 'Zeigen'; }
+}
 function showError(msg) {
   var el = document.getElementById('error');
   el.textContent = msg;
@@ -90,7 +105,7 @@ async function handleSubmit(e) {
   var btn = document.getElementById('submitBtn');
   btn.disabled = true;
   document.getElementById('error').style.display = 'none';
-  var body = { email: document.getElementById('email').value, password: document.getElementById('password').value };
+  var body = { email: document.getElementById('email').value.trim(), password: document.getElementById('password').value };
   if (mode === 'register') {
     var nameVal = document.getElementById('name').value.trim();
     if (!nameVal) { showError('Bitte gib deinen Namen ein.'); btn.disabled = false; return; }

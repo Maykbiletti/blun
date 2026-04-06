@@ -3,188 +3,411 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BLUN - AI Models</title>
+<title>BLUN - Models</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:"Inter",sans-serif;background:#0a0a0a;color:#e5e5e5;min-height:100vh}
-a{color:#3b82f6;text-decoration:none}
-.topbar{position:sticky;top:0;z-index:50;background:#0a0a0a;border-bottom:1px solid #2a2a2a;padding:16px 24px;display:flex;align-items:center;justify-content:space-between}
-.topbar-left{display:flex;align-items:center;gap:16px}
-.topbar-logo{font-size:20px;font-weight:700;color:#3b82f6}
-.topbar-sep{width:1px;height:24px;background:#2a2a2a}
-.topbar-title{font-size:16px;font-weight:600;color:#e5e5e5}
-.topbar-back{color:#a3a3a3;font-size:14px;padding:6px 12px;border:1px solid #2a2a2a;border-radius:8px;background:transparent;cursor:pointer;transition:all .15s;text-decoration:none}
-.topbar-back:hover{color:#e5e5e5;border-color:#3b82f6}
-.container{max-width:1200px;margin:0 auto;padding:24px}
-.stats-row{display:flex;gap:16px;margin-bottom:32px;flex-wrap:wrap}
-.stat-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:20px;flex:1;min-width:140px}
-.stat-label{font-size:13px;color:#a3a3a3;margin-bottom:4px}
-.stat-value{font-size:28px;font-weight:700;color:#e5e5e5}
-.stat-value.blue{color:#3b82f6}
-.stat-value.green{color:#22c55e}
-.filters{display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap}
-.filter-btn{padding:8px 16px;border-radius:8px;border:1px solid #2a2a2a;background:transparent;color:#a3a3a3;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;font-family:inherit}
-.filter-btn:hover{color:#e5e5e5;border-color:#3b82f6}
-.filter-btn.active{background:rgba(59,130,246,.15);color:#3b82f6;border-color:#3b82f6}
-.models-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
-.model-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:24px;transition:all .2s;position:relative;overflow:hidden}
-.model-card:hover{border-color:#3b82f6;transform:translateY(-2px)}
-.model-card.downloading{border-color:#3b82f6}
-.model-card.running-card{border-color:#22c55e}
-.model-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
-.model-name{font-size:18px;font-weight:600;color:#e5e5e5}
-.model-maker{font-size:13px;color:#a3a3a3;margin-top:2px}
-.size-badge{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;font-family:"JetBrains Mono",monospace;white-space:nowrap}
-.size-S{background:rgba(34,197,94,.15);color:#22c55e}
-.size-M{background:rgba(59,130,246,.15);color:#3b82f6}
-.size-L{background:rgba(249,115,22,.15);color:#f97316}
-.size-XL{background:rgba(239,68,68,.15);color:#ef4444}
-.model-desc{font-size:14px;color:#a3a3a3;line-height:1.5;margin-bottom:16px;min-height:42px}
-.model-meta{display:flex;gap:16px;margin-bottom:16px;font-size:12px;color:#737373}
-.model-meta span{display:flex;align-items:center;gap:4px}
-.model-actions{display:flex;gap:8px;flex-wrap:wrap}
-.btn{padding:10px 20px;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;border:none;font-family:inherit;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
-.btn-install{background:#3b82f6;color:#fff}
-.btn-install:hover{background:#2563eb}
-.btn-remove{background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.3)}
-.btn-remove:hover{background:rgba(239,68,68,.25)}
-.btn-start{background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3)}
-.btn-start:hover{background:rgba(34,197,94,.25)}
-.btn-stop{background:rgba(249,115,22,.15);color:#f97316;border:1px solid rgba(249,115,22,.3)}
-.btn-stop:hover{background:rgba(249,115,22,.25)}
-.btn-downloading{background:rgba(59,130,246,.15);color:#3b82f6;cursor:wait}
-.progress-bar{position:absolute;bottom:0;left:0;height:3px;background:#3b82f6;transition:width .3s;border-radius:0 0 12px 12px}
-.status-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
-.status-dot.installed{background:#3b82f6}
-.status-dot.downloading{background:#3b82f6;animation:pulse 1.5s infinite}
+:root{--bg:#0a0a0a;--card:#1a1a1a;--border:#1f1f1f;--border-hover:#2a2a2a;--text:#e5e5e5;--text-secondary:#a3a3a3;--text-muted:#737373;--blue:#3b82f6;--blue-hover:#2563eb;--green:#22c55e;--orange:#f97316;--red:#ef4444}
+body{font-family:"Inter",system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
+a{color:var(--blue);text-decoration:none}
+
+.nav{position:sticky;top:0;z-index:50;background:rgba(10,10,10,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between}
+.nav-left{display:flex;align-items:center;gap:20px}
+.nav-logo{font-size:18px;font-weight:800;letter-spacing:-.5px;color:#fff}
+.nav-logo span{color:var(--blue)}
+.nav-divider{width:1px;height:20px;background:var(--border)}
+.nav-title{font-size:14px;font-weight:500;color:var(--text-secondary)}
+.nav-back{font-size:13px;color:var(--text-muted);padding:6px 14px;border:1px solid var(--border);border-radius:6px;background:transparent;cursor:pointer;transition:all .15s;text-decoration:none;font-family:inherit}
+.nav-back:hover{color:var(--text);border-color:var(--border-hover)}
+
+.hero{max-width:900px;margin:0 auto;padding:48px 24px 0;text-align:center}
+.hero h1{font-size:36px;font-weight:800;letter-spacing:-.02em;margin-bottom:8px;background:linear-gradient(to right,#fff,#a3a3a3);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero p{font-size:15px;color:var(--text-muted);margin-bottom:28px;line-height:1.6}
+.search-wrap{position:relative;max-width:600px;margin:0 auto 12px}
+.search-wrap svg{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none}
+.search-input{width:100%;padding:12px 16px 12px 44px;background:var(--card);border:1px solid var(--border);border-radius:10px;color:#fff;font-size:15px;outline:none;font-family:inherit;transition:border-color .15s}
+.search-input:focus{border-color:var(--blue)}
+.search-input::placeholder{color:var(--text-muted)}
+
+.stats-bar{max-width:900px;margin:0 auto;padding:16px 24px 0;display:flex;align-items:center;justify-content:center;gap:24px;font-size:13px;color:var(--text-muted);flex-wrap:wrap}
+.stats-bar .stat{display:flex;align-items:center;gap:6px}
+.stats-bar .stat strong{color:var(--text);font-weight:600}
+.stats-bar .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.dot-blue{background:var(--blue)}
+.dot-green{background:var(--green)}
+
+.toolbar{max-width:1200px;margin:0 auto;padding:24px 24px 0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.filters{display:flex;gap:6px;flex-wrap:wrap}
+.filter-btn{padding:7px 14px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text-muted);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;font-family:inherit}
+.filter-btn:hover{color:var(--text);border-color:var(--border-hover)}
+.filter-btn.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.sort-wrap{display:flex;align-items:center;gap:8px}
+.sort-wrap label{font-size:13px;color:var(--text-muted)}
+.sort-select{background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;padding:6px 10px;font-family:inherit;outline:none;cursor:pointer}
+
+.container{max-width:1200px;margin:0 auto;padding:20px 24px 60px}
+.models-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px}
+
+.model-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;transition:all .2s;position:relative;overflow:hidden;cursor:default}
+.model-card:hover{border-color:var(--border-hover);box-shadow:0 4px 24px rgba(0,0,0,.3)}
+.model-card.downloading{border-color:rgba(59,130,246,.4)}
+.model-card.running-card{border-color:rgba(34,197,94,.4)}
+
+.card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.model-name{font-size:20px;font-weight:700;color:#fff;letter-spacing:-.01em}
+.model-maker{font-size:13px;color:var(--text-muted);margin-top:2px}
+.local-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;background:rgba(34,197,94,.1);color:var(--green);border:1px solid rgba(34,197,94,.15);white-space:nowrap;flex-shrink:0}
+.local-badge svg{width:12px;height:12px}
+
+.model-desc{font-size:14px;color:var(--text-secondary);line-height:1.55;margin-bottom:16px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+
+.tag-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.tag{padding:4px 10px;border-radius:6px;font-size:12px;font-weight:500;font-family:"JetBrains Mono",monospace;border:1px solid var(--border);color:var(--text-muted);background:transparent}
+.tag-size{font-weight:600}
+.tag-S{background:rgba(34,197,94,.1);color:var(--green);border-color:rgba(34,197,94,.2)}
+.tag-M{background:rgba(59,130,246,.1);color:var(--blue);border-color:rgba(59,130,246,.2)}
+.tag-L{background:rgba(249,115,22,.1);color:var(--orange);border-color:rgba(249,115,22,.2)}
+.tag-XL{background:rgba(239,68,68,.1);color:var(--red);border-color:rgba(239,68,68,.2)}
+
+.card-meta{display:flex;align-items:center;gap:16px;margin-bottom:16px;font-size:12px;color:var(--text-muted)}
+.card-meta .meta-item{display:flex;align-items:center;gap:5px}
+.status-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
 .status-dot.available{background:#525252}
-.status-dot.running{background:#22c55e;animation:pulse 1.5s infinite}
+.status-dot.installed{background:var(--blue)}
+.status-dot.downloading{background:var(--blue);animation:pulse 1.5s infinite}
+.status-dot.running{background:var(--green);animation:pulse 1.5s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-.empty-state{text-align:center;padding:60px 20px;color:#a3a3a3}
-.empty-state h3{font-size:18px;color:#e5e5e5;margin-bottom:8px}
-.server-info{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:20px;margin-bottom:24px;font-size:13px;color:#a3a3a3}
-.server-info strong{color:#e5e5e5}
-.toast{position:fixed;bottom:24px;right:24px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:14px 20px;font-size:14px;color:#e5e5e5;transform:translateY(100px);opacity:0;transition:all .3s;z-index:999}
+
+.card-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{padding:8px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
+.btn-install{background:var(--blue);color:#fff}
+.btn-install:hover{background:var(--blue-hover)}
+.btn-start{background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.25)}
+.btn-start:hover{background:rgba(34,197,94,.2)}
+.btn-stop{background:rgba(249,115,22,.12);color:var(--orange);border:1px solid rgba(249,115,22,.25)}
+.btn-stop:hover{background:rgba(249,115,22,.2)}
+.btn-remove{background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.2)}
+.btn-remove:hover{background:rgba(239,68,68,.18)}
+.btn-downloading{background:rgba(59,130,246,.12);color:var(--blue);border:1px solid rgba(59,130,246,.2);cursor:default}
+
+.progress-bar{position:absolute;bottom:0;left:0;height:3px;background:var(--blue);transition:width .3s;border-radius:0 3px 0 12px}
+
+.empty-state{text-align:center;padding:60px 20px;color:var(--text-muted)}
+.empty-state h3{font-size:16px;color:var(--text);margin-bottom:6px;font-weight:600}
+
+.toast{position:fixed;bottom:24px;right:24px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 20px;font-size:14px;color:var(--text);transform:translateY(100px);opacity:0;transition:all .3s;z-index:999}
 .toast.show{transform:translateY(0);opacity:1}
-.toast.success{border-color:#22c55e}
-.toast.error{border-color:#ef4444}
-@media(max-width:768px){.models-grid{grid-template-columns:1fr}.stats-row{flex-direction:column}.container{padding:16px}}
+.toast.success{border-color:var(--green)}
+.toast.error{border-color:var(--red)}
+
+
+.card-error{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:8px 12px;margin-top:8px;font-size:13px;color:var(--red);line-height:1.4}
+.btn-loading{background:rgba(59,130,246,.12);color:var(--blue);border:1px solid rgba(59,130,246,.2);cursor:wait;pointer-events:none}
+.btn-loading::before{content:"";display:inline-block;width:14px;height:14px;border:2px solid rgba(59,130,246,.3);border-top-color:var(--blue);border-radius:50%;animation:spin .6s linear infinite;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+@media(max-width:768px){
+  .hero h1{font-size:28px}
+  .models-grid{grid-template-columns:1fr}
+  .toolbar{flex-direction:column;align-items:flex-start}
+  .nav{padding:0 16px}
+  .hero,.container{padding-left:16px;padding-right:16px}
+}
 </style>
 </head>
 <body>
-<div class="topbar">
-  <div class="topbar-left">
-    <div class="topbar-logo">BLUN</div>
-    <div class="topbar-sep"></div>
-    <div class="topbar-title">AI Models</div>
+
+<div class="nav">
+  <div class="nav-left">
+    <div class="nav-logo">BL<span>UN</span></div>
+    <div class="nav-divider"></div>
+    <div class="nav-title">Models</div>
   </div>
-  <a href="/dashboard" class="topbar-back">Back to Dashboard</a>
+  <a href="/dashboard" class="nav-back">Back to Dashboard</a>
 </div>
-<div class="container">
-  <div class="server-info">
-    <strong>Your Server:</strong> <span id="serverRam">--</span> RAM available, <span id="serverDisk">--</span> disk free.
-    Models run locally on your CPU using llama.cpp. Install a model, then start it to chat.
+
+<div class="hero">
+  <h1>AI Model Library</h1>
+  <p>Browse and install open-source AI models. Everything runs locally on your machine -- private, fast, no cloud needed.</p>
+  <div class="search-wrap">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+    <input type="text" class="search-input" id="modelSearch" placeholder="Search models..." oninput="filterModels()">
   </div>
-  <div class="stats-row">
-    <div class="stat-card"><div class="stat-label">Available Models</div><div class="stat-value" id="totalCount">--</div></div>
-    <div class="stat-card"><div class="stat-label">Installed</div><div class="stat-value blue" id="installedCount">--</div></div>
-    <div class="stat-card"><div class="stat-label">Running</div><div class="stat-value green" id="runningCount">--</div></div>
-    <div class="stat-card"><div class="stat-label">Server Status</div><div class="stat-value" id="serverStatus" style="font-size:16px">Checking...</div></div>
-  </div>
-  <div class="filters">
-    <button class="filter-btn active" data-filter="all">All</button>
+</div>
+
+<div class="stats-bar">
+  <div class="stat"><strong id="totalCount">--</strong> models available</div>
+  <div class="stat"><span class="dot dot-blue"></span> <strong id="installedCount">--</strong> installed</div>
+  <div class="stat"><span class="dot dot-green"></span> <strong id="runningCount">--</strong> running</div>
+  <div class="stat"><strong id="downloadTotal">47.2k</strong> total installs</div>
+</div>
+
+<div class="toolbar">
+  <div class="filters" id="filterBar">
+    <button class="filter-btn active" data-filter="all">All Models</button>
+    <button class="filter-btn" data-filter="featured">Featured</button>
     <button class="filter-btn" data-filter="general">General</button>
-    <button class="filter-btn" data-filter="coding">Coding</button>
+    <button class="filter-btn" data-filter="coding">Code</button>
     <button class="filter-btn" data-filter="reasoning">Reasoning</button>
     <button class="filter-btn" data-filter="installed">Installed</button>
     <button class="filter-btn" data-filter="running">Running</button>
   </div>
+  <div class="sort-wrap">
+    <label>Sort:</label>
+    <select class="sort-select" id="sortSelect" onchange="filterModels()">
+      <option value="popular">Popular</option>
+      <option value="newest">Newest</option>
+      <option value="size-asc">Size: Small first</option>
+      <option value="size-desc">Size: Large first</option>
+    </select>
+  </div>
+</div>
+
+<div class="container">
   <div class="models-grid" id="modelsGrid"></div>
 </div>
+
 <div class="toast" id="toast"></div>
+
 <script>
-var currentFilter="all",modelsData=[],pollTimers={};
-function showToast(msg,type){var t=document.getElementById("toast");t.textContent=msg;t.className="toast show "+(type||"");setTimeout(function(){t.className="toast"},3000)}
-function sizeBadgeLabel(s){return{S:"Small",M:"Medium",L:"Large",XL:"Very Large"}[s]||s}
-function statusLabel(s){return{running:"Running",installed:"Ready",downloading:"Downloading"}[s]||"Available"}
-function renderModels(){
-  var grid=document.getElementById("modelsGrid");
-  var filtered=modelsData.filter(function(m){
-    if(currentFilter==="all")return true;
-    if(currentFilter==="installed")return m.status==="installed"||m.status==="running";
-    if(currentFilter==="running")return m.status==="running";
-    return m.category===currentFilter;
+var currentFilter = "all";
+var modelsData = [];
+var pollTimers = {};
+
+var downloadCounts = {
+  "gemma-4-12b": 8420, "gemma-4-27b": 5210, "gemma-3-4b": 6130, "llama-3.2-3b": 4870,
+  "phi-4-mini": 3540, "qwen3-4b": 2980, "mistral-7b": 7650, "gemma-3-12b": 3210,
+  "deepseek-r1-8b": 4310, "llama-3.1-8b": 5890, "qwen2.5-coder-7b": 2740,
+  "codellama-7b": 3150, "llama-3.3-70b": 1420, "deepseek-r1-70b": 980
+};
+
+var featuredIds = ["gemma-4-12b", "gemma-4-27b", "mistral-7b", "deepseek-r1-8b", "llama-3.1-8b", "qwen2.5-coder-7b"];
+var newestIds = ["gemma-4-12b", "gemma-4-27b", "qwen3-4b", "deepseek-r1-8b", "deepseek-r1-70b"];
+
+function showToast(msg, type) {
+  var t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = "toast show " + (type || "");
+  setTimeout(function() { t.className = "toast"; }, 3000);
+}
+
+function formatDownloads(n) {
+  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, "") + "k";
+  return n.toString();
+}
+
+function sizeBadgeLabel(s) {
+  return { S: "Small", M: "Medium", L: "Large", XL: "Extra Large" }[s] || s;
+}
+
+function sizeOrder(s) {
+  return { S: 1, M: 2, L: 3, XL: 4 }[s] || 5;
+}
+
+function statusLabel(s) {
+  return { running: "Laeuft", installed: "Bereit", downloading: "Download..." }[s] || "Verfuegbar";
+}
+
+function esc(id) { return id.replace(/'/g, "\\'"); }
+
+function filterModels() { renderModels(); }
+
+function renderModels() {
+  var grid = document.getElementById("modelsGrid");
+  var q = (document.getElementById("modelSearch").value || "").toLowerCase();
+  var sort = document.getElementById("sortSelect").value;
+
+  var filtered = modelsData.filter(function(m) {
+    if (q && m.name.toLowerCase().indexOf(q) === -1 && m.maker.toLowerCase().indexOf(q) === -1 && m.description.toLowerCase().indexOf(q) === -1 && (m.tags || []).join(" ").toLowerCase().indexOf(q) === -1) return false;
+    if (currentFilter === "all") return true;
+    if (currentFilter === "featured") return featuredIds.indexOf(m.id) !== -1;
+    if (currentFilter === "installed") return m.status === "installed" || m.status === "running";
+    if (currentFilter === "running") return m.status === "running";
+    return m.category === currentFilter;
   });
-  if(!filtered.length){grid.innerHTML='<div class="empty-state"><h3>No models found</h3><p>Try a different filter.</p></div>';return}
-  grid.innerHTML=filtered.map(function(m){
-    var btn="";
-    if(m.status==="running"){
-      btn='<button class="btn btn-stop" onclick="stopModel(\x27'+m.id+'\x27)">Stop</button><button class="btn btn-remove" onclick="removeModel(\x27'+m.id+'\x27)">Remove</button>';
-    }else if(m.status==="installed"){
-      btn='<button class="btn btn-start" onclick="startModel(\x27'+m.id+'\x27)">Start</button><button class="btn btn-remove" onclick="removeModel(\x27'+m.id+'\x27)">Remove</button>';
-    }else if(m.status==="downloading"){
-      btn='<button class="btn btn-downloading">Downloading... '+m.progress+'%</button>';
-    }else{
-      btn='<button class="btn btn-install" onclick="installModel(\x27'+m.id+'\x27)">Install</button>';
+
+  filtered.sort(function(a, b) {
+    if (sort === "popular") return (downloadCounts[b.id] || 0) - (downloadCounts[a.id] || 0);
+    if (sort === "newest") {
+      var aNew = newestIds.indexOf(a.id) !== -1 ? 0 : 1;
+      var bNew = newestIds.indexOf(b.id) !== -1 ? 0 : 1;
+      return aNew - bNew;
     }
-    var prog=m.status==="downloading"?'<div class="progress-bar" style="width:'+m.progress+'%"></div>':"";
-    var cls="model-card";
-    if(m.status==="downloading")cls+=" downloading";
-    if(m.status==="running")cls+=" running-card";
-    return'<div class="'+cls+'"><div class="model-header"><div><div class="model-name">'+m.name+'</div><div class="model-maker">'+m.maker+'</div></div><span class="size-badge size-'+m.size+'">'+sizeBadgeLabel(m.size)+' / '+m.sizeGB+'</span></div><div class="model-desc">'+m.description+'</div><div class="model-meta"><span><span class="status-dot '+m.status+'"></span> '+statusLabel(m.status)+'</span><span>Needs '+m.ram+' RAM</span></div><div class="model-actions">'+btn+'</div>'+prog+'</div>';
+    if (sort === "size-asc") return sizeOrder(a.size) - sizeOrder(b.size);
+    if (sort === "size-desc") return sizeOrder(b.size) - sizeOrder(a.size);
+    return 0;
+  });
+
+  if (!filtered.length) {
+    grid.innerHTML = '<div class="empty-state"><h3>No models found</h3><p>Try a different search or filter.</p></div>';
+    return;
+  }
+
+  grid.innerHTML = filtered.map(function(m) {
+    var mid = esc(m.id);
+    var actions = "";
+    if (m.status === "running") {
+      actions = '<button class="btn btn-stop" onclick="stopModel(\'' + mid + '\')">Stop</button><button class="btn btn-remove" onclick="removeModel(\'' + mid + '\')">Remove</button>';
+    } else if (m.status === "installed") {
+      actions = '<button class="btn btn-start" onclick="startModel(\'' + mid + '\')">Start</button><button class="btn btn-remove" onclick="removeModel(\'' + mid + '\')">Remove</button>';
+    } else if (m.status === "downloading") {
+      actions = '<button class="btn btn-downloading">Downloading ' + m.progress + '%</button>';
+    } else {
+      actions = '<button class="btn btn-install" onclick="installModel(\'' + mid + '\')">Install</button>';
+    }
+
+    var prog = m.status === "downloading" ? '<div class="progress-bar" style="width:' + m.progress + '%"></div>' : "";
+    var cls = "model-card";
+    if (m.status === "downloading") cls += " downloading";
+    if (m.status === "running") cls += " running-card";
+
+    var tags = (m.tags || []).map(function(t) { return '<span class="tag">' + t + '</span>'; }).join("");
+    var sizeTag = '<span class="tag tag-size tag-' + m.size + '">' + sizeBadgeLabel(m.size) + ' / ' + m.sizeGB + '</span>';
+    var dl = downloadCounts[m.id] || 0;
+
+    return '<div class="' + cls + '">' +
+      '<div class="card-top">' +
+        '<div><div class="model-name">' + m.name + '</div><div class="model-maker">by ' + m.maker + '</div></div>' +
+        '<span class="local-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>Runs locally</span>' +
+      '</div>' +
+      '<div class="model-desc">' + m.description + '</div>' +
+      '<div class="tag-row">' + sizeTag + tags + '</div>' +
+      '<div class="card-meta">' +
+        '<span class="meta-item"><span class="status-dot ' + m.status + '"></span>' + statusLabel(m.status) + '</span>' +
+        '<span class="meta-item">RAM: ' + m.ram + '</span>' +
+        '<span class="meta-item">' + formatDownloads(dl) + ' installs</span>' +
+      '</div>' +
+      '<div class="card-actions">' + actions + '</div>' +
+      (m._error ? '<div class="card-error">' + m._error + '</div>' : '') +
+      prog +
+    '</div>';
   }).join("");
 }
-function getAuthHeaders(){var h={};var k=localStorage.getItem("blun_api_key");if(k)h["x-blun-key"]=k;return h}
-function loadModels(){
-  fetch("/api/models",{credentials:"include",headers:getAuthHeaders()}).then(function(r){return r.json()}).then(function(d){
-    modelsData=d.models;
-    document.getElementById("totalCount").textContent=d.models.length;
-    document.getElementById("installedCount").textContent=d.installed;
-    document.getElementById("runningCount").textContent=d.running||0;
-    document.getElementById("serverStatus").textContent="Online";
-    document.getElementById("serverStatus").style.color="#22c55e";
-    renderModels();
-    d.models.forEach(function(m){if(m.status==="downloading"&&!pollTimers[m.id])startPolling(m.id)});
-  }).catch(function(){document.getElementById("serverStatus").textContent="Offline";document.getElementById("serverStatus").style.color="#ef4444"});
+
+function getAuthHeaders() {
+  var h = {};
+  var k = localStorage.getItem("blun_api_key");
+  if (k) h["x-blun-key"] = k;
+  return h;
 }
-function installModel(id){
-  fetch("/api/models/"+encodeURIComponent(id)+"/download",{method:"POST",credentials:"include",headers:getAuthHeaders()}).then(function(r){return r.json()}).then(function(){
-    showToast("Downloading model...","success");
-    modelsData.forEach(function(m){if(m.id===id){m.status="downloading";m.progress=0}});
-    renderModels();startPolling(id);
-  }).catch(function(){showToast("Failed to start download","error")});
-}
-function removeModel(id){
-  if(!confirm("Remove this model? You can always install it again later."))return;
-  fetch("/api/models/"+encodeURIComponent(id),{method:"DELETE",credentials:"include",headers:getAuthHeaders()}).then(function(r){return r.json()}).then(function(){showToast("Model removed","success");loadModels()}).catch(function(){showToast("Failed to remove model","error")});
-}
-function startModel(id){
-  showToast("Starting model... this may take a moment","success");
-  fetch("/api/models/"+encodeURIComponent(id)+"/load",{method:"POST",credentials:"include",headers:getAuthHeaders()}).then(function(r){return r.json()}).then(function(d){
-    if(d.error){showToast(d.error,"error")}else{showToast("Model is starting up","success");setTimeout(loadModels,2000)}
-  }).catch(function(){showToast("Failed to start model","error")});
-}
-function stopModel(id){
-  fetch("/api/models/"+encodeURIComponent(id)+"/unload",{method:"POST",credentials:"include",headers:getAuthHeaders()}).then(function(r){return r.json()}).then(function(){showToast("Model stopped","success");loadModels()}).catch(function(){showToast("Failed to stop model","error")});
-}
-function startPolling(id){
-  if(pollTimers[id])return;
-  pollTimers[id]=setInterval(function(){
-    fetch("/api/models/"+encodeURIComponent(id)+"/status",{credentials:"include",headers:getAuthHeaders()}).then(function(r){return r.json()}).then(function(d){
-      modelsData.forEach(function(m){if(m.id===id){m.status=d.status;m.progress=d.progress}});
+
+function loadModels() {
+  fetch("/api/models", { credentials: "include", headers: getAuthHeaders() })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      modelsData = d.models;
+      document.getElementById("totalCount").textContent = d.models.length;
+      document.getElementById("installedCount").textContent = d.installed;
+      document.getElementById("runningCount").textContent = d.running || 0;
       renderModels();
-      if(d.status!=="downloading"){clearInterval(pollTimers[id]);delete pollTimers[id];
-        if(d.status==="installed"){showToast("Model installed! You can now start it.","success");loadModels()}
-        else if(d.status==="error"){showToast("Download failed: "+(d.error||"Unknown error"),"error")}
-      }
-    });
-  },2000);
+      d.models.forEach(function(m) {
+        if (m.status === "downloading" && !pollTimers[m.id]) startPolling(m.id);
+      });
+    })
+    .catch(function() {});
 }
-document.querySelectorAll(".filter-btn").forEach(function(b){b.addEventListener("click",function(){document.querySelectorAll(".filter-btn").forEach(function(x){x.classList.remove("active")});b.classList.add("active");currentFilter=b.dataset.filter;renderModels()})});
-document.getElementById("serverRam").textContent="3.7 GB";
-document.getElementById("serverDisk").textContent="67 GB";
+
+function installModel(id) {
+  fetch("/api/models/" + encodeURIComponent(id) + "/download", { method: "POST", credentials: "include", headers: getAuthHeaders() })
+    .then(function(r) { return r.json(); })
+    .then(function() {
+      showToast("Download started...", "success");
+      modelsData.forEach(function(m) { if (m.id === id) { m.status = "downloading"; m.progress = 0; } });
+      renderModels();
+      startPolling(id);
+    })
+    .catch(function() { showToast("Failed to start download", "error"); });
+}
+
+function removeModel(id) {
+  if (!confirm("Remove this model? You can install it again anytime.")) return;
+  fetch("/api/models/" + encodeURIComponent(id), { method: "DELETE", credentials: "include", headers: getAuthHeaders() })
+    .then(function(r) { return r.json(); })
+    .then(function() { showToast("Model removed", "success"); loadModels(); })
+    .catch(function() { showToast("Failed to remove model", "error"); });
+}
+
+function startModel(id) {
+  modelsData.forEach(function(m) { if (m.id === id) { m._loading = true; m._error = null; } });
+  renderModels();
+  fetch("/api/models/" + encodeURIComponent(id) + "/load", { method: "POST", credentials: "include", headers: getAuthHeaders() })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.error) {
+        modelsData.forEach(function(m) { if (m.id === id) { m._loading = false; m._error = d.error; } });
+        renderModels();
+        showToast(d.error, "error");
+      } else {
+        showToast("Modell startet...", "success");
+        startLoadPolling(id);
+      }
+    })
+    .catch(function() {
+      modelsData.forEach(function(m) { if (m.id === id) { m._loading = false; m._error = "Start fehlgeschlagen"; } });
+      renderModels();
+    });
+}
+
+function startLoadPolling(id) {
+  var attempts = 0;
+  var timer = setInterval(function() {
+    attempts++;
+    fetch("/api/models/" + encodeURIComponent(id) + "/status", { credentials: "include", headers: getAuthHeaders() })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.status === "running") {
+          clearInterval(timer);
+          modelsData.forEach(function(m) { if (m.id === id) { m.status = "running"; m._loading = false; m._error = null; } });
+          renderModels(); loadModels();
+          showToast("Modell laeuft!", "success");
+        } else if (d.status === "error") {
+          clearInterval(timer);
+          modelsData.forEach(function(m) { if (m.id === id) { m._loading = false; m._error = d.error || "Start fehlgeschlagen"; } });
+          renderModels();
+        } else if (attempts > 30) {
+          clearInterval(timer);
+          modelsData.forEach(function(m) { if (m.id === id) { m._loading = false; m._error = "Timeout beim Starten"; } });
+          renderModels();
+        }
+      });
+  }, 2000);
+}
+
+function stopModel(id) {
+  fetch("/api/models/" + encodeURIComponent(id) + "/unload", { method: "POST", credentials: "include", headers: getAuthHeaders() })
+    .then(function(r) { return r.json(); })
+    .then(function() { showToast("Model stopped", "success"); loadModels(); })
+    .catch(function() { showToast("Failed to stop model", "error"); });
+}
+
+function startPolling(id) {
+  if (pollTimers[id]) return;
+  pollTimers[id] = setInterval(function() {
+    fetch("/api/models/" + encodeURIComponent(id) + "/status", { credentials: "include", headers: getAuthHeaders() })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        modelsData.forEach(function(m) { if (m.id === id) { m.status = d.status; m.progress = d.progress; } });
+        renderModels();
+        if (d.status !== "downloading") {
+          clearInterval(pollTimers[id]);
+          delete pollTimers[id];
+          if (d.status === "installed") { showToast("Model installed! You can start it now.", "success"); loadModels(); }
+          else if (d.status === "error") { showToast("Download failed: " + (d.error || "Unknown error"), "error"); }
+        }
+      });
+  }, 2000);
+}
+
+document.querySelectorAll(".filter-btn").forEach(function(b) {
+  b.addEventListener("click", function() {
+    document.querySelectorAll(".filter-btn").forEach(function(x) { x.classList.remove("active"); });
+    b.classList.add("active");
+    currentFilter = b.dataset.filter;
+    renderModels();
+  });
+});
+
 loadModels();
 </script>
 </body>

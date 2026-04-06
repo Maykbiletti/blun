@@ -5,6 +5,13 @@ const { authenticate, requireAdmin } = require("../middleware/auth");
 const { logActivity } = require("../middleware/activity");
 
 var router = express.Router();
+// Serve admin panel page
+router.get("/", authenticate, function(req, res) {
+  if (!req.user) return res.redirect("/login");
+  if (req.user.role !== "admin" && req.user.role !== "owner") return res.redirect("/dashboard");
+  res.sendFile(require("path").join(__dirname, "../../dashboard/admin-panel.html"));
+});
+
 router.use(authenticate, requireAdmin);
 
 // GET /admin-panel/users — paginated user list with search

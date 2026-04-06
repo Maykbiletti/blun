@@ -43,8 +43,11 @@ const contactRoutes = require("./src/routes/contact");
 const newsletterRoutes = require("./src/routes/newsletter");
 const voiceRoutes = require("./src/routes/voice");
 const blunCodeRoutes = require("./src/routes/blun-code");
+const monitorRoutes = require("./src/routes/monitor");
+const adminPlansRoutes = require("./src/routes/admin-plans");
 const i18nRoutes = require("./src/routes/i18n");
 const teamsRoutes = require("./src/routes/teams");
+const connectionsRoutes = require("./src/routes/connections");
 const { startAllBots, activeBots } = require("./src/channels/telegram");
 
 const PORT = parseInt(process.env.BLUN_PORT || "3200", 10);
@@ -102,8 +105,12 @@ app.use("/api/website-wizard", websiteWizardRoutes);
 app.use("/api/models", modelsRoutes);
 app.use("/api/profile", authenticate, profileRoutes);
 app.use("/api/voice", voiceRoutes);
+app.use("/api/blun-code/message", function(req,res,next){ if(req.method==="POST") monitorRoutes.incrementRequestCounter(); next(); });
 app.use("/api/blun-code", blunCodeRoutes);
+app.use("/api/monitor", monitorRoutes);
+app.use("/api/admin/plans", adminPlansRoutes);
 app.use("/api/teams", teamsRoutes);
+app.use("/api/connections", connectionsRoutes);
 app.use("/support", supportChatRoutes);
 app.get("/support-widget.js", function(req, res) { res.sendFile(__dirname + "/dashboard/support-widget.js"); });
 app.get("/i18n-loader.js", function(req, res) { res.sendFile(__dirname + "/dashboard/i18n-loader.js"); });
@@ -117,7 +124,7 @@ app.use("/api/skills", skillsRoutes);
 app.get("/api/agents/:id/skills", getAgentSkills);
 
 // KI-Organisator routes (auth handled inside)
-app.use("/organisator", organisatorRoutes);
+app.use("/api/organisator", organisatorRoutes);
 
 // Telegram channel integration (API)
 app.use("/telegram/api", telegramRoutes);
@@ -125,73 +132,45 @@ app.use("/telegram/api", telegramRoutes);
 // Federation (receive is public, rest requires auth)
 app.use("/federation", federationRoutes);
 
-app.get("/federation-dashboard", authenticate, function (req, res) {
-  if (!req.user) return res.redirect("/login");
-  res.sendFile(path.join(__dirname, "dashboard", "federation.html"));
-});
+// --- Page routes (authenticated) ---
+function authPage(path, file, adminOnly) {
+  app.get(path, authenticate, function (req, res) {
+    if (!req.user) return res.redirect("/login");
+    if (adminOnly && req.user.role !== "admin" && req.user.role !== "owner") return res.redirect("/dashboard");
+    res.sendFile(__dirname + "/dashboard/" + file);
+  });
+}
 
-app.get("/organisator", authenticate, function (req, res) {
-  if (!req.user) return res.redirect("/login");
-  res.sendFile(path.join(__dirname, "dashboard", "organisator.html"));
-});
-
-app.get("/admin-panel", authenticate, function (req, res) {
-  if (!req.user) return res.redirect("/login");
-  if (req.user.role !== "admin" && req.user.role !== "owner") return res.redirect("/dashboard");
-  res.sendFile(path.join(__dirname, "dashboard", "admin-panel.html"));
-app.get("/newsletter", authenticate, function (req, res) {
-  if (!req.user) return res.redirect("/login");
-  if (req.user.role !== "admin" && req.user.role !== "owner") return res.redirect("/dashboard");
-  res.sendFile(path.join(__dirname, "dashboard", "newsletter.html"));
-});
-});
-
-app.get("/privacy-settings", authenticate, function (req, res) {
-app.get("/canvas", authenticate, function (req, res) {  if (!req.user) return res.redirect("/login");  res.sendFile(path.join(__dirname, "dashboard", "canvas.html"));});
-  if (!req.user) return res.redirect("/login");
-app.get("/canvas", authenticate, function (req, res) {  if (!req.user) return res.redirect("/login");  res.sendFile(path.join(__dirname, "dashboard", "canvas.html"));});
-  res.sendFile(path.join(__dirname, "dashboard", "privacy.html"));
-app.get("/canvas", authenticate, function (req, res) {  if (!req.user) return res.redirect("/login");  res.sendFile(path.join(__dirname, "dashboard", "canvas.html"));});
-});
-app.get("/canvas", authenticate, function (req, res) {  if (!req.user) return res.redirect("/login");  res.sendFile(path.join(__dirname, "dashboard", "canvas.html"));});
-app.get("/telegram", authenticate, function (req, res) {
-  if (!req.user) return res.redirect("/login");
-  res.sendFile(path.join(__dirname, "dashboard", "telegram.html"));
-});
+authPage("/federation-dashboard", "federation.html");
+authPage("/organisator", "organisator.html");
+authPage("/admin-panel", "admin-panel.html", true);
+authPage("/newsletter", "newsletter.html", true);
+authPage("/privacy-settings", "privacy.html");
+authPage("/canvas", "canvas.html");
+authPage("/telegram", "telegram.html");
+authPage("/profile", "profile.html");
+authPage("/voice", "voice.html");
+authPage("/dashboard/websites", "websites.html");
+authPage("/dashboard/software", "software.html");
+authPage("/dashboard/website-wizard", "website-wizard.html");
+authPage("/dashboard/models", "models.html");
+authPage("/dashboard/blun-code", "blun-code.html");
+authPage("/dashboard/teams", "teams.html");
+authPage("/dashboard/connections", "connections.html");
+authPage("/dashboard/billing", "billing.html");
+authPage("/monitor", "monitor.html", true);
+authPage("/admin-plans", "admin-plans.html", true);
 
 app.get("/login", function (req, res) {
-  res.sendFile(path.join(__dirname, "dashboard", "login.html"));
+  res.sendFile(__dirname + "/dashboard/login.html");
 });
 
-
-app.get("/dashboard/websites", authenticate, function (req, res) { if (!req.user) return res.redirect("/login"); res.sendFile(path.join(__dirname, "dashboard", "websites.html")); });
-app.get("/dashboard/software", authenticate, function (req, res) { if (!req.user) return res.redirect("/login"); res.sendFile(path.join(__dirname, "dashboard", "software.html")); });
-app.get("/dashboard/website-wizard", authenticate, function (req, res) { if (!req.user) return res.redirect("/login"); res.sendFile(path.join(__dirname, "dashboard", "website-wizard.html")); });
-app.get("/profile", authenticate, function (req, res) { if (!req.user) return res.redirect("/login"); res.sendFile(path.join(__dirname, "dashboard", "profile.html")); });
-app.get("/voice", authenticate, function (req, res) { if (!req.user) return res.redirect("/login"); res.sendFile(path.join(__dirname, "dashboard", "voice.html")); });
-app.get("/dashboard/models", authenticate, function (req, res) { if (!req.user) return res.redirect("/login"); res.sendFile(path.join(__dirname, "dashboard", "models.html")); });
-app.get("/dashboard/blun-code", authenticate, function (req, res) { if (!req.user) return res.redirect("/login"); res.sendFile(path.join(__dirname, "dashboard", "blun-code.html")); });
-app.get("/dashboard/teams", authenticate, function (req, res) { if (!req.user) return res.redirect("/login"); res.sendFile(path.join(__dirname, "dashboard", "teams.html")); });
 app.get("/dashboard", authenticate, function (req, res) {
   if (!req.user) return res.redirect("/login");
-  res.sendFile(path.join(__dirname, "dashboard", "index.html"));
+  res.sendFile(__dirname + "/dashboard/index.html");
 });
-app.use("/dashboard", express.static(path.join(__dirname, "dashboard")));
 
-app.get("/", function (req, res) {
-  res.json({
-    name: "BLUN",
-    version: "2.0.0",
-    description: "AI Organisator - Open source agent framework",
-    endpoints: {
-      api: "/api",
-      chat: "/api/chat",
-      admin: "/api/admin",
-      websocket: "wss://blun.ai?role=dashboard",
-      health: "/api/admin/health",
-    },
-  });
-});
+app.use("/dashboard", express.static(path.join(__dirname, "dashboard")));
 
 app.use(function (err, req, res, _next) {
   console.error("[server] Unhandled error:", err);

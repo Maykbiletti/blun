@@ -1,88 +1,192 @@
 // BLUN - AI Organisator | MIT License
-/**
- * KI-Organisator Routes — Chat interface and system management endpoints.
- */
+var { Router } = require("express");
+var { query, queryOne } = require("../db");
+var { authenticate } = require("../middleware/auth");
+var engine = require("../agent-engine");
+var router = Router();
 
-const { Router } = require("express");
-const { getOrganisator } = require("../organisator/engine");
-const { query } = require("../db");
-const { authenticate, requireAuth } = require("../middleware/auth");
-
-const router = Router();
-
-// All routes require authentication
-router.use(authenticate);
-router.use(requireAuth);
-
-// POST /organisator/chat — Send message to the Organisator
-router.post("/chat", async function (req, res) {
-  try {
-    const { message } = req.body;
-    if (!message) return res.status(400).json({ error: "message is required" });
-
-    const org = await getOrganisator(req.user.id);
-    const response = await org.chat(message);
-    res.json(response);
-  } catch (err) {
-    console.error("[organisator] Chat error:", err);
-    res.status(500).json({ error: err.message });
-  }
+var API_KEY = process.env.BLUN_API_KEY || "blun-dev-key";
+router.use("/", function(req, res, next) {
+  var key = req.headers["x-blun-key"];
+  if (key && key === API_KEY) return next();
+  authenticate(req, res, function() {
+    if (!req.user) return res.status(401).json({ error: "Authentication required" });
+    next();
+  });
 });
 
-// GET /organisator/status — Current system overview
-router.get("/status", async function (req, res) {
+// === COMPANIES ===
+router.get("/companies", async function(req, res) {
   try {
-    const org = await getOrganisator(req.user.id);
-    res.json(org.getStatus());
-  } catch (err) {
-    console.error("[organisator] Status error:", err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// GET /organisator/suggestions — Proactive suggestions
-router.get("/suggestions", async function (req, res) {
-  try {
-    const org = await getOrganisator(req.user.id);
-    const result = await org.suggest();
-    res.json(result);
-  } catch (err) {
-    console.error("[organisator] Suggestions error:", err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// GET /organisator/logs — Action history
-router.get("/logs", async function (req, res) {
-  try {
-    const limit = parseInt(req.query.limit || "50");
-    const logs = await query(
-      "SELECT * FROM organisator_logs WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2",
-      [req.user.id, limit]
+    var companies = await query(
+      "SELECT c.*, (SELECT COUNT(*) FROM blun_agents WHERE company_id = c.id) as agent_count FROM companies c ORDER BY c.name"
     );
-    res.json(logs);
-  } catch (err) {
-    console.error("[organisator] Logs error:", err);
-    res.status(500).json({ error: err.message });
-  }
+    res.json(companies);
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// POST /organisator/scan — Trigger full system scan
-router.post("/scan", async function (req, res) {
+router.post("/companies", async function(req, res) {
   try {
-    const org = await getOrganisator(req.user.id);
-    const result = await org.scan();
-    res.json({
-      companies: result.companies.length,
-      agents: result.agents.length,
-      skills: result.skills.length,
-      pendingTasks: result.pendingTasks.length,
-      scannedAt: result.scannedAt,
-    });
-  } catch (err) {
-    console.error("[organisator] Scan error:", err);
-    res.status(500).json({ error: err.message });
-  }
+    var { name, description } = req.body;
+    if (!name) return res.status(400).json({ error: "name required" });
+    var c = await queryOne("INSERT INTO companies (name, config) VALUES ($1, $2) RETURNING *", [name, { description: description || "" }]);
+    res.json(c);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.put("/companies/:id", async function(req, res) {
+  try {
+    var { name, description } = req.body;
+    var c = await queryOne("UPDATE companies SET name = COALESCE($1, name), config = jsonb_set(COALESCE(config,'{}'::jsonb), '{description}', to_jsonb($2::text)) WHERE id = $3 RETURNING *", [name, description || "", req.params.id]);
+    res.json(c);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.delete("/companies/:id", async function(req, res) {
+  try {
+    await query("DELETE FROM companies WHERE id = $1", [req.params.id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// === AGENTS ===
+router.get("/agents", async function(req, res) {
+  try {
+    var where = "";
+    var params = [];
+    if (req.query.company_id) { where = " WHERE a.company_id = $1"; params = [req.query.company_id]; }
+    var agents = await query(
+      "SELECT a.*, c.name as company_name, (SELECT COUNT(*) FROM agent_tasks WHERE agent_id = a.id AND status = 'pending') as pending_tasks FROM blun_agents a LEFT JOIN companies c ON c.id = a.company_id" + where + " ORDER BY a.name",
+      params
+    );
+    var activeIds = engine.getActiveAgents();
+    agents.forEach(function(a) { a.runtime_active = activeIds.indexOf(a.id) >= 0; });
+    res.json(agents);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/agents", async function(req, res) {
+  try {
+    var { name, role, model, system_prompt, personality, heartbeat_interval, company_id } = req.body;
+    if (!name) return res.status(400).json({ error: "name required" });
+    var agent = await queryOne(
+      "INSERT INTO blun_agents (name, role, model, system_prompt, personality, heartbeat_interval, company_id) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *",
+      [name, role || "assistant", model || "tinyllama-1.1b", system_prompt || "", personality || "", heartbeat_interval || 60, company_id || null]
+    );
+    res.json(agent);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.put("/agents/:id", async function(req, res) {
+  try {
+    var { name, role, model, system_prompt, personality, heartbeat_interval, company_id } = req.body;
+    var agent = await queryOne(
+      "UPDATE blun_agents SET name=COALESCE($1,name), role=COALESCE($2,role), model=COALESCE($3,model), system_prompt=COALESCE($4,system_prompt), personality=COALESCE($5,personality), heartbeat_interval=COALESCE($6,heartbeat_interval), company_id=COALESCE($7,company_id), updated_at=NOW() WHERE id=$8 RETURNING *",
+      [name, role, model, system_prompt, personality, heartbeat_interval, company_id, req.params.id]
+    );
+    if (!agent) return res.status(404).json({ error: "Not found" });
+    res.json(agent);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.delete("/agents/:id", async function(req, res) {
+  try {
+    engine.stopAgent(req.params.id);
+    await query("DELETE FROM blun_agents WHERE id = $1", [req.params.id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/agents/:id/start", async function(req, res) {
+  try { engine.startAgent(req.params.id); res.json({ ok: true }); } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/agents/:id/stop", async function(req, res) {
+  try { engine.stopAgent(req.params.id); res.json({ ok: true }); } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/agents/:id/task", async function(req, res) {
+  try {
+    var { task } = req.body;
+    if (!task) return res.status(400).json({ error: "task required" });
+    var row = await queryOne("INSERT INTO agent_tasks (agent_id, task) VALUES ($1, $2) RETURNING *", [req.params.id, task]);
+    res.json(row);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.get("/agents/:id/tasks", async function(req, res) {
+  try { res.json(await query("SELECT * FROM agent_tasks WHERE agent_id = $1 ORDER BY created_at DESC LIMIT 50", [req.params.id])); }
+  catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.get("/agents/:id/memory", async function(req, res) {
+  try { res.json(await query("SELECT key, content as value, updated_at FROM agent_memory WHERE agent_id = $1 ORDER BY updated_at DESC", [req.params.id])); }
+  catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/agents/:id/memory", async function(req, res) {
+  try {
+    var { key, value } = req.body;
+    await query("INSERT INTO agent_memory (agent_id, key, content) VALUES ($1,$2,$3) ON CONFLICT (agent_id, key) DO UPDATE SET content=$3, updated_at=NOW()", [req.params.id, key, value]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.get("/agents/:id/conversations", async function(req, res) {
+  try { res.json(await query("SELECT role, content, created_at FROM agent_conversations WHERE agent_id = $1 ORDER BY created_at ASC LIMIT 100", [req.params.id])); }
+  catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/agents/:id/chat", async function(req, res) {
+  try {
+    var { message } = req.body;
+    if (!message) return res.status(400).json({ error: "message required" });
+    var result = await engine.chatWithAgent(req.params.id, message);
+    res.json(result);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// === STATS ===
+router.get("/stats", async function(req, res) {
+  try {
+    var [agents, tasks, costs, companies] = await Promise.all([
+      query("SELECT status, COUNT(*)::int as count FROM blun_agents GROUP BY status"),
+      queryOne("SELECT COUNT(*)::int as total FROM agent_tasks WHERE status = 'completed'"),
+      queryOne("SELECT COALESCE(SUM(cost),0)::numeric as total FROM agent_heartbeats WHERE created_at > NOW() - INTERVAL '30 days'"),
+      queryOne("SELECT COUNT(*)::int as total FROM companies"),
+    ]);
+    var total = 0, active = 0;
+    agents.forEach(function(r) { total += r.count; if (r.status === "active" || r.status === "working") active += r.count; });
+    res.json({ total_agents: total, active_agents: active, tasks_completed: tasks ? tasks.total : 0, total_cost: costs ? parseFloat(costs.total) : 0, total_companies: companies ? companies.total : 0 });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// === UNIVERSITY ===
+router.get("/university", async function(req, res) {
+  try { res.json(await query("SELECT u.*, a.name as agent_name FROM agent_university u JOIN blun_agents a ON a.id = u.agent_id ORDER BY u.started_at DESC")); }
+  catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/university/enroll", async function(req, res) {
+  try {
+    var { agent_id, course_name } = req.body;
+    var row = await queryOne("INSERT INTO agent_university (agent_id, course_name) VALUES ($1, $2) RETURNING *", [agent_id, course_name]);
+    res.json(row);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// === HEARTBEATS ===
+router.get("/agents/:id/heartbeats", async function(req, res) {
+  try {
+    var limit = parseInt(req.query.limit) || 60;
+    res.json(await query("SELECT id, agent_id, status, cost, tokens_used, created_at FROM agent_heartbeats WHERE agent_id = $1 ORDER BY created_at DESC LIMIT $2", [req.params.id, limit]));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// === MARKETPLACE ===
+router.get("/marketplace", async function(req, res) {
+  try { res.json(await query("SELECT m.*, a.name as agent_name, a.role, a.model FROM agent_marketplace m JOIN blun_agents a ON a.id = m.agent_id WHERE m.status = 'published' ORDER BY m.clone_count DESC")); }
+  catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 module.exports = router;
