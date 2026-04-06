@@ -1059,66 +1059,21 @@ footer {
   .canvas-agent-indicator .name.blue { color: #60a5fa; }
   .canvas-agent-cursor { display: inline-block; width: 2px; height: 14px; animation: blink 0.8s step-end infinite; vertical-align: middle; }
 
-  /* Interactive Race Demo */
-  .irace-container { position: relative; }
-  .irace-intro { text-align: center; margin-bottom: 24px; }
-  .irace-intro h3 { font-size: 18px; font-weight: 600; color: #fafafa; margin-bottom: 6px; }
-  .irace-intro p { font-size: 13px; color: #71717a; }
-  .irace-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
-  .irace-panel { background: #111113; border: 1px solid #27272a; border-radius: 12px; overflow: hidden; transition: border-color 0.3s; }
-  .irace-panel:hover { border-color: #3f3f46; }
-  .irace-panel-head { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid #1e1e22; }
-  .irace-panel-head .irace-model { font-size: 13px; font-weight: 600; }
-  .irace-panel-head .irace-badge { font-size: 10px; padding: 2px 8px; border-radius: 100px; background: rgba(255,255,255,0.06); color: #71717a; }
-  .irace-site { cursor: pointer; position: relative; }
-  .irace-section { padding: 0; transition: all 0.25s; position: relative; border: 2px solid transparent; }
-  .irace-section:hover { background: rgba(255,255,255,0.02); }
-  .irace-section.selected { border-color: var(--sel-color); box-shadow: 0 0 12px var(--sel-glow); }
-  .irace-section .irace-sel-tag { display: none; position: absolute; top: 4px; right: 4px; font-size: 9px; padding: 1px 6px; border-radius: 4px; background: var(--sel-color); color: #0a0a0a; font-weight: 700; z-index: 2; }
-  .irace-section.selected .irace-sel-tag { display: block; }
-  .irace-section-label { position: absolute; top: 4px; left: 6px; font-size: 9px; color: #52525b; text-transform: uppercase; letter-spacing: 0.5px; z-index: 1; pointer-events: none; }
-  .bk-header { height: 36px; display: flex; align-items: center; padding: 0 12px; gap: 8px; }
-  .bk-logo { font-size: 11px; font-weight: 700; }
-  .bk-nav { display: flex; gap: 8px; margin-left: auto; }
-  .bk-nav span { width: 28px; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.12); }
-  .bk-hero { height: 70px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 6px; }
-  .bk-hero-title { font-size: 12px; font-weight: 700; }
-  .bk-hero-sub { font-size: 8px; color: #71717a; }
-  .bk-hero-btn { font-size: 8px; padding: 3px 10px; border-radius: 4px; display: inline-block; }
-  .bk-menu { padding: 8px 10px; min-height: 60px; }
-  .bk-menu-title { font-size: 9px; font-weight: 600; text-align: center; margin-bottom: 6px; }
-  .bk-menu-items { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
-  .bk-menu-item { height: 20px; border-radius: 3px; display: flex; align-items: center; padding: 0 6px; font-size: 7px; }
-  .bk-about { padding: 8px 10px; min-height: 40px; display: flex; align-items: center; gap: 8px; }
-  .bk-about-img { width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0; }
-  .bk-about-lines { flex: 1; }
-  .bk-about-line { height: 3px; border-radius: 2px; margin-bottom: 3px; }
-  .bk-footer { height: 28px; display: flex; align-items: center; justify-content: center; font-size: 7px; color: #52525b; border-top: 1px solid rgba(255,255,255,0.05); }
-  .irace-picks { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; margin-bottom: 16px; min-height: 36px; }
-  .irace-pick-chip { display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: #141416; border: 1px solid #27272a; border-radius: 8px; font-size: 12px; color: #a1a1aa; }
-  .irace-pick-chip .pick-section { color: #fafafa; font-weight: 500; }
-  .irace-pick-chip .pick-model { font-weight: 600; }
-  .irace-picks-empty { font-size: 13px; color: #3f3f46; }
-  .irace-actions { display: flex; justify-content: center; gap: 12px; margin-bottom: 20px; }
-  .irace-generate-btn { padding: 10px 28px; background: #f59e0b; color: #0a0a0a; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.2s; opacity: 0.4; pointer-events: none; }
-  .irace-generate-btn.active { opacity: 1; pointer-events: auto; }
-  .irace-generate-btn.active:hover { transform: scale(1.03); background: #d97706; }
-  .irace-reset-btn { padding: 10px 20px; background: transparent; color: #71717a; border: 1px solid #27272a; border-radius: 8px; font-size: 13px; cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.2s; }
-  .irace-reset-btn:hover { border-color: #3f3f46; color: #a1a1aa; }
-  .irace-result { display: none; margin-top: 20px; }
-  .irace-result.visible { display: block; animation: iraceSlideUp 0.5s ease-out; }
-  .irace-result-site { max-width: 480px; margin: 0 auto; background: #111113; border: 1px solid #27272a; border-radius: 0 0 12px 12px; overflow: hidden; }
-  .irace-result-section { animation: iraceSecFade 0.4s ease-out both; }
-  .irace-result-label { text-align: center; margin-top: 16px; }
-  .irace-result-label p { font-size: 14px; color: #71717a; margin-bottom: 12px; }
-  .irace-result-label a { display: inline-block; padding: 10px 24px; background: #f59e0b; color: #0a0a0a; border-radius: 8px; font-size: 14px; font-weight: 600; text-decoration: none; transition: transform 0.15s; }
-  .irace-result-label a:hover { transform: scale(1.03); }
-  @keyframes iraceSlideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-  @keyframes iraceSecFade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-  @media (max-width: 768px) {
-    .irace-grid { grid-template-columns: 1fr; }
-    .irace-panel { max-width: 400px; margin: 0 auto; }
-  }
+  .race-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .race-panel { background: #141416; border: 1px solid #27272a; border-radius: 10px; overflow: hidden; }
+  .race-panel-head { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid #1e1e22; }
+  .race-panel-head .model-name { font-size: 13px; font-weight: 600; }
+  .race-panel-head .cherry { font-size: 11px; padding: 3px 10px; border-radius: 100px; background: rgba(245, 158, 11, 0.15); color: #f59e0b; cursor: pointer; border: 1px solid rgba(245, 158, 11, 0.3); }
+  .race-panel-head .cherry.picked { background: #f59e0b; color: #0a0a0a; font-weight: 600; }
+  .race-preview { padding: 14px; min-height: 160px; }
+  .race-site-bar { height: 8px; background: #27272a; border-radius: 4px; margin-bottom: 10px; }
+  .race-site-bar-fill { height: 100%; border-radius: 4px; }
+  .race-site-hero { height: 40px; border-radius: 6px; margin-bottom: 8px; }
+  .race-site-text { height: 6px; background: #27272a; border-radius: 3px; margin-bottom: 6px; }
+  .race-site-cols { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 10px; }
+  .race-site-col { height: 50px; border-radius: 4px; background: #1a1a1e; }
+  .race-mix-btn { display: block; margin: 16px auto 0; padding: 10px 28px; background: #f59e0b; color: #0a0a0a; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; transition: transform 0.15s; }
+  .race-mix-btn:hover { transform: scale(1.03); }
 
   .builder-steps { display: flex; align-items: center; justify-content: center; gap: 0; margin-bottom: 32px; flex-wrap: wrap; }
   .builder-step { text-align: center; padding: 16px 24px; }
@@ -1141,6 +1096,7 @@ footer {
   @media (max-width: 768px) {
     .canvas-layout { grid-template-columns: 1fr; }
     .canvas-tree, .canvas-agents { display: none; }
+    .race-grid { grid-template-columns: 1fr; }
     .builder-steps { gap: 4px; }
     .builder-arrow { display: none; }
   }
@@ -1281,158 +1237,69 @@ footer {
     </div>
   </div>
 
-  <!-- 4. INTERACTIVE MODEL RACE DEMO -->
-  <div class="mockup-block" id="race-demo">
+  <!-- 4. MODEL RACE -->
+  <div class="mockup-block">
     <div class="mockup-titlebar">
       <div class="mockup-dot r"></div><div class="mockup-dot y"></div><div class="mockup-dot g"></div>
-      <span>BLUN Race -- "Build a bakery website"</span>
+      <span>BLUN Race -- "Build a SaaS landing page"</span>
     </div>
     <div class="mockup-body">
-      <div class="irace-container">
-        <div class="irace-intro">
-          <h3>Visual Cherry-Pick</h3>
-          <p>Click any section from any model. Mix the best parts into one site.</p>
-        </div>
-
-        <div class="irace-grid" id="iraceGrid"></div>
-
-        <div class="irace-picks" id="iracePicks">
-          <span class="irace-picks-empty">Click sections above to start cherry-picking</span>
-        </div>
-
-        <div class="irace-actions">
-          <button class="irace-reset-btn" onclick="iraceReset()">Reset</button>
-          <button class="irace-generate-btn" id="iraceGenBtn" onclick="iraceGenerate()">Generate My Mix</button>
-        </div>
-
-        <div class="irace-result" id="iraceResult">
-          <div class="mockup-titlebar" style="border-radius:12px 12px 0 0">
-            <div class="mockup-dot r"></div><div class="mockup-dot y"></div><div class="mockup-dot g"></div>
-            <span>Your Cherry-Picked Mix</span>
+      <div class="race-grid">
+        <div class="race-panel">
+          <div class="race-panel-head">
+            <span class="model-name" style="color:#a78bfa">Claude</span>
+            <span class="cherry picked">Cherry-picked</span>
           </div>
-          <div class="irace-result-site" id="iraceResultSite"></div>
-          <div class="irace-result-label">
-            <p>Your custom mix -- built from the best of three AI models</p>
-            <a href="#cta">Start building yours -- free</a>
+          <div class="race-preview">
+            <div class="race-site-bar"><div class="race-site-bar-fill" style="width:100%;background:#a78bfa"></div></div>
+            <div class="race-site-hero" style="background:linear-gradient(135deg,#1e1b4b,#4c1d95);border:1px solid #6d28d9"></div>
+            <div class="race-site-text" style="width:80%"></div>
+            <div class="race-site-text" style="width:60%"></div>
+            <div class="race-site-cols">
+              <div class="race-site-col" style="background:#1e1b4b"></div>
+              <div class="race-site-col" style="background:#1e1b4b"></div>
+              <div class="race-site-col" style="background:#1e1b4b"></div>
+            </div>
+          </div>
+        </div>
+        <div class="race-panel">
+          <div class="race-panel-head">
+            <span class="model-name" style="color:#4ade80">GPT-4o</span>
+            <span class="cherry">Cherry-pick</span>
+          </div>
+          <div class="race-preview">
+            <div class="race-site-bar"><div class="race-site-bar-fill" style="width:100%;background:#4ade80"></div></div>
+            <div class="race-site-hero" style="background:linear-gradient(135deg,#052e16,#166534);border:1px solid #22c55e"></div>
+            <div class="race-site-text" style="width:90%"></div>
+            <div class="race-site-text" style="width:50%"></div>
+            <div class="race-site-cols">
+              <div class="race-site-col" style="background:#052e16"></div>
+              <div class="race-site-col" style="background:#052e16"></div>
+              <div class="race-site-col" style="background:#052e16"></div>
+            </div>
+          </div>
+        </div>
+        <div class="race-panel">
+          <div class="race-panel-head">
+            <span class="model-name" style="color:#60a5fa">Gemini</span>
+            <span class="cherry">Cherry-pick</span>
+          </div>
+          <div class="race-preview">
+            <div class="race-site-bar"><div class="race-site-bar-fill" style="width:100%;background:#60a5fa"></div></div>
+            <div class="race-site-hero" style="background:linear-gradient(135deg,#0c1a3a,#1e3a5f);border:1px solid #3b82f6"></div>
+            <div class="race-site-text" style="width:70%"></div>
+            <div class="race-site-text" style="width:85%"></div>
+            <div class="race-site-cols">
+              <div class="race-site-col" style="background:#0c1a3a"></div>
+              <div class="race-site-col" style="background:#0c1a3a"></div>
+              <div class="race-site-col" style="background:#0c1a3a"></div>
+            </div>
           </div>
         </div>
       </div>
+      <button class="race-mix-btn">Mix &amp; Match Best Parts</button>
     </div>
   </div>
-
-  <script>
-  (function(){
-    var MODELS = [
-      { id:"claude", name:"Claude", color:"#a78bfa", glow:"rgba(167,139,250,0.3)" },
-      { id:"gpt", name:"GPT", color:"#4ade80", glow:"rgba(74,222,128,0.3)" },
-      { id:"gemini", name:"Gemini", color:"#60a5fa", glow:"rgba(96,165,250,0.3)" }
-    ];
-    var SECTIONS = ["header","hero","menu","about","footer"];
-    var picks = {};
-
-    var designs = {
-      claude: {
-        header: '<div class="bk-header" style="background:#13082a"><span class="bk-logo" style="color:#a78bfa">Sweet Dreams</span><div class="bk-nav"><span style="background:#a78bfa40"></span><span style="background:#a78bfa40"></span><span style="background:#a78bfa40"></span></div></div>',
-        hero: '<div class="bk-hero" style="background:linear-gradient(135deg,#1e1b4b,#2e1065)"><span class="bk-hero-title" style="color:#e9d5ff">Artisan Baked Goods</span><span class="bk-hero-sub">Handcrafted daily with organic ingredients</span><span class="bk-hero-btn" style="background:#a78bfa;color:#0a0a0a">Order Now</span></div>',
-        menu: '<div class="bk-menu" style="background:#110d20"><div class="bk-menu-title" style="color:#c4b5fd">Our Menu</div><div class="bk-menu-items"><div class="bk-menu-item" style="background:#1e1b4b;color:#c4b5fd">Sourdough</div><div class="bk-menu-item" style="background:#1e1b4b;color:#c4b5fd">Croissant</div><div class="bk-menu-item" style="background:#1e1b4b;color:#c4b5fd">Brioche</div><div class="bk-menu-item" style="background:#1e1b4b;color:#c4b5fd">Baguette</div></div></div>',
-        about: '<div class="bk-about" style="background:#0f0a1a"><div class="bk-about-img" style="background:#2e1065"></div><div class="bk-about-lines"><div class="bk-about-line" style="background:#1e1b4b;width:90%"></div><div class="bk-about-line" style="background:#1e1b4b;width:70%"></div><div class="bk-about-line" style="background:#1e1b4b;width:80%"></div></div></div>',
-        footer: '<div class="bk-footer" style="background:#0a0618;color:#6d28d9">Sweet Dreams Bakery -- Est. 2024</div>'
-      },
-      gpt: {
-        header: '<div class="bk-header" style="background:#071a0b"><span class="bk-logo" style="color:#4ade80">SWEET DREAMS</span><div class="bk-nav"><span style="background:#4ade8040"></span><span style="background:#4ade8040"></span><span style="background:#4ade8040"></span></div></div>',
-        hero: '<div class="bk-hero" style="background:linear-gradient(180deg,#052e16,#14532d)"><span class="bk-hero-title" style="color:#bbf7d0">Fresh From the Oven</span><span class="bk-hero-sub">Family recipes since 1987</span><span class="bk-hero-btn" style="background:#4ade80;color:#052e16">View Menu</span></div>',
-        menu: '<div class="bk-menu" style="background:#091a0d"><div class="bk-menu-title" style="color:#86efac">Daily Specials</div><div class="bk-menu-items"><div class="bk-menu-item" style="background:#052e16;color:#86efac">Rye Loaf</div><div class="bk-menu-item" style="background:#052e16;color:#86efac">Danish</div><div class="bk-menu-item" style="background:#052e16;color:#86efac">Eclair</div><div class="bk-menu-item" style="background:#052e16;color:#86efac">Pretzel</div></div></div>',
-        about: '<div class="bk-about" style="background:#0a1a0f"><div class="bk-about-img" style="background:#14532d;border-radius:4px"></div><div class="bk-about-lines"><div class="bk-about-line" style="background:#052e16;width:85%"></div><div class="bk-about-line" style="background:#052e16;width:95%"></div><div class="bk-about-line" style="background:#052e16;width:60%"></div></div></div>',
-        footer: '<div class="bk-footer" style="background:#04120a;color:#166534">Sweet Dreams -- Baked with Love</div>'
-      },
-      gemini: {
-        header: '<div class="bk-header" style="background:#081225;border-bottom:1px solid #1e3a5f"><span class="bk-logo" style="color:#60a5fa">sweet dreams</span><div class="bk-nav"><span style="background:#60a5fa40"></span><span style="background:#60a5fa40"></span><span style="background:#60a5fa40"></span></div></div>',
-        hero: '<div class="bk-hero" style="background:linear-gradient(135deg,#0c1a3a,#172554)"><span class="bk-hero-title" style="color:#bfdbfe">The Art of Baking</span><span class="bk-hero-sub">Modern techniques, timeless flavors</span><span class="bk-hero-btn" style="background:transparent;color:#60a5fa;border:1px solid #60a5fa">Explore</span></div>',
-        menu: '<div class="bk-menu" style="background:#0b1526"><div class="bk-menu-title" style="color:#93c5fd">Selections</div><div class="bk-menu-items"><div class="bk-menu-item" style="background:#172554;color:#93c5fd">Focaccia</div><div class="bk-menu-item" style="background:#172554;color:#93c5fd">Muffin</div><div class="bk-menu-item" style="background:#172554;color:#93c5fd">Scone</div><div class="bk-menu-item" style="background:#172554;color:#93c5fd">Tart</div></div></div>',
-        about: '<div class="bk-about" style="background:#0a1628"><div class="bk-about-img" style="background:#1e3a5f"></div><div class="bk-about-lines"><div class="bk-about-line" style="background:#172554;width:100%"></div><div class="bk-about-line" style="background:#172554;width:75%"></div><div class="bk-about-line" style="background:#172554;width:88%"></div></div></div>',
-        footer: '<div class="bk-footer" style="background:#070f1e;color:#1e40af">sweetdreamsbakery.com</div>'
-      }
-    };
-
-    function buildPanels() {
-      var grid = document.getElementById("iraceGrid");
-      grid.innerHTML = "";
-      MODELS.forEach(function(m) {
-        var panel = document.createElement("div");
-        panel.className = "irace-panel";
-        var head = '<div class="irace-panel-head"><span class="irace-model" style="color:'+m.color+'">'+m.name+'</span><span class="irace-badge">AI Model</span></div>';
-        var site = '<div class="irace-site">';
-        SECTIONS.forEach(function(sec) {
-          site += '<div class="irace-section" style="--sel-color:'+m.color+';--sel-glow:'+m.glow+'" data-model="'+m.id+'" data-section="'+sec+'" onclick="iraceSelect(this)">';
-          site += '<span class="irace-section-label">'+sec+'</span>';
-          site += '<span class="irace-sel-tag">PICK</span>';
-          site += designs[m.id][sec];
-          site += '</div>';
-        });
-        site += '</div>';
-        panel.innerHTML = head + site;
-        grid.appendChild(panel);
-      });
-    }
-
-    window.iraceSelect = function(el) {
-      var model = el.getAttribute("data-model");
-      var section = el.getAttribute("data-section");
-      picks[section] = model;
-      document.querySelectorAll(".irace-section").forEach(function(e) {
-        var s = e.getAttribute("data-section");
-        var m = e.getAttribute("data-model");
-        if (picks[s] === m) { e.classList.add("selected"); }
-        else { e.classList.remove("selected"); }
-      });
-      updatePicks();
-    };
-
-    function updatePicks() {
-      var cont = document.getElementById("iracePicks");
-      var btn = document.getElementById("iraceGenBtn");
-      var keys = Object.keys(picks);
-      if (keys.length === 0) {
-        cont.innerHTML = '<span class="irace-picks-empty">Click sections above to start cherry-picking</span>';
-        btn.classList.remove("active");
-        return;
-      }
-      var html = "";
-      SECTIONS.forEach(function(sec) {
-        if (picks[sec]) {
-          var m = MODELS.filter(function(x){return x.id===picks[sec]})[0];
-          html += '<div class="irace-pick-chip"><span class="pick-section">'+sec.charAt(0).toUpperCase()+sec.slice(1)+'</span><span class="pick-model" style="color:'+m.color+'">'+m.name+'</span></div>';
-        }
-      });
-      cont.innerHTML = html;
-      btn.classList.toggle("active", keys.length >= 2);
-    }
-
-    window.iraceReset = function() {
-      picks = {};
-      document.querySelectorAll(".irace-section").forEach(function(e) { e.classList.remove("selected"); });
-      document.getElementById("iraceResult").classList.remove("visible");
-      updatePicks();
-    };
-
-    window.iraceGenerate = function() {
-      var result = document.getElementById("iraceResultSite");
-      var html = "";
-      var delay = 0;
-      SECTIONS.forEach(function(sec) {
-        var modelId = picks[sec] || "claude";
-        html += '<div class="irace-result-section" style="animation-delay:'+delay+'ms">' + designs[modelId][sec] + '</div>';
-        delay += 120;
-      });
-      result.innerHTML = html;
-      var resEl = document.getElementById("iraceResult");
-      resEl.classList.add("visible");
-      resEl.scrollIntoView({ behavior: "smooth", block: "center" });
-    };
-
-    buildPanels();
-  })();
-  </script>
 
   <!-- 5. SOFTWARE BUILDER -->
   <div class="mockup-block">
