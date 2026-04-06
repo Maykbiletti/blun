@@ -28,6 +28,8 @@ const { authenticate } = require("./src/middleware/auth");
 const billingRoutes = require("./src/routes/billing");
 const { router: skillsRoutes, getAgentSkills } = require("./src/routes/skills");
 const organisatorRoutes = require("./src/routes/organisator");
+const telegramRoutes = require("./src/routes/telegram");
+const { startAllBots, activeBots } = require("./src/channels/telegram");
 
 const PORT = parseInt(process.env.BLUN_PORT || "3200", 10);
 const API_KEY = process.env.BLUN_API_KEY || "blun-dev-key";
@@ -65,9 +67,17 @@ app.get("/api/agents/:id/skills", getAgentSkills);
 // KI-Organisator routes (auth handled inside)
 app.use("/organisator", organisatorRoutes);
 
+// Telegram channel integration (API)
+app.use("/telegram/api", telegramRoutes);
+
 app.get("/organisator", authenticate, function (req, res) {
   if (!req.user) return res.redirect("/login");
   res.sendFile(path.join(__dirname, "dashboard", "organisator.html"));
+});
+
+app.get("/telegram", authenticate, function (req, res) {
+  if (!req.user) return res.redirect("/login");
+  res.sendFile(path.join(__dirname, "dashboard", "telegram.html"));
 });
 
 app.get("/login", function (req, res) {
@@ -122,6 +132,9 @@ async function start() {
     process.exit(1);
   }
 
+  // Start all enabled Telegram bots
+  try { await startAllBots(); } catch (err) { console.error("[telegram] Boot error:", err.message); }
+
   server.listen(PORT, function () {
     console.log("");
     console.log("  BLUN v2.0.0 — AI Organisator");
@@ -137,6 +150,8 @@ process.on("SIGINT", function () { shutdown("SIGINT"); });
 async function shutdown(signal) {
   console.log("\n[server] " + signal + " received — shutting down...");
   server.close();
+  // Stop all Telegram bots
+  try { for (var [,b] of activeBots) b.stop(); } catch(e) {}
   await pool.end();
   await pub.quit();
   process.exit(0);
