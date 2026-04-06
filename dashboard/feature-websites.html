@@ -22,46 +22,67 @@ section{padding:80px 0}
 .label{font-family:var(--mono);font-size:.75rem;text-transform:uppercase;letter-spacing:.1em;color:var(--blue);margin-bottom:12px}
 h2{font-size:clamp(1.5rem,3.5vw,2rem);font-weight:700;letter-spacing:-0.02em;margin-bottom:16px}
 .sub{color:var(--muted);max-width:540px;margin-bottom:48px;font-size:.95rem}
-.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:28px;transition:border-color .2s}.card:hover{border-color:#3f3f46}
 .btn{display:inline-flex;align-items:center;padding:10px 20px;border-radius:8px;font-size:.875rem;font-weight:500;font-family:var(--font);cursor:pointer;border:none;transition:all .2s}
 .btn-primary{background:var(--blue);color:#fff}.btn-primary:hover{background:var(--blue-hover);box-shadow:0 0 24px var(--blue-glow)}
 .btn-outline{background:transparent;color:var(--text);border:1px solid var(--border)}.btn-outline:hover{border-color:var(--muted)}
-
-/* Mockup */
-.mockup{background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden;max-width:900px;margin:0 auto 80px}
+.mockup{background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden;max-width:900px;margin:0 auto 80px;position:relative}
 .mockup-bar{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border);background:#141414}
 .mockup-dot{width:10px;height:10px;border-radius:50%}.dot-r{background:#ef4444}.dot-y{background:#eab308}.dot-g{background:#22c55e}
 .mockup-url{margin-left:12px;flex:1;background:var(--bg);border-radius:6px;padding:6px 12px;font-family:var(--mono);font-size:.75rem;color:var(--muted)}
 .mockup-body{padding:24px}
-
-/* Template Picker */
 .templates{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
 .tpl{background:var(--bg);border:2px solid var(--border);border-radius:10px;padding:16px;text-align:center;cursor:pointer;transition:all .2s;font-size:.8125rem;color:var(--muted)}
 .tpl.active{border-color:var(--blue);color:var(--text)}
 .tpl:hover{border-color:#3f3f46}
-.tpl-preview{height:80px;background:#141414;border-radius:6px;margin-bottom:10px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:.625rem;color:#3f3f46}
+.tpl-preview{height:80px;background:#141414;border-radius:6px;margin-bottom:10px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:.625rem;color:#3f3f46;transition:all .3s}
+.tpl.active .tpl-preview{border:1px solid var(--blue);color:var(--blue)}
 .domain-row{display:flex;gap:8px;margin-top:16px}
 .domain-input{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-family:var(--font);font-size:.875rem;color:var(--text);outline:none}
 .domain-input:focus{border-color:var(--blue)}
-.domain-badge{display:inline-flex;align-items:center;padding:4px 10px;border-radius:6px;font-size:.6875rem;font-weight:600;background:rgba(34,197,94,.1);color:#22c55e}
-
-/* Steps */
+.domain-badge{display:inline-flex;align-items:center;padding:4px 10px;border-radius:6px;font-size:.6875rem;font-weight:600;background:rgba(34,197,94,.1);color:#22c55e;transition:opacity .3s}
+.try-section{background:var(--card);border:1px solid var(--border);border-radius:16px;max-width:900px;margin:0 auto 80px;padding:32px}
+.try-input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px 16px;font-family:var(--font);font-size:1rem;color:var(--text);outline:none;margin-bottom:16px}
+.try-input:focus{border-color:var(--blue)}
+.try-input::placeholder{color:#3f3f46}
+.ai-thinking{display:none;align-items:center;gap:12px;padding:16px;margin-bottom:16px}
+.ai-thinking.visible{display:flex}
+.ai-dots{display:flex;gap:4px}
+.ai-dots span{width:8px;height:8px;background:var(--blue);border-radius:50%;animation:pulse 1.4s infinite ease-in-out}
+.ai-dots span:nth-child(2){animation-delay:.2s}
+.ai-dots span:nth-child(3){animation-delay:.4s}
+@keyframes pulse{0%,80%,100%{opacity:.3;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
+.gen-preview{display:none;background:var(--bg);border:1px solid var(--border);border-radius:12px;overflow:hidden;animation:fadeUp .5s ease}
+.gen-preview.visible{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.gen-nav{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--border)}
+.gen-nav-brand{font-weight:700;font-size:1rem}
+.gen-nav-links{display:flex;gap:20px;font-size:.8125rem;color:var(--muted)}
+.gen-hero-section{padding:40px 20px;text-align:center}
+.gen-hero-section h2{font-size:1.5rem;font-weight:700;margin-bottom:8px;color:var(--text)}
+.gen-hero-section p{color:var(--muted);font-size:.875rem;margin-bottom:20px}
+.gen-hero-btn{display:inline-block;background:var(--blue);color:#fff;padding:10px 24px;border-radius:8px;font-size:.875rem;font-weight:500}
+.gen-features{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:20px}
+.gen-feat{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;text-align:center}
+.gen-feat h4{font-size:.8125rem;font-weight:600;margin-bottom:4px}
+.gen-feat p{font-size:.6875rem;color:var(--muted)}
+.loading-overlay{display:none;position:absolute;inset:0;background:rgba(10,10,10,.9);z-index:10;flex-direction:column;align-items:center;justify-content:center;gap:16px;border-radius:16px}
+.loading-overlay.visible{display:flex}
+.spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
 .step{text-align:center;padding:32px 16px}
 .step-num{font-family:var(--mono);font-size:.75rem;color:var(--blue);margin-bottom:14px}
 .step h3{font-size:1rem;font-weight:600;margin-bottom:8px}
 .step p{font-size:.8125rem;color:var(--muted)}
-
-/* Example Sites */
 .examples{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-.example{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.example{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;cursor:pointer;transition:all .3s}
+.example:hover{border-color:var(--blue);transform:translateY(-2px)}
 .example-preview{height:160px;background:linear-gradient(135deg,#141414 0%,#1f1f23 100%);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:.75rem;color:#3f3f46}
 .example-info{padding:16px}
 .example-info h4{font-size:.875rem;font-weight:600;margin-bottom:4px}
 .example-info p{font-size:.75rem;color:var(--muted)}
-
 footer{border-top:1px solid var(--border);padding:40px 0;text-align:center;font-size:.8125rem;color:var(--muted)}
-@media(max-width:768px){.templates,.steps,.examples{grid-template-columns:1fr}.hero{padding:100px 0 60px}section{padding:60px 0}}
+@media(max-width:768px){.templates,.steps,.examples,.gen-features{grid-template-columns:1fr}.hero{padding:100px 0 60px}section{padding:60px 0}}
 @media(min-width:769px) and (max-width:1024px){.templates{grid-template-columns:repeat(2,1fr)}.steps{grid-template-columns:repeat(2,1fr)}.examples{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
@@ -77,27 +98,72 @@ footer{border-top:1px solid var(--border);padding:40px 0;text-align:center;font-
 </section>
 
 <div class="container">
+<div class="try-section">
+<div class="label">Try it now</div>
+<h2 style="margin-bottom:4px">Tell us about your website</h2>
+<p style="color:var(--muted);font-size:.875rem;margin-bottom:20px">Type what your website is about and watch AI build it live.</p>
+<input class="try-input" type="text" placeholder="e.g. A bakery in Vienna selling organic sourdough bread..." id="tryInput">
+<button class="btn btn-primary" id="tryBtn" onclick="tryGenerate()">Generate website</button>
+<div class="ai-thinking" id="aiThinking">
+<div class="ai-dots"><span></span><span></span><span></span></div>
+<span style="font-size:.8125rem;color:var(--muted)" id="aiThinkingText">Analyzing your description...</span>
+</div>
+<div class="gen-preview" id="genPreview">
+<div class="gen-nav">
+<span class="gen-nav-brand" id="genBrand">Your Website</span>
+<div class="gen-nav-links"><span>Home</span><span>About</span><span>Services</span><span>Contact</span></div>
+</div>
+<div class="gen-hero-section">
+<h2 id="genHeadline">Welcome</h2>
+<p id="genSubline">We provide excellent services.</p>
+<div class="gen-hero-btn">Get Started</div>
+</div>
+<div class="gen-features">
+<div class="gen-feat"><h4 id="genF1">Quality</h4><p id="genF1d">Excellence in everything.</p></div>
+<div class="gen-feat"><h4 id="genF2">Experience</h4><p id="genF2d">Years of expertise.</p></div>
+<div class="gen-feat"><h4 id="genF3">Trust</h4><p id="genF3d">Satisfied customers.</p></div>
+</div>
+<div style="padding:16px;text-align:center">
+<button class="btn btn-primary" onclick="goPublish()">Publish this website</button>
+</div>
+</div>
+</div>
+</div>
+
+<div class="container">
 <div class="mockup">
+<div class="loading-overlay" id="builderLoading">
+<div class="spinner"></div>
+<div style="font-size:.875rem;color:var(--muted)" id="loadingText">Generating...</div>
+</div>
 <div class="mockup-bar">
 <div class="mockup-dot dot-r"></div><div class="mockup-dot dot-y"></div><div class="mockup-dot dot-g"></div>
-<div class="mockup-url">blun.ai/websites/builder</div>
+<div class="mockup-url" id="mockupUrl">blun.ai/websites/builder</div>
 </div>
 <div class="mockup-body">
 <div style="font-size:.8125rem;color:var(--muted);margin-bottom:14px">Choose a template to start</div>
 <div class="templates">
-<div class="tpl active" onclick="pickTpl(this)"><div class="tpl-preview">MINIMAL</div>Clean and simple</div>
-<div class="tpl" onclick="pickTpl(this)"><div class="tpl-preview">BUSINESS</div>Professional look</div>
-<div class="tpl" onclick="pickTpl(this)"><div class="tpl-preview">CREATIVE</div>Bold and colorful</div>
+<div class="tpl active" data-tpl="minimal" onclick="pickTpl(this)"><div class="tpl-preview">MINIMAL</div>Clean and simple</div>
+<div class="tpl" data-tpl="business" onclick="pickTpl(this)"><div class="tpl-preview">BUSINESS</div>Professional look</div>
+<div class="tpl" data-tpl="creative" onclick="pickTpl(this)"><div class="tpl-preview">CREATIVE</div>Bold and colorful</div>
+</div>
+<div id="tplPreviewArea" style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:16px;min-height:120px;transition:all .3s">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border)">
+<span style="font-weight:600;font-size:.8125rem" id="tplBrand">my-website</span>
+<div style="display:flex;gap:12px;font-size:.6875rem;color:var(--muted)"><span>Home</span><span>About</span><span>Contact</span></div>
+</div>
+<div id="tplContent"><p style="font-size:.75rem;color:var(--muted);text-align:center;padding:20px 0">Enter a domain name below to see a live preview</p></div>
 </div>
 <div style="font-size:.8125rem;color:var(--muted);margin-bottom:8px">Your domain</div>
 <div class="domain-row">
-<input class="domain-input" type="text" placeholder="my-bakery" id="domainInput" oninput="checkDomain()">
+<input class="domain-input" type="text" placeholder="my-bakery" id="domainInput" oninput="updatePreview()">
 <span style="display:flex;align-items:center;font-size:.875rem;color:var(--muted)">.blun.site</span>
 <span class="domain-badge" id="domainBadge" style="opacity:0">Available</span>
 </div>
 <div style="margin-top:20px;display:flex;gap:12px">
-<button class="btn btn-primary" onclick="this.textContent='Building...';setTimeout(()=>this.textContent='View your site',1200)">Generate website</button>
-<button class="btn btn-outline">Preview</button>
+<button class="btn btn-primary" id="generateBtn" onclick="generateSite()">Generate website</button>
+<button class="btn btn-outline" onclick="previewSite()">Preview</button>
+<button class="btn btn-primary" style="background:#22c55e" onclick="goPublish()">Publish</button>
 </div>
 </div>
 </div>
@@ -123,9 +189,9 @@ footer{border-top:1px solid var(--border);padding:40px 0;text-align:center;font-
 <h2>Websites built with BLUN</h2>
 <p class="sub" style="margin:0 auto 48px">Real results from real descriptions. Each one took less than two minutes.</p>
 <div class="examples">
-<div class="example"><div class="example-preview">bakery-vienna.blun.site</div><div class="example-info"><h4>Local Bakery</h4><p>"I run a bakery in Vienna with organic bread"</p></div></div>
-<div class="example"><div class="example-preview">studio-photo.blun.site</div><div class="example-info"><h4>Photography Studio</h4><p>"Portfolio site for wedding photography"</p></div></div>
-<div class="example"><div class="example-preview">coach-lisa.blun.site</div><div class="example-info"><h4>Life Coach</h4><p>"Coaching business with booking calendar"</p></div></div>
+<div class="example" onclick="fillTry('A bakery in Vienna with organic sourdough bread and pastries')"><div class="example-preview">bakery-vienna.blun.site</div><div class="example-info"><h4>Local Bakery</h4><p>"I run a bakery in Vienna with organic bread"</p></div></div>
+<div class="example" onclick="fillTry('Wedding and portrait photography studio in Salzburg')"><div class="example-preview">studio-photo.blun.site</div><div class="example-info"><h4>Photography Studio</h4><p>"Portfolio site for wedding photography"</p></div></div>
+<div class="example" onclick="fillTry('Life coaching business with online booking calendar')"><div class="example-preview">coach-lisa.blun.site</div><div class="example-info"><h4>Life Coach</h4><p>"Coaching business with booking calendar"</p></div></div>
 </div>
 </div>
 </section>
@@ -133,8 +199,67 @@ footer{border-top:1px solid var(--border);padding:40px 0;text-align:center;font-
 <footer><div class="container">BLUN — Open Source AI Platform</div></footer>
 
 <script>
-function pickTpl(el){document.querySelectorAll('.tpl').forEach(t=>t.classList.remove('active'));el.classList.add('active')}
-function checkDomain(){var b=document.getElementById('domainBadge'),v=document.getElementById('domainInput').value;b.style.opacity=v.length>2?'1':'0'}
+var selectedTpl='minimal';
+var siteData={
+bakery:{headline:'Fresh Bread, Baked Daily',sub:'Organic sourdough and artisan pastries made with love in Vienna.',f1:'Organic Ingredients',f1d:'Only the finest organic flour and local produce.',f2:'Baked Fresh',f2d:'Every loaf made fresh each morning at 5am.',f3:'Local Delivery',f3d:'Free delivery within Vienna, same day.'},
+photo:{headline:'Capturing Your Special Moments',sub:'Professional wedding and portrait photography in Salzburg and beyond.',f1:'Weddings',f1d:'Full-day coverage with 500+ edited photos.',f2:'Portraits',f2d:'Studio and outdoor sessions for families.',f3:'Events',f3d:'Corporate events, parties, and celebrations.'},
+coach:{headline:'Transform Your Life Today',sub:'Personal coaching sessions to help you reach your full potential.',f1:'1-on-1 Sessions',f1d:'Personalized coaching tailored to your goals.',f2:'Online Booking',f2d:'Book your session directly from the website.',f3:'Free Intro Call',f3d:'15-minute consultation at no cost.'},
+tech:{headline:'Technology Solutions That Work',sub:'Modern software and IT services for growing businesses.',f1:'Cloud Services',f1d:'Scalable infrastructure for any workload.',f2:'Custom Software',f2d:'Built exactly to your specifications.',f3:'24/7 Support',f3d:'Always available when you need us.'},
+restaurant:{headline:'A Taste of Something Special',sub:'Fine dining with locally sourced ingredients and seasonal menus.',f1:'Seasonal Menu',f1d:'Fresh dishes that change with the seasons.',f2:'Wine Selection',f2d:'Curated wines from local vineyards.',f3:'Private Events',f3d:'Book our space for your celebration.'},
+fitness:{headline:'Your Fitness Journey Starts Here',sub:'Personal training and group classes for every fitness level.',f1:'Personal Training',f1d:'One-on-one sessions with certified trainers.',f2:'Group Classes',f2d:'Yoga, HIIT, spinning and more.',f3:'Nutrition Plans',f3d:'Custom meal plans for your goals.'}
+};
+function escHtml(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML}
+function pickTpl(el){document.querySelectorAll('.tpl').forEach(function(t){t.classList.remove('active')});el.classList.add('active');selectedTpl=el.getAttribute('data-tpl');updatePreview()}
+function updatePreview(){
+var domain=document.getElementById('domainInput').value.trim();
+document.getElementById('domainBadge').style.opacity=domain.length>2?'1':'0';
+document.getElementById('tplBrand').textContent=domain||'my-website';
+var c=document.getElementById('tplContent');
+if(domain.length<2){c.innerHTML='<p style="font-size:.75rem;color:var(--muted);text-align:center;padding:20px 0">Enter a domain name below to see a live preview</p>';return}
+document.getElementById('mockupUrl').textContent=domain+'.blun.site';
+var d=escHtml(domain);
+if(selectedTpl==='minimal')c.innerHTML='<div style="text-align:center;padding:24px 0"><p style="font-size:1rem;font-weight:600;margin-bottom:4px">Welcome to '+d+'</p><p style="font-size:.6875rem;color:var(--muted)">A clean, minimal website</p><div style="margin-top:12px;display:inline-block;padding:6px 16px;background:#3b82f6;color:#fff;border-radius:6px;font-size:.6875rem">Learn More</div></div>';
+else if(selectedTpl==='business')c.innerHTML='<div style="text-align:left;padding:16px 0"><p style="font-size:1.1rem;font-weight:700;margin-bottom:6px">'+d+'</p><p style="font-size:.6875rem;color:var(--muted);margin-bottom:12px">Professional solutions for your business needs.</p><div style="display:flex;gap:8px"><div style="padding:6px 16px;background:#2563eb;color:#fff;border-radius:6px;font-size:.6875rem">Get Quote</div><div style="padding:6px 16px;border:1px solid var(--border);border-radius:6px;font-size:.6875rem;color:var(--muted)">Our Services</div></div></div>';
+else c.innerHTML='<div style="text-align:center;padding:20px 0;background:linear-gradient(135deg,rgba(139,92,246,0.1),rgba(59,130,246,0.1));border-radius:8px"><p style="font-size:1.2rem;font-weight:700;background:linear-gradient(135deg,#8b5cf6,#3b82f6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px">'+d+'</p><p style="font-size:.6875rem;color:var(--muted)">Bold. Creative. Unforgettable.</p><div style="margin-top:12px;display:inline-block;padding:6px 16px;background:linear-gradient(135deg,#8b5cf6,#3b82f6);color:#fff;border-radius:6px;font-size:.6875rem">Explore</div></div>';
+}
+function generateSite(){
+var btn=document.getElementById('generateBtn'),o=document.getElementById('builderLoading'),lt=document.getElementById('loadingText');
+btn.disabled=true;btn.textContent='Building...';o.classList.add('visible');
+var s=['Analyzing...','Generating layout...','Writing copy...','Adding images...','Finalizing...'],i=0;lt.textContent=s[0];
+var iv=setInterval(function(){i++;if(i<s.length)lt.textContent=s[i];else{clearInterval(iv);o.classList.remove('visible');btn.textContent='Generate website';btn.disabled=false;previewSite()}},600);
+}
+function previewSite(){
+var o=document.getElementById('builderLoading'),lt=document.getElementById('loadingText');
+o.classList.add('visible');lt.textContent='Loading preview...';
+setTimeout(function(){o.classList.remove('visible')},1200);
+}
+function goPublish(){window.location.href='/login'}
+function tryGenerate(){
+var input=document.getElementById('tryInput').value.trim().toLowerCase();
+if(!input){document.getElementById('tryInput').focus();return}
+var t=document.getElementById('aiThinking'),tt=document.getElementById('aiThinkingText'),p=document.getElementById('genPreview');
+p.classList.remove('visible');t.classList.add('visible');
+var s=['Analyzing your description...','Choosing layout and colors...','Writing headlines and copy...','Generating sections...','Polishing design...'],i=0;tt.textContent=s[0];
+var iv=setInterval(function(){i++;if(i<s.length)tt.textContent=s[i];else{clearInterval(iv);t.classList.remove('visible');showGen(input)}},700);
+}
+function showGen(input){
+var data=null,brand='Your Website';
+if(input.match(/bak|bread|pastry|sourdough/)){data=siteData.bakery;brand='Artisan Bakery'}
+else if(input.match(/photo|camera|wedding|portrait/)){data=siteData.photo;brand='Photo Studio'}
+else if(input.match(/coach|life|mentor|consult/)){data=siteData.coach;brand='Life Coach'}
+else if(input.match(/tech|software|app|code/)){data=siteData.tech;brand='TechCorp'}
+else if(input.match(/food|restaurant|cafe|coffee|bar|cook/)){data=siteData.restaurant;brand='The Kitchen'}
+else if(input.match(/fit|gym|train|yoga|sport/)){data=siteData.fitness;brand='FitLife'}
+else{var w=input.split(/\s+/).filter(function(x){return x.length>3});var b=w.length>0?w[0].charAt(0).toUpperCase()+w[0].slice(1):'Your';brand=b+' Studio';data={headline:'Welcome to '+brand,sub:input.charAt(0).toUpperCase()+input.slice(1)+'. Built with AI, ready in minutes.',f1:'Professional',f1d:'High-quality results every time.',f2:'Fast Setup',f2d:'Your website live in under 2 minutes.',f3:'Always Online',f3d:'99.9% uptime, lightning fast.'}}
+document.getElementById('genBrand').textContent=brand;
+document.getElementById('genHeadline').textContent=data.headline;
+document.getElementById('genSubline').textContent=data.sub;
+document.getElementById('genF1').textContent=data.f1;document.getElementById('genF1d').textContent=data.f1d;
+document.getElementById('genF2').textContent=data.f2;document.getElementById('genF2d').textContent=data.f2d;
+document.getElementById('genF3').textContent=data.f3;document.getElementById('genF3d').textContent=data.f3d;
+document.getElementById('genPreview').classList.add('visible');
+}
+function fillTry(text){document.getElementById('tryInput').value=text;document.getElementById('tryInput').scrollIntoView({behavior:'smooth',block:'center'});setTimeout(function(){tryGenerate()},400)}
 </script>
 </body>
 </html>

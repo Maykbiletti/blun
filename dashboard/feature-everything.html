@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Everything in One Place — BLUN</title>
-<meta name="description" content="Domain, hosting, email, newsletter, payments, SSL — all included. No more juggling 5 different services.">
+<meta name="description" content="Domain, hosting, email, newsletter, payments, SSL — all included.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -24,17 +24,36 @@ h2{font-size:clamp(1.5rem,3.5vw,2rem);font-weight:700;letter-spacing:-0.02em;mar
 .sub{color:var(--muted);max-width:540px;margin-bottom:48px;font-size:.95rem}
 .btn{display:inline-flex;align-items:center;padding:10px 20px;border-radius:8px;font-size:.875rem;font-weight:500;font-family:var(--font);cursor:pointer;border:none;transition:all .2s}
 .btn-primary{background:var(--blue);color:#fff}.btn-primary:hover{background:var(--blue-hover)}
-
-/* Services Grid */
 .services{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:80px}
-.svc{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:28px;transition:border-color .2s}
+.svc{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:28px;transition:all .3s;cursor:pointer}
 .svc:hover{border-color:#3f3f46}
+.svc.selected{border-color:var(--blue)}
 .svc-icon{width:40px;height:40px;border-radius:10px;background:var(--blue-glow);display:flex;align-items:center;justify-content:center;margin-bottom:16px;font-family:var(--mono);font-size:.75rem;font-weight:700;color:var(--blue)}
 .svc h3{font-size:1rem;font-weight:600;margin-bottom:8px}
 .svc p{font-size:.8125rem;color:var(--muted);line-height:1.6}
 .svc-included{display:inline-block;margin-top:12px;font-size:.6875rem;font-family:var(--mono);color:var(--green);background:rgba(34,197,94,0.1);padding:3px 10px;border-radius:6px}
+.svc-details{display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);font-size:.75rem;color:var(--muted);line-height:1.7}
+.svc.expanded .svc-details{display:block;animation:fadeUp .3s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.svc-setup{display:inline-block;margin-top:12px;padding:6px 14px;background:var(--blue);color:#fff;border-radius:6px;font-size:.6875rem;font-weight:500;cursor:pointer;border:none;font-family:var(--font);transition:background .2s}
+.svc-setup:hover{background:var(--blue-hover)}
 
-/* Pricing Comparison */
+/* Price calculator */
+.calc-section{background:var(--card);border:1px solid var(--border);border-radius:16px;max-width:800px;margin:0 auto 80px;padding:32px}
+.calc-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);font-size:.875rem}
+.calc-row:last-child{border-bottom:none}
+.calc-check{width:20px;height:20px;border:2px solid var(--border);border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0}
+.calc-check.checked{background:var(--blue);border-color:var(--blue)}
+.calc-check.checked::after{content:'';width:8px;height:4px;border-left:2px solid #fff;border-bottom:2px solid #fff;transform:rotate(-45deg)}
+.calc-label{flex:1;margin-left:12px}
+.calc-price{color:var(--muted);font-family:var(--mono);font-size:.8125rem;min-width:80px;text-align:right}
+.calc-total{display:flex;justify-content:space-between;align-items:center;padding:20px 0 0;margin-top:8px;border-top:2px solid var(--border)}
+.calc-total-label{font-weight:600;font-size:1rem}
+.calc-total-prices{text-align:right}
+.calc-old{color:var(--muted);text-decoration:line-through;font-size:.875rem}
+.calc-new{color:var(--green);font-size:1.25rem;font-weight:700;display:block;margin-top:4px}
+.calc-savings{font-size:.75rem;color:var(--blue);margin-top:4px}
+
 .price-compare{max-width:800px;margin:0 auto}
 .price-table{width:100%;border-collapse:collapse}
 .price-table th{text-align:left;padding:14px 16px;font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);border-bottom:1px solid var(--border)}
@@ -45,12 +64,9 @@ h2{font-size:clamp(1.5rem,3.5vw,2rem);font-weight:700;letter-spacing:-0.02em;mar
 .price-table .service-col{color:var(--muted);font-size:.8125rem}
 .price-table td:last-child{text-align:right}
 .price-table th:last-child{text-align:right}
-
-/* Bottom CTA */
 .cta{text-align:center;padding:80px 24px;max-width:600px;margin:0 auto}
 .cta h2{margin-bottom:12px}
 .cta p{color:var(--muted);margin-bottom:28px;font-size:.95rem}
-
 footer{border-top:1px solid var(--border);padding:40px 0;text-align:center;font-size:.8125rem;color:var(--muted)}
 @media(max-width:768px){.services{grid-template-columns:1fr}.hero{padding:100px 0 60px}section{padding:60px 0}.price-table{font-size:.8125rem}}
 @media(min-width:769px) and (max-width:1024px){.services{grid-template-columns:repeat(2,1fr)}}
@@ -70,45 +86,124 @@ footer{border-top:1px solid var(--border);padding:40px 0;text-align:center;font-
 <section>
 <div class="container">
 <div class="services">
-<div class="svc">
+<div class="svc" onclick="toggleSvc(this)">
 <div class="svc-icon">DNS</div>
 <h3>Domain</h3>
 <p>Register a domain or connect your own. DNS management with automatic configuration.</p>
 <span class="svc-included">Included</span>
+<button class="svc-setup" onclick="event.stopPropagation();window.location.href='/login'">Set up</button>
+<div class="svc-details">
+<strong>What you get:</strong><br>
+- Free .blun.site subdomain<br>
+- Connect your own domain (any registrar)<br>
+- Automatic DNS configuration<br>
+- Domain forwarding and redirects<br>
+- WHOIS privacy protection
 </div>
-<div class="svc">
+</div>
+<div class="svc" onclick="toggleSvc(this)">
 <div class="svc-icon">SRV</div>
 <h3>Hosting</h3>
 <p>Fast, reliable hosting with global CDN. Auto-scaling when your site gets traffic spikes.</p>
 <span class="svc-included">Included</span>
+<button class="svc-setup" onclick="event.stopPropagation();window.location.href='/login'">Set up</button>
+<div class="svc-details">
+<strong>What you get:</strong><br>
+- 10 GB storage<br>
+- Unlimited bandwidth<br>
+- Global CDN (50+ locations)<br>
+- Auto-scaling for traffic spikes<br>
+- 99.9% uptime guarantee
 </div>
-<div class="svc">
+</div>
+<div class="svc" onclick="toggleSvc(this)">
 <div class="svc-icon">@</div>
 <h3>Email</h3>
 <p>Professional email addresses with your domain. Send, receive, and manage from BLUN.</p>
 <span class="svc-included">Included</span>
+<button class="svc-setup" onclick="event.stopPropagation();window.location.href='/login'">Set up</button>
+<div class="svc-details">
+<strong>What you get:</strong><br>
+- 5 email addresses (you@yourdomain.com)<br>
+- 10 GB mailbox per address<br>
+- Spam and virus protection<br>
+- Email forwarding<br>
+- Works with any email client
 </div>
-<div class="svc">
+</div>
+<div class="svc" onclick="toggleSvc(this)">
 <div class="svc-icon">NL</div>
 <h3>Newsletter</h3>
 <p>Build subscriber lists, design emails with AI, send campaigns. Track opens and clicks.</p>
 <span class="svc-included">Included</span>
+<button class="svc-setup" onclick="event.stopPropagation();window.location.href='/login'">Set up</button>
+<div class="svc-details">
+<strong>What you get:</strong><br>
+- Up to 1,000 subscribers<br>
+- AI-generated email templates<br>
+- Drag and drop editor<br>
+- Open and click tracking<br>
+- Signup forms for your website
 </div>
-<div class="svc">
+</div>
+<div class="svc" onclick="toggleSvc(this)">
 <div class="svc-icon">PAY</div>
 <h3>Payments</h3>
 <p>Accept credit cards, bank transfers, and digital wallets. No extra payment processor needed.</p>
 <span class="svc-included">Included</span>
+<button class="svc-setup" onclick="event.stopPropagation();window.location.href='/login'">Set up</button>
+<div class="svc-details">
+<strong>What you get:</strong><br>
+- Credit card payments (Visa, Mastercard)<br>
+- Bank transfer / SEPA<br>
+- Apple Pay, Google Pay<br>
+- Automatic invoicing<br>
+- 2.9% + 30c per transaction
 </div>
-<div class="svc">
+</div>
+<div class="svc" onclick="toggleSvc(this)">
 <div class="svc-icon">SSL</div>
 <h3>SSL Certificate</h3>
 <p>Free HTTPS for every site. Auto-renewed, zero configuration. Your visitors see the padlock.</p>
 <span class="svc-included">Included</span>
+<button class="svc-setup" onclick="event.stopPropagation();window.location.href='/login'">Set up</button>
+<div class="svc-details">
+<strong>What you get:</strong><br>
+- Free Let's Encrypt SSL<br>
+- Auto-renewal (never expires)<br>
+- Zero configuration needed<br>
+- HTTPS enforced by default<br>
+- Full TLS 1.3 support
+</div>
 </div>
 </div>
 </div>
 </section>
+
+<!-- Price Calculator -->
+<div class="container">
+<div class="calc-section">
+<div class="label">Price calculator</div>
+<h2 style="margin-bottom:4px">Build your plan</h2>
+<p style="color:var(--muted);font-size:.875rem;margin-bottom:24px">Select the services you need and see how much you save.</p>
+
+<div class="calc-row" onclick="toggleCalc(this,12)"><div class="calc-check checked"></div><div class="calc-label">Domain registration</div><div class="calc-price">$12/yr</div></div>
+<div class="calc-row" onclick="toggleCalc(this,10)"><div class="calc-check checked"></div><div class="calc-label">Website hosting</div><div class="calc-price">$10/mo</div></div>
+<div class="calc-row" onclick="toggleCalc(this,6)"><div class="calc-check checked"></div><div class="calc-label">Email hosting</div><div class="calc-price">$6/mo</div></div>
+<div class="calc-row" onclick="toggleCalc(this,15)"><div class="calc-check checked"></div><div class="calc-label">Newsletter tool</div><div class="calc-price">$15/mo</div></div>
+<div class="calc-row" onclick="toggleCalc(this,15)"><div class="calc-check checked"></div><div class="calc-label">Payment processing</div><div class="calc-price">$15/mo</div></div>
+<div class="calc-row" onclick="toggleCalc(this,5)"><div class="calc-check"></div><div class="calc-label">SSL certificate</div><div class="calc-price">$5/mo</div></div>
+
+<div class="calc-total">
+<div class="calc-total-label">Your total</div>
+<div class="calc-total-prices">
+<span class="calc-old" id="calcOld">$58/month</span>
+<span class="calc-new" id="calcNew">$20/month with BLUN</span>
+<span class="calc-savings" id="calcSave">You save $38/month</span>
+</div>
+</div>
+</div>
+</div>
 
 <section style="padding-top:0">
 <div class="container" style="text-align:center">
@@ -139,5 +234,40 @@ footer{border-top:1px solid var(--border);padding:40px 0;text-align:center;font-
 </div>
 
 <footer><div class="container">BLUN — Open Source AI Platform</div></footer>
+
+<script>
+function toggleSvc(el){
+var wasExpanded=el.classList.contains('expanded');
+document.querySelectorAll('.svc').forEach(function(s){s.classList.remove('expanded')});
+if(!wasExpanded)el.classList.add('expanded');
+}
+
+function toggleCalc(row,price){
+var check=row.querySelector('.calc-check');
+check.classList.toggle('checked');
+updateCalc();
+}
+
+function updateCalc(){
+var total=0;
+var rows=document.querySelectorAll('.calc-row');
+rows.forEach(function(row){
+if(row.querySelector('.calc-check.checked')){
+var priceText=row.querySelector('.calc-price').textContent;
+var val=parseInt(priceText.replace(/[^0-9]/g,''));
+total+=val;
+}
+});
+document.getElementById('calcOld').textContent='$'+total+'/month';
+document.getElementById('calcNew').textContent='$20/month with BLUN';
+var savings=total-20;
+if(savings>0){
+document.getElementById('calcSave').textContent='You save $'+savings+'/month';
+document.getElementById('calcSave').style.display='';
+}else{
+document.getElementById('calcSave').style.display='none';
+}
+}
+</script>
 </body>
 </html>
