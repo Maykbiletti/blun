@@ -1,0 +1,17 @@
+Icon Requirements for BLUN Desktop App
+=======================================
+
+Place the following icon files in this directory before building:
+
+1. icon.png    - 512x512 PNG (used for Linux and as fallback)
+2. icon.ico    - Windows icon (256x256, multi-size recommended)
+3. icon.icns   - macOS icon (512x512 and 1024x1024 retina)
+
+All icons should use the BLUN logo on a dark (#0a0a0a) background
+with the blue (#3b82f6) accent color.
+
+Tools to generate:
+- electron-icon-builder (npm package)
+- Or manually create with any image editor
+
+The build will warn but still work without these files during development.
