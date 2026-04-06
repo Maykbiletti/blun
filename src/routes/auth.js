@@ -4,6 +4,7 @@ const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const { pool } = require("../db");
 const { authenticate, requireAuth } = require("../middleware/auth");
+const { logActivity } = require("../middleware/activity");
 
 var router = express.Router();
 
@@ -44,6 +45,8 @@ router.post("/register", async function (req, res) {
     var user = result.rows[0];
     var session = await createSession(user.id);
     res.cookie("blun_token", session.token, { httpOnly: true, secure: false, sameSite: "lax", maxAge: 30 * 24 * 60 * 60 * 1000 });
+    var regIp = req.headers["x-forwarded-for"] || req.connection.remoteAddress;
+    logActivity(user.id, "register", { email: user.email }, regIp);
     res.json({ user: user, token: session.token, expires_at: session.expires_at });
   } catch (err) {
     console.error("[auth] Register error:", err.message);
@@ -72,6 +75,8 @@ router.post("/login", async function (req, res) {
     }
     var session = await createSession(user.id);
     res.cookie("blun_token", session.token, { httpOnly: true, secure: false, sameSite: "lax", maxAge: 30 * 24 * 60 * 60 * 1000 });
+    var loginIp = req.headers["x-forwarded-for"] || req.connection.remoteAddress;
+    logActivity(user.id, "login", { email: user.email }, loginIp);
     res.json({
       user: { id: user.id, email: user.email, name: user.name, role: user.role, plan: user.plan, avatar_url: user.avatar_url, created_at: user.created_at },
       token: session.token,

@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0a0a0a">
+<title>BLUN Admin Panel</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0a0a0a;--card:#141414;--card-border:#1e1e1e;--fg:#fafafa;--fg2:#a1a1aa;--fg3:#52525b;--amber:#f59e0b;--amber-bg:rgba(245,158,11,.08);--green:#22c55e;--red:#ef4444;--blue:#3b82f6;--radius:8px;--radius-lg:12px;--font:'Inter',-apple-system,sans-serif}
+html,body{height:100%;background:var(--bg);color:var(--fg);font-family:var(--font);font-size:14px;-webkit-font-smoothing:antialiased}
+a{color:var(--amber);text-decoration:none}
+.topbar{height:52px;border-bottom:1px solid var(--card-border);display:flex;align-items:center;padding:0 24px;gap:16px}
+.topbar-title{font-size:15px;font-weight:600;flex:1}
+.topbar a{font-size:13px;color:var(--fg2)}
+.topbar a:hover{color:var(--fg)}
+.content{max-width:1200px;margin:0 auto;padding:24px}
+.tabs{display:flex;gap:4px;margin-bottom:24px;border-bottom:1px solid var(--card-border);padding-bottom:0}
+.tab{padding:10px 16px;cursor:pointer;color:var(--fg2);font-size:13px;font-weight:500;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab:hover{color:var(--fg)}
+.tab.active{color:var(--amber);border-bottom-color:var(--amber)}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:24px}
+.stat-card{background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius-lg);padding:20px}
+.stat-card .label{font-size:11px;color:var(--fg3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+.stat-card .value{font-size:26px;font-weight:700}
+.stat-card .sub{font-size:12px;color:var(--fg2);margin-top:4px}
+.search-bar{display:flex;gap:8px;margin-bottom:16px}
+.search-bar input{flex:1;background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);padding:8px 12px;color:var(--fg);font-size:13px;outline:none}
+.search-bar input:focus{border-color:var(--amber)}
+.btn{padding:7px 14px;border-radius:var(--radius);border:none;cursor:pointer;font-size:12px;font-weight:500;font-family:var(--font)}
+.btn-amber{background:var(--amber);color:#000}
+.btn-red{background:var(--red);color:#fff}
+.btn-ghost{background:transparent;border:1px solid var(--card-border);color:var(--fg2)}
+.btn-ghost:hover{border-color:var(--fg3);color:var(--fg)}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:11px;color:var(--fg3);text-transform:uppercase;letter-spacing:.05em;padding:10px 12px;border-bottom:1px solid var(--card-border)}
+td{padding:10px 12px;border-bottom:1px solid var(--card-border);font-size:13px;color:var(--fg2)}
+tr:hover td{background:rgba(255,255,255,.02)}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
+.badge-owner{background:rgba(245,158,11,.15);color:var(--amber)}
+.badge-admin{background:rgba(59,130,246,.15);color:var(--blue)}
+.badge-user{background:rgba(255,255,255,.06);color:var(--fg3)}
+.badge-pro{background:rgba(34,197,94,.15);color:var(--green)}
+.badge-free{background:rgba(255,255,255,.06);color:var(--fg3)}
+.badge-enterprise{background:rgba(245,158,11,.15);color:var(--amber)}
+.pagination{display:flex;gap:6px;justify-content:center;margin-top:16px}
+.page-btn{padding:6px 12px;border-radius:var(--radius);background:var(--card);border:1px solid var(--card-border);color:var(--fg2);cursor:pointer;font-size:12px}
+.page-btn.active{background:var(--amber-bg);border-color:var(--amber);color:var(--amber)}
+.page-btn:hover{border-color:var(--fg3)}
+.panel{display:none}.panel.active{display:block}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;justify-content:center;align-items:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius-lg);width:560px;max-width:90vw;max-height:85vh;overflow-y:auto;padding:24px}
+.modal h3{font-size:16px;margin-bottom:16px}
+.modal-close{float:right;cursor:pointer;color:var(--fg3);font-size:18px}
+.modal-close:hover{color:var(--fg)}
+.detail-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--card-border);font-size:13px}
+.detail-row .dlabel{color:var(--fg3)}
+.detail-actions{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;align-items:center}
+select{background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);padding:6px 10px;color:var(--fg);font-size:12px;outline:none}
+.activity-item{padding:10px 0;border-bottom:1px solid var(--card-border);font-size:13px}
+.activity-item .time{color:var(--fg3);font-size:11px}
+.activity-item .action{color:var(--amber);font-weight:500}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-title">BLUN <span style="color:var(--fg3);font-weight:400">Admin Panel</span></div>
+  <a href="/dashboard">Back to Dashboard</a>
+</div>
+<div class="content">
+  <div class="tabs">
+    <div class="tab active" data-tab="users">Users</div>
+    <div class="tab" data-tab="stats">Statistics</div>
+    <div class="tab" data-tab="activity">Activity Log</div>
+  </div>
+  <div class="panel active" id="panel-users">
+    <div class="search-bar">
+      <input type="text" id="user-search" placeholder="Search by name or email...">
+      <button class="btn btn-amber" onclick="searchUsers()">Search</button>
+    </div>
+    <table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Plan</th><th>Agents</th><th>Last Login</th><th>Joined</th></tr></thead>
+    <tbody id="user-tbody"></tbody></table>
+    <div class="pagination" id="user-pagination"></div>
+  </div>
+  <div class="panel" id="panel-stats">
+    <div class="stats-grid" id="stats-grid"></div>
+    <h4 style="color:var(--fg2);margin:16px 0 8px">Plan Distribution</h4>
+    <div id="plan-dist"></div>
+  </div>
+  <div class="panel" id="panel-activity">
+    <div id="activity-list"></div>
+  </div>
+</div>
+<div class="modal-overlay" id="user-modal">
+  <div class="modal">
+    <span class="modal-close" onclick="closeModal()">&times;</span>
+    <h3 id="modal-title">User Detail</h3>
+    <div id="modal-body"></div>
+  </div>
+</div>
+<script>
+var currentPage=1,currentSearch="";
+document.querySelectorAll(".tab").forEach(function(t){
+  t.addEventListener("click",function(){
+    document.querySelectorAll(".tab").forEach(function(x){x.classList.remove("active")});
+    document.querySelectorAll(".panel").forEach(function(x){x.classList.remove("active")});
+    t.classList.add("active");
+    document.getElementById("panel-"+t.dataset.tab).classList.add("active");
+    if(t.dataset.tab==="stats")loadStats();
+    if(t.dataset.tab==="activity")loadActivity();
+  });
+});
+document.getElementById("user-search").addEventListener("keydown",function(e){if(e.key==="Enter")searchUsers()});
+function searchUsers(){currentPage=1;currentSearch=document.getElementById("user-search").value;loadUsers()}
+
+async function api(url){
+  var r=await fetch(url,{credentials:"include"});
+  if(r.status===401){window.location="/login";return null}
+  if(r.status===403){window.location="/dashboard";return null}
+  return r.json();
+}
+async function apiMethod(url,method,body){
+  var r=await fetch(url,{method:method,credentials:"include",headers:{"Content-Type":"application/json"},body:body?JSON.stringify(body):undefined});
+  return r.json();
+}
+function badge(type,text){return "<span class=\"badge badge-"+type+"\">"+text+"</span>"}
+function fmtDate(d){return d?new Date(d).toLocaleDateString("de-AT",{day:"2-digit",month:"2-digit",year:"numeric"}):"--"}
+function fmtTime(d){return d?new Date(d).toLocaleString("de-AT",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"--"}
+
+async function loadUsers(){
+  var q="/admin-panel/users?page="+currentPage+"&limit=25";
+  if(currentSearch)q+="&search="+encodeURIComponent(currentSearch);
+  var data=await api(q);if(!data)return;
+  var html="";
+  data.users.forEach(function(u){
+    html+="<tr style=\"cursor:pointer\" onclick=\"showUser('"+u.id+"')\">"
+      +"<td>"+(u.name||"--")+"</td><td>"+u.email+"</td>"
+      +"<td>"+badge(u.role,u.role)+"</td>"
+      +"<td>"+badge(u.plan||"free",u.plan||"free")+"</td>"
+      +"<td>"+(u.agent_count||0)+"</td>"
+      +"<td>"+fmtDate(u.last_login)+"</td>"
+      +"<td>"+fmtDate(u.created_at)+"</td></tr>";
+  });
+  document.getElementById("user-tbody").innerHTML=html;
+  var pag="";
+  for(var i=1;i<=data.pages;i++){
+    pag+="<button class=\"page-btn"+(i===data.page?" active":"")+"\" onclick=\"currentPage="+i+";loadUsers()\">"+i+"</button>";
+  }
+  document.getElementById("user-pagination").innerHTML=pag;
+}
+
+async function showUser(id){
+  var data=await api("/admin-panel/users/"+id);if(!data)return;
+  var u=data.user;
+  document.getElementById("modal-title").textContent=u.name||u.email;
+  var h="<div class=\"detail-row\"><span class=\"dlabel\">Email</span><span>"+u.email+"</span></div>"
+    +"<div class=\"detail-row\"><span class=\"dlabel\">Role</span><span>"+badge(u.role,u.role)+"</span></div>"
+    +"<div class=\"detail-row\"><span class=\"dlabel\">Plan</span><span>"+badge(u.plan||"free",u.plan||"free")+"</span></div>"
+    +"<div class=\"detail-row\"><span class=\"dlabel\">Joined</span><span>"+fmtDate(u.created_at)+"</span></div>"
+    +"<div class=\"detail-row\"><span class=\"dlabel\">Last Login</span><span>"+fmtTime(u.last_login)+"</span></div>"
+    +"<div class=\"detail-row\"><span class=\"dlabel\">Agents</span><span>"+data.agents.length+"</span></div>"
+    +"<div class=\"detail-row\"><span class=\"dlabel\">Total Cost</span><span>$"+(data.total_cost||0).toFixed(2)+"</span></div>";
+  if(data.subscription){h+="<div class=\"detail-row\"><span class=\"dlabel\">Subscription</span><span>"+data.subscription.status+"</span></div>"}
+  if(data.agents.length>0){
+    h+="<h4 style=\"margin:12px 0 6px;font-size:13px;color:var(--fg2)\">Agents</h4>";
+    data.agents.forEach(function(a){h+="<div style=\"font-size:12px;padding:4px 0;color:var(--fg3)\">"+a.name+" ("+a.model+") - "+a.status+"</div>"});
+  }
+  h+="<div class=\"detail-actions\">"
+    +"<select id=\"role-select\"><option value=\"user\""+(u.role==="user"?" selected":"")+">User</option><option value=\"admin\""+(u.role==="admin"?" selected":"")+">Admin</option><option value=\"owner\""+(u.role==="owner"?" selected":"")+">Owner</option></select>"
+    +"<button class=\"btn btn-amber\" onclick=\"updateUser('"+u.id+"',{role:document.getElementById('role-select').value})\">Save Role</button>"
+    +"<select id=\"plan-select\"><option value=\"free\""+(u.plan==="free"?" selected":"")+">Free</option><option value=\"pro\""+(u.plan==="pro"?" selected":"")+">Pro</option><option value=\"enterprise\""+(u.plan==="enterprise"?" selected":"")+">Enterprise</option></select>"
+    +"<button class=\"btn btn-amber\" onclick=\"updateUser('"+u.id+"',{plan:document.getElementById('plan-select').value})\">Save Plan</button>"
+    +"<button class=\"btn btn-red\" onclick=\"deleteUser('"+u.id+"','"+u.email+"')\">Delete User</button>"
+    +"</div>";
+  document.getElementById("modal-body").innerHTML=h;
+  document.getElementById("user-modal").classList.add("open");
+}
+
+async function updateUser(id,data){
+  var r=await apiMethod("/admin-panel/users/"+id,"PATCH",data);
+  if(r.user){closeModal();loadUsers()}else alert(r.error||"Failed");
+}
+async function deleteUser(id,email){
+  if(!confirm("PERMANENTLY delete "+email+" and ALL their data? This cannot be undone."))return;
+  var r=await apiMethod("/admin-panel/users/"+id,"DELETE");
+  if(r.ok){closeModal();loadUsers()}else alert(r.error||"Failed");
+}
+function closeModal(){document.getElementById("user-modal").classList.remove("open")}
+
+async function loadStats(){
+  var data=await api("/admin-panel/stats");if(!data)return;
+  document.getElementById("stats-grid").innerHTML=
+    "<div class=\"stat-card\"><div class=\"label\">Total Users</div><div class=\"value\">"+data.users.total+"</div><div class=\"sub\">"+data.users.active_7d+" active (7d)</div></div>"
+    +"<div class=\"stat-card\"><div class=\"label\">Agents</div><div class=\"value\">"+data.agents+"</div></div>"
+    +"<div class=\"stat-card\"><div class=\"label\">Active Subscriptions</div><div class=\"value\">"+data.active_subscriptions+"</div></div>"
+    +"<div class=\"stat-card\"><div class=\"label\">Total Revenue</div><div class=\"value\">$"+data.total_revenue.toFixed(2)+"</div></div>";
+  var dist="";
+  data.plan_distribution.forEach(function(p){
+    dist+="<div style=\"display:flex;gap:8px;padding:4px 0;font-size:13px\">"+badge(p.plan||"free",p.plan||"free")+" <span style=\"color:var(--fg2)\">"+p.count+" users</span></div>";
+  });
+  document.getElementById("plan-dist").innerHTML=dist;
+}
+
+async function loadActivity(){
+  var data=await api("/admin-panel/activity");if(!data)return;
+  var html="";
+  data.activity.forEach(function(a){
+    html+="<div class=\"activity-item\"><span class=\"action\">"+a.action+"</span> "
+      +(a.email?"<span style=\"color:var(--fg2)\">"+a.email+"</span> ":"")
+      +(a.ip_address?"<span style=\"color:var(--fg3);font-size:11px\">"+a.ip_address+"</span> ":"")
+      +"<div class=\"time\">"+fmtTime(a.created_at)+"</div></div>";
+  });
+  document.getElementById("activity-list").innerHTML=html||"<p style=\"color:var(--fg3)\">No activity yet.</p>";
+}
+loadUsers();
+</script>
+</body>
+</html>

@@ -1,0 +1,132 @@
+// BLUN - AI Organisator | MIT License
+const express = require("express");
+const { pool } = require("../db");
+const { authenticate, requireAdmin } = require("../middleware/auth");
+const { logActivity } = require("../middleware/activity");
+
+var router = express.Router();
+router.use(authenticate, requireAdmin);
+
+// GET /admin-panel/users — paginated user list with search
+router.get("/users", async function (req, res) {
+  try {
+    var page = Math.max(1, parseInt(req.query.page) || 1);
+    var limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 25));
+    var offset = (page - 1) * limit;
+    var search = req.query.search || "";
+    var where = "";
+    var params = [];
+    if (search) {
+      where = " WHERE u.email ILIKE $1 OR u.name ILIKE $1";
+      params.push("%" + search + "%");
+    }
+    var countRes = await pool.query("SELECT COUNT(*) FROM users u" + where, params);
+    var total = parseInt(countRes.rows[0].count);
+    var sql = "SELECT u.id, u.email, u.name, u.role, u.plan, u.avatar_url, u.oauth_provider, u.created_at, u.last_login, " +
+      "(SELECT COUNT(*) FROM agents a WHERE a.owner_id = u.id) AS agent_count " +
+      "FROM users u" + where + " ORDER BY u.created_at DESC LIMIT $" + (params.length + 1) + " OFFSET $" + (params.length + 2);
+    params.push(limit, offset);
+    var result = await pool.query(sql, params);
+    res.json({ users: result.rows, total: total, page: page, pages: Math.ceil(total / limit) });
+  } catch (err) {
+    console.error("[admin-panel] users error:", err.message);
+    res.status(500).json({ error: "Failed to fetch users" });
+  }
+});
+
+// GET /admin-panel/users/:id — user detail
+router.get("/users/:id", async function (req, res) {
+  try {
+    var user = await pool.query(
+      "SELECT id, email, name, role, plan, avatar_url, oauth_provider, created_at, last_login FROM users WHERE id = $1", [req.params.id]
+    );
+    if (user.rows.length === 0) return res.status(404).json({ error: "User not found" });
+    var agents = await pool.query("SELECT id, name, model, status, created_at FROM agents WHERE owner_id = $1 ORDER BY created_at DESC", [req.params.id]);
+    var sub = await pool.query("SELECT * FROM subscriptions WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1", [req.params.id]);
+    var costs = await pool.query("SELECT COALESCE(SUM(cost_usd), 0) AS total_cost FROM cost_events WHERE user_id = $1", [req.params.id]);
+    res.json({ user: user.rows[0], agents: agents.rows, subscription: sub.rows[0] || null, total_cost: parseFloat(costs.rows[0].total_cost) });
+  } catch (err) {
+    console.error("[admin-panel] user detail error:", err.message);
+    res.status(500).json({ error: "Failed to fetch user" });
+  }
+});
+
+// PATCH /admin-panel/users/:id — update user
+router.patch("/users/:id", async function (req, res) {
+  try {
+    var allowed = ["role", "plan", "name"];
+    var sets = []; var params = []; var idx = 1;
+    for (var key of allowed) {
+      if (req.body[key] !== undefined) { sets.push(key + " = $" + idx); params.push(req.body[key]); idx++; }
+    }
+    if (sets.length === 0) return res.status(400).json({ error: "No valid fields to update" });
+    params.push(req.params.id);
+    var result = await pool.query("UPDATE users SET " + sets.join(", ") + " WHERE id = $" + idx + " RETURNING id, email, name, role, plan", params);
+    if (result.rows.length === 0) return res.status(404).json({ error: "User not found" });
+    var ip = req.headers["x-forwarded-for"] || req.connection.remoteAddress;
+    logActivity(req.user.id, "admin_update_user", { target: req.params.id, changes: req.body }, ip);
+    res.json({ user: result.rows[0] });
+  } catch (err) {
+    console.error("[admin-panel] update user error:", err.message);
+    res.status(500).json({ error: "Failed to update user" });
+  }
+});
+
+// DELETE /admin-panel/users/:id — GDPR delete
+router.delete("/users/:id", async function (req, res) {
+  try {
+    if (req.params.id === req.user.id) return res.status(400).json({ error: "Cannot delete yourself" });
+    var check = await pool.query("SELECT id, email FROM users WHERE id = $1", [req.params.id]);
+    if (check.rows.length === 0) return res.status(404).json({ error: "User not found" });
+    await pool.query("DELETE FROM sessions WHERE user_id = $1", [req.params.id]);
+    await pool.query("DELETE FROM agents WHERE owner_id = $1", [req.params.id]);
+    await pool.query("DELETE FROM conversations WHERE user_id = $1", [req.params.id]);
+    await pool.query("DELETE FROM cost_events WHERE user_id = $1", [req.params.id]);
+    await pool.query("DELETE FROM subscriptions WHERE user_id = $1", [req.params.id]);
+    await pool.query("DELETE FROM users WHERE id = $1", [req.params.id]);
+    var ip = req.headers["x-forwarded-for"] || req.connection.remoteAddress;
+    logActivity(req.user.id, "admin_delete_user", { target_email: check.rows[0].email }, ip);
+    res.json({ ok: true, deleted: check.rows[0].email });
+  } catch (err) {
+    console.error("[admin-panel] delete user error:", err.message);
+    res.status(500).json({ error: "Failed to delete user" });
+  }
+});
+
+// GET /admin-panel/stats — platform stats
+router.get("/stats", async function (req, res) {
+  try {
+    var users = await pool.query("SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE last_login > NOW() - INTERVAL 7 days) AS active_7d FROM users");
+    var agents = await pool.query("SELECT COUNT(*) AS total FROM agents");
+    var subs = await pool.query("SELECT COUNT(*) AS active FROM subscriptions WHERE status = active");
+    var revenue = await pool.query("SELECT COALESCE(SUM(cost_usd), 0) AS total FROM cost_events");
+    var plans = await pool.query("SELECT plan, COUNT(*) AS count FROM users GROUP BY plan ORDER BY count DESC");
+    res.json({
+      users: { total: parseInt(users.rows[0].total), active_7d: parseInt(users.rows[0].active_7d) },
+      agents: parseInt(agents.rows[0].total),
+      active_subscriptions: parseInt(subs.rows[0].active),
+      total_revenue: parseFloat(revenue.rows[0].total),
+      plan_distribution: plans.rows
+    });
+  } catch (err) {
+    console.error("[admin-panel] stats error:", err.message);
+    res.status(500).json({ error: "Failed to fetch stats" });
+  }
+});
+
+// GET /admin-panel/activity — recent activity log
+router.get("/activity", async function (req, res) {
+  try {
+    var limit = Math.min(100, parseInt(req.query.limit) || 50);
+    var result = await pool.query(
+      "SELECT al.*, u.email, u.name FROM activity_log al LEFT JOIN users u ON al.user_id = u.id ORDER BY al.created_at DESC LIMIT $1",
+      [limit]
+    );
+    res.json({ activity: result.rows });
+  } catch (err) {
+    console.error("[admin-panel] activity error:", err.message);
+    res.status(500).json({ error: "Failed to fetch activity" });
+  }
+});
+
+module.exports = router;

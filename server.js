@@ -30,12 +30,19 @@ const { router: skillsRoutes, getAgentSkills } = require("./src/routes/skills");
 const organisatorRoutes = require("./src/routes/organisator");
 const telegramRoutes = require("./src/routes/telegram");
 const federationRoutes = require("./src/routes/federation");
+const adminPanelRoutes = require("./src/routes/admin-panel");
+const privacyRoutes = require("./src/routes/privacy");
 const { startAllBots, activeBots } = require("./src/channels/telegram");
 
 const PORT = parseInt(process.env.BLUN_PORT || "3200", 10);
 const API_KEY = process.env.BLUN_API_KEY || "blun-dev-key";
 
 const app = express();
+
+// Landing page route
+app.get('/', (req, res) => {
+  res.sendFile(__dirname + '/dashboard/landing.html');
+});
 
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors());
@@ -58,6 +65,8 @@ app.use("/api", function (req, res, next) {
 
 app.use("/auth", authRoutes);
 app.use("/billing", billingRoutes);
+app.use("/admin-panel", adminPanelRoutes);
+app.use("/privacy", privacyRoutes);
 
 app.use("/api", apiRoutes);
 app.use("/api/chat", chatRoutes);
@@ -84,6 +93,16 @@ app.get("/organisator", authenticate, function (req, res) {
   res.sendFile(path.join(__dirname, "dashboard", "organisator.html"));
 });
 
+app.get("/admin-panel", authenticate, function (req, res) {
+  if (!req.user) return res.redirect("/login");
+  if (req.user.role !== "admin" && req.user.role !== "owner") return res.redirect("/dashboard");
+  res.sendFile(path.join(__dirname, "dashboard", "admin-panel.html"));
+});
+
+app.get("/privacy-settings", authenticate, function (req, res) {
+  if (!req.user) return res.redirect("/login");
+  res.sendFile(path.join(__dirname, "dashboard", "privacy.html"));
+});
 app.get("/telegram", authenticate, function (req, res) {
   if (!req.user) return res.redirect("/login");
   res.sendFile(path.join(__dirname, "dashboard", "telegram.html"));
@@ -167,3 +186,4 @@ async function shutdown(signal) {
 }
 
 start();
+
