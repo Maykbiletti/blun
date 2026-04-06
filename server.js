@@ -47,6 +47,11 @@ app.get('/', (req, res) => {
   res.sendFile(__dirname + '/dashboard/landing.html');
 });
 
+// Impressum page (public)
+app.get("/impressum", (req, res) => {
+  res.sendFile(__dirname + "/dashboard/impressum.html");
+});
+
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors());
 // Stripe webhook needs raw body before JSON parser
