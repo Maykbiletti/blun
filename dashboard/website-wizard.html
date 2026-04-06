@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Website Wizard - BLUN</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--primary:#3b82f6;--bg:#0a0a0a;--card:#1a1a1a;--border:rgba(255,255,255,.06);--text:#ffffff;--muted:#a1a1aa;--danger:#ef4444;--success:#22c55e}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+a{color:var(--primary);text-decoration:none}
+
+.nav{display:flex;align-items:center;justify-content:space-between;padding:16px 32px;border-bottom:1px solid var(--border)}
+.nav-brand{font-size:1.1rem;font-weight:700;letter-spacing:-0.02em}
+.nav-links{display:flex;gap:24px;font-size:.9rem}
+.nav-links a{color:var(--muted);transition:color .15s}
+.nav-links a:hover,.nav-links a.active{color:var(--text)}
+
+.wizard-container{max-width:720px;margin:0 auto;padding:32px 20px}
+
+.steps{display:flex;align-items:center;justify-content:center;gap:0;margin-bottom:48px}
+.step-item{display:flex;align-items:center;gap:0}
+.step-circle{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:.85rem;border:2px solid var(--border);color:var(--muted);background:transparent;transition:all .3s}
+.step-circle.active{border-color:var(--primary);background:var(--primary);color:#000}
+.step-circle.done{border-color:var(--success);background:var(--success);color:#000}
+.step-line{width:48px;height:2px;background:var(--border);transition:background .3s}
+.step-line.done{background:var(--success)}
+@media(max-width:500px){.step-line{width:24px}.step-circle{width:30px;height:30px;font-size:.75rem}}
+
+.step-panel{display:none;animation:fadeIn .3s}
+.step-panel.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+.step-title{font-size:1.4rem;font-weight:700;margin-bottom:8px;letter-spacing:-0.02em}
+.step-subtitle{color:var(--muted);font-size:.9rem;margin-bottom:32px}
+
+.form-group{margin-bottom:20px}
+.form-group label{display:block;font-size:.85rem;font-weight:500;margin-bottom:6px;color:var(--muted)}
+.form-group input,.form-group textarea,.form-group select{width:100%;padding:12px 14px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:inherit;font-size:.9rem;transition:border-color .2s;outline:none}
+.form-group input:focus,.form-group textarea:focus,.form-group select:focus{border-color:var(--primary)}
+.form-group textarea{resize:vertical;min-height:100px}
+.form-group select option{background:var(--card);color:var(--text)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:500px){.form-row{grid-template-columns:1fr}}
+.form-row-3{display:grid;grid-template-columns:1fr 100px 1fr;gap:16px}
+@media(max-width:500px){.form-row-3{grid-template-columns:1fr}}
+
+.checkbox-row{display:flex;align-items:center;gap:10px;margin-top:8px}
+.checkbox-row input[type=checkbox]{width:18px;height:18px;accent-color:var(--primary)}
+.checkbox-row label{margin:0;color:var(--text);font-size:.85rem}
+
+.style-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+@media(max-width:500px){.style-grid{grid-template-columns:1fr}}
+.style-card{background:var(--card);border:2px solid var(--border);border-radius:12px;padding:20px;cursor:pointer;transition:all .2s;text-align:center}
+.style-card:hover{border-color:rgba(59,130,246,.3)}
+.style-card.selected{border-color:var(--primary);background:rgba(59,130,246,.05)}
+.style-card-colors{display:flex;gap:6px;justify-content:center;margin-bottom:12px}
+.style-card-colors span{width:24px;height:24px;border-radius:50%;display:inline-block}
+.style-card h4{font-size:.95rem;font-weight:600;margin-bottom:4px}
+.style-card p{font-size:.8rem;color:var(--muted)}
+
+.toggle-group{display:flex;gap:12px;margin-top:8px}
+.toggle-btn{flex:1;padding:14px;background:var(--card);border:2px solid var(--border);border-radius:10px;cursor:pointer;text-align:center;font-weight:600;font-size:.9rem;color:var(--muted);transition:all .2s}
+.toggle-btn:hover{border-color:rgba(59,130,246,.3)}
+.toggle-btn.selected{border-color:var(--primary);color:var(--text);background:rgba(59,130,246,.05)}
+
+.legal-preview{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:16px;max-height:200px;overflow-y:auto;font-size:.85rem;line-height:1.6;color:var(--muted)}
+.legal-preview h3{color:var(--text);font-size:1rem;margin-bottom:8px}
+
+.domain-results{margin-top:16px}
+.domain-row{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--card);border:1px solid var(--border);border-radius:8px;margin-bottom:8px;transition:border-color .2s;cursor:pointer}
+.domain-row:hover{border-color:rgba(59,130,246,.3)}
+.domain-row.selected{border-color:var(--primary);background:rgba(59,130,246,.05)}
+.domain-row.taken{opacity:.5;cursor:default}
+.domain-name{font-weight:600;font-size:.9rem}
+.domain-price{color:var(--muted);font-size:.85rem}
+.domain-available{color:var(--success);font-size:.8rem;font-weight:500}
+.domain-taken{color:var(--danger);font-size:.8rem;font-weight:500}
+
+.dns-instructions{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px;margin-top:16px;font-size:.85rem;line-height:1.7}
+.dns-instructions code{background:rgba(255,255,255,.06);padding:2px 8px;border-radius:4px;font-size:.8rem}
+
+.summary-section{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:16px}
+.summary-section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.summary-section-header h3{font-size:.95rem;font-weight:600}
+.summary-section-header button{background:none;border:none;color:var(--primary);cursor:pointer;font-size:.8rem;font-weight:500;font-family:inherit}
+.summary-row{display:flex;justify-content:space-between;padding:6px 0;font-size:.85rem}
+.summary-row .label{color:var(--muted)}
+
+.btn{display:inline-flex;align-items:center;gap:8px;padding:12px 24px;border-radius:8px;font-weight:600;font-size:.9rem;cursor:pointer;border:none;font-family:inherit;transition:all .2s}
+.btn:hover{opacity:.85}
+.btn-primary{background:var(--primary);color:#000}
+.btn-primary:hover{background:#2563eb}
+.btn-secondary{background:var(--card);color:var(--text);border:1px solid var(--border)}
+.btn-lg{padding:16px 40px;font-size:1rem;border-radius:10px}
+
+.wizard-actions{display:flex;justify-content:space-between;margin-top:40px}
+.loading{opacity:.6;pointer-events:none}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="/dashboard" class="nav-brand">BLUN</a>
+  <div class="nav-links">
+    <a href="/dashboard">Dashboard</a>
+    <a href="/dashboard/websites" class="active">Websites</a>
+    <a href="/dashboard/software">Software</a>
+    <a href="/profile">Profile</a>
+  </div>
+</nav>
+
+<div class="wizard-container">
+
+  <div class="steps" id="stepIndicator"></div>
+
+  <!-- Step 1: About You -->
+  <div class="step-panel active" data-step="1">
+    <h2 class="step-title">About You</h2>
+    <p class="step-subtitle">We need some basic information to set up your website and legal pages.</p>
+
+    <div class="form-group">
+      <label>Your name / Company name</label>
+      <input type="text" id="companyName" placeholder="e.g. Max Mustermann GmbH">
+    </div>
+    <div class="form-group">
+      <label>Street address</label>
+      <input type="text" id="street" placeholder="e.g. Musterstrasse 12">
+    </div>
+    <div class="form-row-3">
+      <div class="form-group">
+        <label>ZIP code</label>
+        <input type="text" id="zip" placeholder="1010">
+      </div>
+      <div class="form-group">
+        <label>City</label>
+        <input type="text" id="city" placeholder="Wien">
+      </div>
+      <div class="form-group">
+        <label>Country</label>
+        <select id="country">
+          <option value="AT">Austria</option>
+          <option value="DE">Germany</option>
+          <option value="CH">Switzerland</option>
+          <option value="LI">Liechtenstein</option>
+          <option value="LU">Luxembourg</option>
+          <option value="NL">Netherlands</option>
+          <option value="BE">Belgium</option>
+          <option value="FR">France</option>
+          <option value="IT">Italy</option>
+          <option value="ES">Spain</option>
+          <option value="UK">United Kingdom</option>
+          <option value="US">United States</option>
+          <option value="OTHER">Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="email" placeholder="office@example.com">
+      </div>
+      <div class="form-group">
+        <label>Phone</label>
+        <input type="tel" id="phone" placeholder="+43 1 234 5678">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>VAT number (optional)</label>
+      <input type="text" id="vat" placeholder="e.g. ATU12345678">
+      <div class="checkbox-row">
+        <input type="checkbox" id="noVat">
+        <label for="noVat">I do not have a VAT number</label>
+      </div>
+    </div>
+
+    <div class="wizard-actions">
+      <div></div>
+      <button class="btn btn-primary" onclick="goStep(2)">Continue</button>
+    </div>
+  </div>
+
+  <!-- Step 2: Your Website -->
+  <div class="step-panel" data-step="2">
+    <h2 class="step-title">Your Website</h2>
+    <p class="step-subtitle">Tell us what you need so we can build the right site for you.</p>
+
+    <div class="form-group">
+      <label>What is your website about?</label>
+      <textarea id="description" placeholder="Describe your business, products, or services..."></textarea>
+    </div>
+
+    <div class="form-group">
+      <label>What style do you prefer?</label>
+      <div class="style-grid">
+        <div class="style-card" data-style="modern" onclick="selectStyle(this)">
+          <div class="style-card-colors">
+            <span style="background:#3b82f6"></span>
+            <span style="background:#0a0a0a"></span>
+            <span style="background:#f8fafc"></span>
+          </div>
+          <h4>Modern</h4>
+          <p>Clean lines, bold colors, contemporary feel</p>
+        </div>
+        <div class="style-card" data-style="classic" onclick="selectStyle(this)">
+          <div class="style-card-colors">
+            <span style="background:#1e3a5f"></span>
+            <span style="background:#f5f0eb"></span>
+            <span style="background:#8b7355"></span>
+          </div>
+          <h4>Classic</h4>
+          <p>Timeless design, elegant typography, trusted look</p>
+        </div>
+        <div class="style-card" data-style="bold" onclick="selectStyle(this)">
+          <div class="style-card-colors">
+            <span style="background:#ef4444"></span>
+            <span style="background:#f59e0b"></span>
+            <span style="background:#111"></span>
+          </div>
+          <h4>Bold</h4>
+          <p>High contrast, vibrant accents, attention-grabbing</p>
+        </div>
+        <div class="style-card" data-style="minimal" onclick="selectStyle(this)">
+          <div class="style-card-colors">
+            <span style="background:#e5e5e5"></span>
+            <span style="background:#fafafa"></span>
+            <span style="background:#333"></span>
+          </div>
+          <h4>Minimal</h4>
+          <p>Whitespace, simplicity, content-focused</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Do you want an online shop?</label>
+      <div class="toggle-group">
+        <div class="toggle-btn" data-shop="yes" onclick="selectShop(this)">Yes, I want to sell online</div>
+        <div class="toggle-btn selected" data-shop="no" onclick="selectShop(this)">No, just a website</div>
+      </div>
+    </div>
+
+    <div class="wizard-actions">
+      <button class="btn btn-secondary" onclick="goStep(1)">Back</button>
+      <button class="btn btn-primary" onclick="goStep(3)">Continue</button>
+    </div>
+  </div>
+
+  <!-- Step 3: Legal -->
+  <div class="step-panel" data-step="3">
+    <h2 class="step-title">Legal Pages</h2>
+    <p class="step-subtitle">Auto-generated from your information. Review and confirm.</p>
+
+    <div id="legalLoading" style="text-align:center;padding:40px;color:var(--muted)">Generating legal pages...</div>
+    <div id="legalContent" style="display:none">
+      <div class="form-group">
+        <label>Impressum</label>
+        <div class="legal-preview" id="impressumPreview"></div>
+      </div>
+      <div class="form-group">
+        <label>Datenschutz (Privacy Policy / DSGVO)</label>
+        <div class="legal-preview" id="datenschutzPreview"></div>
+      </div>
+      <div class="form-group" id="agbGroup" style="display:none">
+        <label>AGB (Terms and Conditions)</label>
+        <div class="legal-preview" id="agbPreview"></div>
+      </div>
+      <div class="checkbox-row" style="margin-top:20px">
+        <input type="checkbox" id="legalConfirm">
+        <label for="legalConfirm">I confirm this information is correct</label>
+      </div>
+    </div>
+
+    <div class="wizard-actions">
+      <button class="btn btn-secondary" onclick="goStep(2)">Back</button>
+      <button class="btn btn-primary" onclick="goStep(4)" id="legalNext">Continue</button>
+    </div>
+  </div>
+
+  <!-- Step 4: Domain -->
+  <div class="step-panel" data-step="4">
+    <h2 class="step-title">Domain</h2>
+    <p class="step-subtitle">Connect your own domain or find a new one.</p>
+
+    <div class="form-group">
+      <label>Do you already have a domain?</label>
+      <div class="toggle-group">
+        <div class="toggle-btn" data-domain="yes" onclick="selectDomainOwned(this)">Yes, I have one</div>
+        <div class="toggle-btn selected" data-domain="no" onclick="selectDomainOwned(this)">No, I need one</div>
+      </div>
+    </div>
+
+    <div id="domainExisting" style="display:none;margin-top:20px">
+      <div class="form-group">
+        <label>Your domain</label>
+        <input type="text" id="existingDomain" placeholder="e.g. example.com">
+      </div>
+      <div class="dns-instructions">
+        <h4 style="margin-bottom:8px">DNS Setup Instructions</h4>
+        <p>Point your domain to our servers by adding these DNS records:</p>
+        <br>
+        <p><strong>A Record:</strong> <code>@</code> -> <code>46.225.233.195</code></p>
+        <p><strong>CNAME Record:</strong> <code>www</code> -> <code>blun.ai</code></p>
+        <br>
+        <p style="color:var(--muted)">Changes can take up to 24 hours to propagate.</p>
+      </div>
+    </div>
+
+    <div id="domainSearch" style="margin-top:20px">
+      <div class="form-group">
+        <label>Search for a domain name</label>
+        <div style="display:flex;gap:10px">
+          <input type="text" id="domainQuery" placeholder="e.g. my-business" style="flex:1">
+          <button class="btn btn-primary" onclick="searchDomains()">Search</button>
+        </div>
+      </div>
+      <div class="domain-results" id="domainResults"></div>
+    </div>
+
+    <div class="wizard-actions">
+      <button class="btn btn-secondary" onclick="goStep(3)">Back</button>
+      <button class="btn btn-primary" onclick="goStep(5)">Continue</button>
+    </div>
+  </div>
+
+  <!-- Step 5: Summary -->
+  <div class="step-panel" data-step="5">
+    <h2 class="step-title">Summary</h2>
+    <p class="step-subtitle">Review everything before we start building.</p>
+
+    <div class="summary-section">
+      <div class="summary-section-header">
+        <h3>About You</h3>
+        <button onclick="goStep(1)">Edit</button>
+      </div>
+      <div id="summaryAbout"></div>
+    </div>
+
+    <div class="summary-section">
+      <div class="summary-section-header">
+        <h3>Website</h3>
+        <button onclick="goStep(2)">Edit</button>
+      </div>
+      <div id="summaryWebsite"></div>
+    </div>
+
+    <div class="summary-section">
+      <div class="summary-section-header">
+        <h3>Legal Pages</h3>
+        <button onclick="goStep(3)">Edit</button>
+      </div>
+      <div id="summaryLegal"></div>
+    </div>
+
+    <div class="summary-section">
+      <div class="summary-section-header">
+        <h3>Domain</h3>
+        <button onclick="goStep(4)">Edit</button>
+      </div>
+      <div id="summaryDomain"></div>
+    </div>
+
+    <div class="wizard-actions">
+      <button class="btn btn-secondary" onclick="goStep(4)">Back</button>
+      <button class="btn btn-primary btn-lg" onclick="buildWebsite()" id="buildBtn">Build my website</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+var currentStep = 1;
+var totalSteps = 5;
+var wizardData = { style: null, shop: false, domainOwned: false, selectedDomain: null };
+
+function renderStepIndicator() {
+  var el = document.getElementById("stepIndicator");
+  var html = "";
+  for (var i = 1; i <= totalSteps; i++) {
+    var cls = i < currentStep ? "done" : (i === currentStep ? "active" : "");
+    html += "<div class=\"step-item\"><div class=\"step-circle " + cls + "\">" + i + "</div>";
+    if (i < totalSteps) {
+      html += "<div class=\"step-line " + (i < currentStep ? "done" : "") + "\"></div>";
+    }
+    html += "</div>";
+  }
+  el.innerHTML = html;
+}
+
+function goStep(n) {
+  if (n === 3) generateLegalPreview();
+  if (n === 5) buildSummary();
+  currentStep = n;
+  document.querySelectorAll(".step-panel").forEach(function(p) {
+    p.classList.toggle("active", parseInt(p.dataset.step) === n);
+  });
+  renderStepIndicator();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function selectStyle(el) {
+  document.querySelectorAll(".style-card").forEach(function(c) { c.classList.remove("selected"); });
+  el.classList.add("selected");
+  wizardData.style = el.dataset.style;
+}
+
+function selectShop(el) {
+  document.querySelectorAll("[data-shop]").forEach(function(c) { c.classList.remove("selected"); });
+  el.classList.add("selected");
+  wizardData.shop = el.dataset.shop === "yes";
+}
+
+function selectDomainOwned(el) {
+  document.querySelectorAll("[data-domain]").forEach(function(c) { c.classList.remove("selected"); });
+  el.classList.add("selected");
+  wizardData.domainOwned = el.dataset.domain === "yes";
+  document.getElementById("domainExisting").style.display = wizardData.domainOwned ? "block" : "none";
+  document.getElementById("domainSearch").style.display = wizardData.domainOwned ? "none" : "block";
+}
+
+function getFormData() {
+  return {
+    companyName: document.getElementById("companyName").value,
+    street: document.getElementById("street").value,
+    zip: document.getElementById("zip").value,
+    city: document.getElementById("city").value,
+    country: document.getElementById("country").value,
+    email: document.getElementById("email").value,
+    phone: document.getElementById("phone").value,
+    vat: document.getElementById("noVat").checked ? "" : document.getElementById("vat").value,
+    description: document.getElementById("description").value,
+    style: wizardData.style,
+    shop: wizardData.shop,
+    domainOwned: wizardData.domainOwned,
+    existingDomain: document.getElementById("existingDomain").value,
+    selectedDomain: wizardData.selectedDomain
+  };
+}
+
+function generateLegalPreview() {
+  var data = getFormData();
+  document.getElementById("legalLoading").style.display = "block";
+  document.getElementById("legalContent").style.display = "none";
+
+  fetch("/api/website-wizard/legal-preview", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data)
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(res) {
+    document.getElementById("legalLoading").style.display = "none";
+    document.getElementById("legalContent").style.display = "block";
+    document.getElementById("impressumPreview").innerHTML = res.impressum || "";
+    document.getElementById("datenschutzPreview").innerHTML = res.datenschutz || "";
+    if (data.shop) {
+      document.getElementById("agbGroup").style.display = "block";
+      document.getElementById("agbPreview").innerHTML = res.agb || "";
+    } else {
+      document.getElementById("agbGroup").style.display = "none";
+    }
+  })
+  .catch(function() {
+    document.getElementById("legalLoading").innerHTML = "Failed to generate. Please go back and fill in all fields.";
+  });
+}
+
+function searchDomains() {
+  var q = document.getElementById("domainQuery").value.trim();
+  if (!q) return;
+  var slug = q.toLowerCase().replace(/[^a-z0-9-]/g, "");
+  var tlds = [".com", ".de", ".at", ".ch"];
+  var html = "";
+  tlds.forEach(function(tld) {
+    var name = slug + tld;
+    var available = tld !== ".com";
+    var prices = { ".com": "12.99", ".de": "8.99", ".at": "14.99", ".ch": "16.99" };
+    if (available) {
+      html += "<div class=\"domain-row\" onclick=\"selectDomain(this, '" + name + "')\">";
+    } else {
+      html += "<div class=\"domain-row taken\">";
+    }
+    html += "<div><span class=\"domain-name\">" + name + "</span></div>";
+    html += "<div style=\"display:flex;align-items:center;gap:16px\">";
+    html += "<span class=\"domain-price\">" + prices[tld] + " EUR/year</span>";
+    html += "<span class=\"" + (available ? "domain-available" : "domain-taken") + "\">" + (available ? "Available" : "Taken") + "</span>";
+    html += "</div></div>";
+  });
+  document.getElementById("domainResults").innerHTML = html;
+}
+
+function selectDomain(el, name) {
+  document.querySelectorAll(".domain-row").forEach(function(r) { r.classList.remove("selected"); });
+  el.classList.add("selected");
+  wizardData.selectedDomain = name;
+}
+
+function buildSummary() {
+  var d = getFormData();
+  var countryNames = { AT:"Austria",DE:"Germany",CH:"Switzerland",LI:"Liechtenstein",LU:"Luxembourg",NL:"Netherlands",BE:"Belgium",FR:"France",IT:"Italy",ES:"Spain",UK:"United Kingdom",US:"United States",OTHER:"Other" };
+
+  document.getElementById("summaryAbout").innerHTML =
+    "<div class=\"summary-row\"><span class=\"label\">Name / Company</span><span>" + (d.companyName || "-") + "</span></div>" +
+    "<div class=\"summary-row\"><span class=\"label\">Address</span><span>" + (d.street || "-") + ", " + (d.zip || "") + " " + (d.city || "") + "</span></div>" +
+    "<div class=\"summary-row\"><span class=\"label\">Country</span><span>" + (countryNames[d.country] || d.country) + "</span></div>" +
+    "<div class=\"summary-row\"><span class=\"label\">Email</span><span>" + (d.email || "-") + "</span></div>" +
+    "<div class=\"summary-row\"><span class=\"label\">Phone</span><span>" + (d.phone || "-") + "</span></div>" +
+    (d.vat ? "<div class=\"summary-row\"><span class=\"label\">VAT</span><span>" + d.vat + "</span></div>" : "");
+
+  document.getElementById("summaryWebsite").innerHTML =
+    "<div class=\"summary-row\"><span class=\"label\">Description</span><span>" + (d.description ? d.description.substring(0, 80) + (d.description.length > 80 ? "..." : "") : "-") + "</span></div>" +
+    "<div class=\"summary-row\"><span class=\"label\">Style</span><span>" + (d.style ? d.style.charAt(0).toUpperCase() + d.style.slice(1) : "Not selected") + "</span></div>" +
+    "<div class=\"summary-row\"><span class=\"label\">Online shop</span><span>" + (d.shop ? "Yes" : "No") + "</span></div>";
+
+  document.getElementById("summaryLegal").innerHTML =
+    "<div class=\"summary-row\"><span class=\"label\">Impressum</span><span>Auto-generated</span></div>" +
+    "<div class=\"summary-row\"><span class=\"label\">Datenschutz</span><span>Auto-generated</span></div>" +
+    (d.shop ? "<div class=\"summary-row\"><span class=\"label\">AGB</span><span>Auto-generated</span></div>" : "");
+
+  var domainText = "-";
+  if (d.domainOwned && d.existingDomain) domainText = d.existingDomain + " (own domain)";
+  else if (d.selectedDomain) domainText = d.selectedDomain + " (new)";
+  document.getElementById("summaryDomain").innerHTML =
+    "<div class=\"summary-row\"><span class=\"label\">Domain</span><span>" + domainText + "</span></div>";
+}
+
+function buildWebsite() {
+  var btn = document.getElementById("buildBtn");
+  btn.textContent = "Building...";
+  btn.classList.add("loading");
+
+  fetch("/api/website-wizard", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(getFormData())
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(res) {
+    if (res.success) {
+      btn.textContent = "Done!";
+      btn.style.background = "var(--success)";
+      setTimeout(function() { window.location.href = "/dashboard/websites"; }, 1500);
+    } else {
+      btn.textContent = "Build my website";
+      btn.classList.remove("loading");
+      alert(res.error || "Something went wrong. Please try again.");
+    }
+  })
+  .catch(function() {
+    btn.textContent = "Build my website";
+    btn.classList.remove("loading");
+    alert("Network error. Please try again.");
+  });
+}
+
+document.getElementById("noVat").addEventListener("change", function() {
+  document.getElementById("vat").disabled = this.checked;
+  if (this.checked) document.getElementById("vat").value = "";
+});
+
+renderStepIndicator();
+</script>
+</body>
+</html>

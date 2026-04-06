@@ -36,6 +36,7 @@ const canvasRoutes = require("./src/routes/canvas");
 const supportChatRoutes = require("./src/routes/support-chat");
 const websitesRoutes = require("./src/routes/websites");
 const softwareRoutes = require("./src/routes/software");
+const websiteWizardRoutes = require("./src/routes/website-wizard");
 const modelsRoutes = require("./src/routes/models");
 const profileRoutes = require("./src/routes/profile");
 const { startAllBots, activeBots } = require("./src/channels/telegram");
@@ -88,6 +89,7 @@ app.use("/privacy", privacyRoutes);
 app.use("/canvas", authenticate, canvasRoutes);
 app.use("/websites", websitesRoutes);
 app.use("/software", softwareRoutes);
+app.use("/api/website-wizard", websiteWizardRoutes);
 app.use("/api/models", modelsRoutes);
 app.use("/api/profile", authenticate, profileRoutes);
 app.use("/support", supportChatRoutes);
@@ -144,6 +146,7 @@ app.get("/login", function (req, res) {
 
 app.get("/dashboard/websites", authenticate, function (req, res) { if (!req.user) return res.redirect("/login"); res.sendFile(path.join(__dirname, "dashboard", "websites.html")); });
 app.get("/dashboard/software", authenticate, function (req, res) { if (!req.user) return res.redirect("/login"); res.sendFile(path.join(__dirname, "dashboard", "software.html")); });
+app.get("/dashboard/website-wizard", authenticate, function (req, res) { if (!req.user) return res.redirect("/login"); res.sendFile(path.join(__dirname, "dashboard", "website-wizard.html")); });
 app.get("/profile", authenticate, function (req, res) { if (!req.user) return res.redirect("/login"); res.sendFile(path.join(__dirname, "dashboard", "profile.html")); });
 app.get("/dashboard/models", authenticate, function (req, res) { if (!req.user) return res.redirect("/login"); res.sendFile(path.join(__dirname, "dashboard", "models.html")); });
 app.get("/dashboard", authenticate, function (req, res) {

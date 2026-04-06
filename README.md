@@ -1,20 +1,15 @@
 <div align="center">
 
-<!-- Logo placeholder -->
 <img src="./blun-logo.svg" alt="BLUN" width="120" />
 
-<br />
-<br />
+# BLUN -- Your AI Team
 
-# BLUN
-
-**Your AI team, organized. Like having a CTO that never sleeps.**
+> Build websites, apps, and businesses without knowing how to code.
 
 [![MIT License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Node.js](https://img.shields.io/badge/Node.js-18+-339933?logo=node.js&logoColor=white)](https://nodejs.org)
 [![GitHub Stars](https://img.shields.io/github/stars/Maykbiletti/blun?style=social)](https://github.com/Maykbiletti/blun)
 
-[Website](https://blun.ai) | [Dashboard](https://blun.ai/dashboard) | [Documentation](#documentation) | [Discord](#community)
+[Website](https://blun.ai) | [Dashboard](https://blun.ai/dashboard)
 
 </div>
 
@@ -22,47 +17,51 @@
 
 ## What is BLUN?
 
-Imagine you hire a bunch of smart freelancers -- a developer, a researcher, a writer, a data analyst. They are all talented individually. But without someone coordinating them, it is chaos. Everyone works on their own thing, nobody talks to each other, tasks fall through the cracks.
-
-**BLUN is the manager they need.**
-
-You give BLUN a bunch of AI agents (think ChatGPT, Claude, Gemini, or even local models running on your laptop). BLUN turns them into an actual team. It assigns roles, delegates tasks, makes sure they communicate, and reports back to you.
-
-You do not write code to orchestrate them. You do not build pipelines. You just say what you want done, and BLUN figures out who does what.
-
-It is like Slack for AI agents -- except the manager is also an AI, and it actually works.
+BLUN gives you a team of AI assistants that work together to build whatever you need. You describe what you want in plain words, and your AI team figures out how to make it happen. No coding, no technical skills required.
 
 ---
 
-## Features
+## What can you do with BLUN?
 
-### KI-Organisator -- Your AI CTO
-A meta-AI that sits above all your agents. It knows every project, every agent's strengths, and decides who works on what -- like a CTO that actually reads every Jira ticket.
-
-### Code Canvas -- Watch AI Code Live
-See your agents write code in real time, right in the browser. Syntax-highlighted, streaming, no refresh needed.
-
-### Skills Marketplace -- Teach Your Agents Anything
-Install skills from Git repositories or build your own. Tax advisor, DevOps, research, copywriting -- agents auto-discover and load what they need.
-
-### Federation -- Connect With Anyone
-Link BLUN instances across the internet. Your agents can collaborate with agents on completely different servers. Think email, but for AI teams.
-
-### Telegram Integration -- One Click
-Paste your bot token, done. Your agents now live in Telegram and respond to users directly in chat.
-
-### Voice and Avatar -- Talk Face to Face
-*Coming soon.* Give your agents a face and a voice. Video-call your AI team like you would a human colleague.
-
-### Multi-Model -- Use Any AI
-OpenAI, Claude, Gemini, Mistral, local LLMs via Ollama -- assign different models to different agents. Switch anytime. Zero vendor lock-in.
-
-### Local Mode -- Works Offline
-Runs on SQLite out of the box. No cloud, no internet required. Scale to PostgreSQL and Redis when you are ready.
+- **Build websites** -- Describe what you want your website to look like, and your AI team builds it for you.
+- **Create apps and software** -- For phones, computers, or the web. Just explain your idea.
+- **Your AI assistants work around the clock** -- They never sleep, never take breaks, and are always ready to help.
+- **Compare results from different AIs** -- Use the best AI for each job. Your team can include assistants from OpenAI, Claude, Gemini, and more.
+- **Run AI privately on your own computer** -- Keep everything on your machine if you prefer. No internet needed.
+- **Domain, hosting, email, payments -- all in one place** -- Everything you need to run an online business, handled for you.
 
 ---
 
-## Get Started in 30 Seconds
+## Getting Started
+
+1. Go to [blun.ai](https://blun.ai)
+2. Create a free account
+3. Tell your AI what you need
+
+That is it. Your AI team takes care of the rest.
+
+---
+
+## What is included?
+
+| Feature | What it does |
+|---|---|
+| AI Manager | A lead assistant that organizes your whole AI team and assigns the right task to the right assistant. |
+| Live Code View | Watch your AI write code in real time, right in your browser. |
+| Skills Store | Give your assistants new abilities -- writing, research, tax advice, and more. |
+| Team Chat | Connect your AI team to Telegram so they can talk to your customers directly. |
+| Multi-AI Support | Mix and match different AI providers. Use whichever works best for each task. |
+| Offline Mode | Works without internet. Everything stays on your computer. |
+| Built-in Payments | Accept payments from customers with no extra setup. |
+| Voice and Video | Talk to your AI assistants face to face. *(Coming soon)* |
+| Connect Across Servers | Link your AI team with teams on other servers to collaborate on bigger projects. |
+
+---
+
+<details>
+<summary><strong>For Developers</strong> (click to expand)</summary>
+
+### Quick Start
 
 ```bash
 npx create-blun my-project
@@ -70,111 +69,9 @@ cd my-project
 blun start
 ```
 
-Open `http://localhost:3000` -- your dashboard is live.
+Open `http://localhost:3000` to see your dashboard.
 
----
-
-## BLUN vs. Others
-
-| Feature | BLUN | CrewAI | AutoGen | LangGraph |
-|---|:---:|:---:|:---:|:---:|
-| Built-in Dashboard UI | Yes | No | No | No |
-| One-command setup | Yes | No | No | No |
-| Telegram integration | Yes | No | No | No |
-| Federation (cross-server) | Yes | No | No | No |
-| Skills marketplace | Yes | No | No | No |
-| Multi-model per agent | Yes | Partial | Partial | Partial |
-| Real-time WebSocket | Yes | No | No | No |
-| Works offline (SQLite) | Yes | No | No | No |
-| Built-in billing (Stripe) | Yes | No | No | No |
-| Code Canvas (live coding view) | Yes | No | No | No |
-| No Python required | Yes | No | No | No |
-| Open source (MIT) | Yes | Yes | Yes | Yes |
-
----
-
-## Plans
-
-| | Free | Pro | Team |
-|---|:---:|:---:|:---:|
-| **Price** | 0 EUR / month | 5 EUR / month | 15 EUR / month |
-| Agents | 3 | 10 | Unlimited |
-| Skills | 5 | Unlimited | Unlimited |
-| Federation | -- | Yes | Yes |
-| Priority Support | -- | -- | Yes |
-| Custom Branding | -- | -- | Yes |
-
-Self-host for free forever. Cloud plans include hosting and automatic updates.
-
----
-
-## Architecture
-
-```
-                          +------------------+
-                          |   BLUN Dashboard |
-                          |   (React + WS)   |
-                          +--------+---------+
-                                   |
-                          +--------+---------+
-                          |  KI-Organisator  |
-                          |   (Meta-Agent)   |
-                          +--------+---------+
-                                   |
-              +--------------------+--------------------+
-              |                    |                    |
-     +--------+------+   +--------+------+   +--------+------+
-     |  Agent: Dev   |   | Agent: Research|   | Agent: Writer |
-     |  Model: GPT-4 |   | Model: Claude  |   | Model: Gemini |
-     +-------+-------+   +-------+-------+   +-------+-------+
-              |                    |                    |
-     +--------+--------------------+--------------------+--------+
-     |                     Skills Layer                          |
-     |  [code] [research] [tax] [devops] [writing] [custom...]  |
-     +---------------------------+-------------------------------+
-                                 |
-     +---------------------------+-------------------------------+
-     |                    Runtime Layer                          |
-     |  SQLite/PostgreSQL  |  WebSocket  |  Telegram  |  Stripe |
-     +-----------------------------------------------------------+
-```
-
----
-
-## Screenshots
-
-<!-- screenshot: dashboard -->
-<!-- screenshot: code-canvas -->
-<!-- screenshot: skills-marketplace -->
-<!-- screenshot: telegram-chat -->
-<!-- screenshot: federation-map -->
-
-*Screenshots coming soon. Run `blun start` to see it yourself.*
-
----
-
-## All 14 Systems
-
-1. **KI-Organisator** -- Meta-AI orchestration
-2. **Code Canvas** -- Live code streaming
-3. **Skills Marketplace** -- Installable agent skills
-4. **Federation Protocol** -- Cross-instance agent communication
-5. **Telegram Bridge** -- One-click bot integration
-6. **Voice/Avatar Engine** -- Agent video presence (coming soon)
-7. **Multi-Model Router** -- Per-agent model selection
-8. **Local Runtime** -- SQLite, offline-first
-9. **Billing Engine** -- Stripe subscriptions and invoices
-10. **Dashboard** -- Real-time React UI
-11. **WebSocket Layer** -- Event-driven agent communication
-12. **Auth System** -- JWT, OAuth, role-based access
-13. **Plugin API** -- Extend anything via hooks
-14. **CLI** -- Full management from the terminal
-
----
-
-## Contributing
-
-We welcome contributions of all kinds.
+### Self-Hosting
 
 ```bash
 git clone https://github.com/Maykbiletti/blun.git
@@ -183,29 +80,33 @@ npm install
 npm run dev
 ```
 
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting a pull request.
+BLUN runs on Node.js 18 or newer. It uses SQLite by default (zero configuration), and can scale to PostgreSQL and Redis when needed.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
+
+</details>
 
 ---
 
-## Built With
+## Pricing
 
-| Technology | Purpose |
-|---|---|
-| Node.js | Runtime |
-| React | Dashboard UI |
-| WebSocket (ws) | Real-time communication |
-| SQLite / PostgreSQL | Data storage |
-| Stripe | Billing and subscriptions |
-| Telegram Bot API | Chat integration |
-| OpenAI / Claude / Gemini | AI model providers |
+| | Free | Pro | Max | Enterprise |
+|---|:---:|:---:|:---:|:---:|
+| **Price** | 0 / month | 20 / month | 100 / month | Custom |
+| AI Assistants | 3 | 10 | Unlimited | Unlimited |
+| Skills | 5 | Unlimited | Unlimited | Unlimited |
+| Cross-Server Collaboration | -- | Yes | Yes | Yes |
+| Priority Support | -- | -- | Yes | Yes |
+| Custom Branding | -- | -- | Yes | Yes |
+
+Self-host for free, forever. Cloud plans include hosting and automatic updates.
 
 ---
 
-## Community
+## Links
 
-- [GitHub Discussions](https://github.com/Maykbiletti/blun/discussions)
-- [Discord](#) -- Coming soon
-- [Twitter / X](https://twitter.com/blun_ai) -- Coming soon
+- Website: [blun.ai](https://blun.ai)
+- GitHub: [github.com/Maykbiletti/blun](https://github.com/Maykbiletti/blun)
 
 ---
 
