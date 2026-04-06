@@ -1,127 +1,246 @@
-// BLUN — Model Browser API Routes
+// BLUN — Model Browser API Routes (llama.cpp backend)
 var express = require("express");
 var router = express.Router();
-var { execFile, spawn } = require("child_process");
+var { spawn } = require("child_process");
+var fs = require("fs");
+var path = require("path");
+var fetch = require("node-fetch");
 var registry = require("../models/registry");
 
-// Track active downloads: modelId -> { process, progress, status }
+var MODELS_DIR = path.join(__dirname, "../../models");
+
+// Track downloads: modelId -> { progress, status, error }
 var downloads = {};
 
-// Helper: get installed models from ollama
-function getInstalledModels(cb) {
-  execFile("ollama", ["list"], function(err, stdout) {
-    if (err) return cb(err, []);
-    var lines = stdout.trim().split("\n").slice(1); // skip header
-    var installed = [];
-    lines.forEach(function(line) {
-      var parts = line.trim().split(/\s+/);
-      if (parts[0]) installed.push(parts[0]);
-    });
-    cb(null, installed);
-  });
+// Track running llama-server processes: modelId -> { process, port, ready }
+var running = {};
+
+// Next available port for llama-server instances
+var nextPort = 8090;
+
+// Ensure models dir exists
+if (!fs.existsSync(MODELS_DIR)) fs.mkdirSync(MODELS_DIR, { recursive: true });
+
+// Helper: check if GGUF file exists locally
+function isInstalled(model) {
+  return fs.existsSync(path.join(MODELS_DIR, model.filename));
+}
+
+// Helper: check if model is currently loaded (running)
+function isRunning(modelId) {
+  return !!running[modelId];
 }
 
 // GET /api/models — list all models with status
 router.get("/", function(req, res) {
-  getInstalledModels(function(err, installed) {
-    var models = registry.getAll().map(function(m) {
-      var status = "available";
-      if (downloads[m.id] && downloads[m.id].status === "downloading") {
-        status = "downloading";
-      } else if (installed.indexOf(m.id) !== -1) {
-        status = "installed";
-      }
-      var progress = downloads[m.id] ? downloads[m.id].progress : 0;
-      return {
-        id: m.id,
-        name: m.name,
-        maker: m.maker,
-        description: m.description,
-        size: m.size,
-        sizeGB: m.sizeGB,
-        ram: m.ram,
-        category: m.category,
-        tags: m.tags,
-        status: status,
-        progress: progress
-      };
-    });
-    res.json({ models: models, installed: installed.length });
+  var models = registry.getAll().map(function(m) {
+    var status = "available";
+    if (downloads[m.id] && downloads[m.id].status === "downloading") {
+      status = "downloading";
+    } else if (isRunning(m.id)) {
+      status = "running";
+    } else if (isInstalled(m)) {
+      status = "installed";
+    }
+    var progress = downloads[m.id] ? downloads[m.id].progress : 0;
+    return {
+      id: m.id,
+      name: m.name,
+      maker: m.maker,
+      description: m.description,
+      size: m.size,
+      sizeGB: m.sizeGB,
+      ram: m.ram,
+      category: m.category,
+      tags: m.tags,
+      status: status,
+      progress: progress
+    };
   });
+  var installedCount = registry.getAll().filter(function(m) { return isInstalled(m); }).length;
+  var runningCount = Object.keys(running).length;
+  res.json({ models: models, installed: installedCount, running: runningCount });
 });
 
-// POST /api/models/:id/download — start download
+// POST /api/models/:id/download — download GGUF from HuggingFace
 router.post("/:id/download", function(req, res) {
   var modelId = req.params.id;
   var model = registry.getById(modelId);
   if (!model) return res.status(404).json({ error: "Model not found" });
+  if (!model.huggingface) return res.status(400).json({ error: "No download URL" });
+  if (isInstalled(model)) return res.json({ message: "Already installed", status: "installed" });
   if (downloads[modelId] && downloads[modelId].status === "downloading") {
     return res.json({ message: "Already downloading", status: "downloading" });
   }
 
   downloads[modelId] = { status: "downloading", progress: 0, error: null };
 
-  var proc = spawn("ollama", ["pull", modelId]);
-  downloads[modelId].process = proc;
+  var filePath = path.join(MODELS_DIR, model.filename);
+  var tmpPath = filePath + ".tmp";
 
-  proc.stderr.on("data", function(data) {
-    var line = data.toString();
-    // Parse progress from ollama output like "pulling abc123... 45% |####     |"
-    var match = line.match(/(\d+)%/);
-    if (match) {
-      downloads[modelId].progress = parseInt(match[1], 10);
-    }
-  });
+  fetch(model.huggingface, { redirect: "follow" })
+    .then(function(response) {
+      if (!response.ok) throw new Error("HTTP " + response.status);
+      var totalBytes = parseInt(response.headers.get("content-length") || "0", 10);
+      var receivedBytes = 0;
+      var fileStream = fs.createWriteStream(tmpPath);
 
-  proc.stdout.on("data", function(data) {
-    var line = data.toString();
-    var match = line.match(/(\d+)%/);
-    if (match) {
-      downloads[modelId].progress = parseInt(match[1], 10);
-    }
-  });
+      response.body.on("data", function(chunk) {
+        receivedBytes += chunk.length;
+        if (totalBytes > 0) {
+          downloads[modelId].progress = Math.round((receivedBytes / totalBytes) * 100);
+        }
+      });
 
-  proc.on("close", function(code) {
-    if (code === 0) {
-      downloads[modelId].status = "installed";
-      downloads[modelId].progress = 100;
-    } else {
+      response.body.pipe(fileStream);
+
+      fileStream.on("finish", function() {
+        fs.renameSync(tmpPath, filePath);
+        downloads[modelId].status = "installed";
+        downloads[modelId].progress = 100;
+      });
+
+      fileStream.on("error", function(err) {
+        downloads[modelId].status = "error";
+        downloads[modelId].error = err.message;
+        try { fs.unlinkSync(tmpPath); } catch(e) {}
+      });
+    })
+    .catch(function(err) {
       downloads[modelId].status = "error";
-      downloads[modelId].error = "Download failed (exit code " + code + ")";
-    }
-  });
+      downloads[modelId].error = err.message;
+    });
 
   res.json({ message: "Download started", status: "downloading" });
 });
 
-// DELETE /api/models/:id — remove installed model
+// DELETE /api/models/:id — delete GGUF file
 router.delete("/:id", function(req, res) {
   var modelId = req.params.id;
   var model = registry.getById(modelId);
   if (!model) return res.status(404).json({ error: "Model not found" });
 
-  execFile("ollama", ["rm", modelId], function(err) {
-    if (err) return res.status(500).json({ error: "Failed to remove model" });
-    delete downloads[modelId];
-    res.json({ message: "Model removed", status: "available" });
-  });
+  // Stop if running
+  if (running[modelId]) {
+    try { running[modelId].process.kill(); } catch(e) {}
+    delete running[modelId];
+  }
+
+  var filePath = path.join(MODELS_DIR, model.filename);
+  if (fs.existsSync(filePath)) {
+    fs.unlinkSync(filePath);
+  }
+  delete downloads[modelId];
+  res.json({ message: "Model removed", status: "available" });
 });
 
 // GET /api/models/:id/status — download progress
 router.get("/:id/status", function(req, res) {
   var modelId = req.params.id;
+  var model = registry.getById(modelId);
   var dl = downloads[modelId];
-  if (!dl) {
-    // Check if installed
-    getInstalledModels(function(err, installed) {
-      if (installed.indexOf(modelId) !== -1) {
-        return res.json({ status: "installed", progress: 100 });
-      }
-      res.json({ status: "available", progress: 0 });
-    });
-    return;
+  if (dl) {
+    return res.json({ status: dl.status, progress: dl.progress, error: dl.error || null });
   }
-  res.json({ status: dl.status, progress: dl.progress, error: dl.error || null });
+  if (model && isRunning(modelId)) {
+    return res.json({ status: "running", progress: 100 });
+  }
+  if (model && isInstalled(model)) {
+    return res.json({ status: "installed", progress: 100 });
+  }
+  res.json({ status: "available", progress: 0 });
+});
+
+// POST /api/models/:id/load — start llama-server for this model
+router.post("/:id/load", function(req, res) {
+  var modelId = req.params.id;
+  var model = registry.getById(modelId);
+  if (!model) return res.status(404).json({ error: "Model not found" });
+  if (!isInstalled(model)) return res.status(400).json({ error: "Model not installed" });
+  if (running[modelId]) return res.json({ message: "Already running", port: running[modelId].port });
+
+  var port = nextPort++;
+  var filePath = path.join(MODELS_DIR, model.filename);
+
+  var proc = spawn("llama-server", [
+    "-m", filePath,
+    "--port", String(port),
+    "--host", "127.0.0.1",
+    "-c", "2048",
+    "-t", "2",
+    "--no-mmap"
+  ], { stdio: ["ignore", "pipe", "pipe"] });
+
+  running[modelId] = { process: proc, port: port, ready: false };
+
+  proc.stderr.on("data", function(data) {
+    var line = data.toString();
+    if (line.indexOf("listening") !== -1 || line.indexOf("server is listening") !== -1) {
+      running[modelId].ready = true;
+    }
+  });
+
+  proc.on("close", function() {
+    delete running[modelId];
+  });
+
+  proc.on("error", function() {
+    delete running[modelId];
+  });
+
+  res.json({ message: "Model starting", port: port });
+});
+
+// POST /api/models/:id/unload — stop llama-server
+router.post("/:id/unload", function(req, res) {
+  var modelId = req.params.id;
+  if (!running[modelId]) return res.status(400).json({ error: "Model not running" });
+  try { running[modelId].process.kill(); } catch(e) {}
+  delete running[modelId];
+  res.json({ message: "Model stopped", status: "installed" });
+});
+
+// POST /api/models/:id/chat — send message to loaded model
+router.post("/:id/chat", function(req, res) {
+  var modelId = req.params.id;
+  if (!running[modelId]) return res.status(400).json({ error: "Model not running. Start it first." });
+
+  var port = running[modelId].port;
+  var messages = req.body.messages || [{ role: "user", content: req.body.message || "" }];
+
+  fetch("http://127.0.0.1:" + port + "/v1/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      messages: messages,
+      temperature: 0.7,
+      max_tokens: 1024
+    })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.choices && data.choices[0]) {
+      res.json({
+        response: data.choices[0].message.content,
+        model: modelId,
+        usage: data.usage || {}
+      });
+    } else {
+      res.json({ response: "", error: "No response from model", raw: data });
+    }
+  })
+  .catch(function(err) {
+    res.status(500).json({ error: "Failed to reach model: " + err.message });
+  });
+});
+
+// GET /api/models/running/list — list all running models
+router.get("/running/list", function(req, res) {
+  var list = [];
+  Object.keys(running).forEach(function(id) {
+    list.push({ id: id, port: running[id].port, ready: running[id].ready });
+  });
+  res.json({ running: list });
 });
 
 module.exports = router;

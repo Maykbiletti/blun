@@ -10,7 +10,6 @@
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:"Inter",sans-serif;background:#0a0a0a;color:#e5e5e5;min-height:100vh}
 a{color:#3b82f6;text-decoration:none}
-
 .topbar{position:sticky;top:0;z-index:50;background:#0a0a0a;border-bottom:1px solid #2a2a2a;padding:16px 24px;display:flex;align-items:center;justify-content:space-between}
 .topbar-left{display:flex;align-items:center;gap:16px}
 .topbar-logo{font-size:20px;font-weight:700;color:#3b82f6}
@@ -18,79 +17,63 @@ a{color:#3b82f6;text-decoration:none}
 .topbar-title{font-size:16px;font-weight:600;color:#e5e5e5}
 .topbar-back{color:#a3a3a3;font-size:14px;padding:6px 12px;border:1px solid #2a2a2a;border-radius:8px;background:transparent;cursor:pointer;transition:all .15s;text-decoration:none}
 .topbar-back:hover{color:#e5e5e5;border-color:#3b82f6}
-
 .container{max-width:1200px;margin:0 auto;padding:24px}
-
 .stats-row{display:flex;gap:16px;margin-bottom:32px;flex-wrap:wrap}
-.stat-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:20px;flex:1;min-width:160px}
+.stat-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:20px;flex:1;min-width:140px}
 .stat-label{font-size:13px;color:#a3a3a3;margin-bottom:4px}
 .stat-value{font-size:28px;font-weight:700;color:#e5e5e5}
 .stat-value.blue{color:#3b82f6}
-
+.stat-value.green{color:#22c55e}
 .filters{display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap}
 .filter-btn{padding:8px 16px;border-radius:8px;border:1px solid #2a2a2a;background:transparent;color:#a3a3a3;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;font-family:inherit}
 .filter-btn:hover{color:#e5e5e5;border-color:#3b82f6}
 .filter-btn.active{background:rgba(59,130,246,.15);color:#3b82f6;border-color:#3b82f6}
-
 .models-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
-
 .model-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:24px;transition:all .2s;position:relative;overflow:hidden}
 .model-card:hover{border-color:#3b82f6;transform:translateY(-2px)}
 .model-card.downloading{border-color:#3b82f6}
-
+.model-card.running-card{border-color:#22c55e}
 .model-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
 .model-name{font-size:18px;font-weight:600;color:#e5e5e5}
 .model-maker{font-size:13px;color:#a3a3a3;margin-top:2px}
-
 .size-badge{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;font-family:"JetBrains Mono",monospace;white-space:nowrap}
 .size-S{background:rgba(34,197,94,.15);color:#22c55e}
 .size-M{background:rgba(59,130,246,.15);color:#3b82f6}
 .size-L{background:rgba(249,115,22,.15);color:#f97316}
 .size-XL{background:rgba(239,68,68,.15);color:#ef4444}
-
 .model-desc{font-size:14px;color:#a3a3a3;line-height:1.5;margin-bottom:16px;min-height:42px}
-
 .model-meta{display:flex;gap:16px;margin-bottom:16px;font-size:12px;color:#737373}
 .model-meta span{display:flex;align-items:center;gap:4px}
-
-.model-actions{display:flex;gap:8px}
+.model-actions{display:flex;gap:8px;flex-wrap:wrap}
 .btn{padding:10px 20px;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;border:none;font-family:inherit;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
 .btn-install{background:#3b82f6;color:#fff}
 .btn-install:hover{background:#2563eb}
 .btn-remove{background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.3)}
 .btn-remove:hover{background:rgba(239,68,68,.25)}
-.btn-disabled{background:#2a2a2a;color:#525252;cursor:not-allowed}
+.btn-start{background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3)}
+.btn-start:hover{background:rgba(34,197,94,.25)}
+.btn-stop{background:rgba(249,115,22,.15);color:#f97316;border:1px solid rgba(249,115,22,.3)}
+.btn-stop:hover{background:rgba(249,115,22,.25)}
 .btn-downloading{background:rgba(59,130,246,.15);color:#3b82f6;cursor:wait}
-
 .progress-bar{position:absolute;bottom:0;left:0;height:3px;background:#3b82f6;transition:width .3s;border-radius:0 0 12px 12px}
-
 .status-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
-.status-dot.installed{background:#22c55e}
+.status-dot.installed{background:#3b82f6}
 .status-dot.downloading{background:#3b82f6;animation:pulse 1.5s infinite}
 .status-dot.available{background:#525252}
-
+.status-dot.running{background:#22c55e;animation:pulse 1.5s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-
 .empty-state{text-align:center;padding:60px 20px;color:#a3a3a3}
 .empty-state h3{font-size:18px;color:#e5e5e5;margin-bottom:8px}
-
 .server-info{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:20px;margin-bottom:24px;font-size:13px;color:#a3a3a3}
 .server-info strong{color:#e5e5e5}
-
 .toast{position:fixed;bottom:24px;right:24px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:14px 20px;font-size:14px;color:#e5e5e5;transform:translateY(100px);opacity:0;transition:all .3s;z-index:999}
 .toast.show{transform:translateY(0);opacity:1}
 .toast.success{border-color:#22c55e}
 .toast.error{border-color:#ef4444}
-
-@media(max-width:768px){
-  .models-grid{grid-template-columns:1fr}
-  .stats-row{flex-direction:column}
-  .container{padding:16px}
-}
+@media(max-width:768px){.models-grid{grid-template-columns:1fr}.stats-row{flex-direction:column}.container{padding:16px}}
 </style>
 </head>
 <body>
-
 <div class="topbar">
   <div class="topbar-left">
     <div class="topbar-logo">BLUN</div>
@@ -99,209 +82,109 @@ a{color:#3b82f6;text-decoration:none}
   </div>
   <a href="/dashboard" class="topbar-back">Back to Dashboard</a>
 </div>
-
 <div class="container">
   <div class="server-info">
     <strong>Your Server:</strong> <span id="serverRam">--</span> RAM available, <span id="serverDisk">--</span> disk free.
-    Models marked in red need more resources than your server has.
+    Models run locally on your CPU using llama.cpp. Install a model, then start it to chat.
   </div>
-
   <div class="stats-row">
-    <div class="stat-card">
-      <div class="stat-label">Available Models</div>
-      <div class="stat-value" id="totalCount">--</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Installed</div>
-      <div class="stat-value blue" id="installedCount">--</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Server Status</div>
-      <div class="stat-value" id="serverStatus" style="font-size:16px">Checking...</div>
-    </div>
+    <div class="stat-card"><div class="stat-label">Available Models</div><div class="stat-value" id="totalCount">--</div></div>
+    <div class="stat-card"><div class="stat-label">Installed</div><div class="stat-value blue" id="installedCount">--</div></div>
+    <div class="stat-card"><div class="stat-label">Running</div><div class="stat-value green" id="runningCount">--</div></div>
+    <div class="stat-card"><div class="stat-label">Server Status</div><div class="stat-value" id="serverStatus" style="font-size:16px">Checking...</div></div>
   </div>
-
   <div class="filters">
     <button class="filter-btn active" data-filter="all">All</button>
     <button class="filter-btn" data-filter="general">General</button>
     <button class="filter-btn" data-filter="coding">Coding</button>
     <button class="filter-btn" data-filter="reasoning">Reasoning</button>
     <button class="filter-btn" data-filter="installed">Installed</button>
+    <button class="filter-btn" data-filter="running">Running</button>
   </div>
-
   <div class="models-grid" id="modelsGrid"></div>
 </div>
-
 <div class="toast" id="toast"></div>
-
 <script>
-var currentFilter = "all";
-var modelsData = [];
-var pollTimers = {};
-
-function showToast(msg, type) {
-  var t = document.getElementById("toast");
-  t.textContent = msg;
-  t.className = "toast show " + (type || "");
-  setTimeout(function() { t.className = "toast"; }, 3000);
-}
-
-function sizeBadgeLabel(size) {
-  if (size === "S") return "Small";
-  if (size === "M") return "Medium";
-  if (size === "L") return "Large";
-  if (size === "XL") return "Very Large";
-  return size;
-}
-
-function renderModels() {
-  var grid = document.getElementById("modelsGrid");
-  var filtered = modelsData.filter(function(m) {
-    if (currentFilter === "all") return true;
-    if (currentFilter === "installed") return m.status === "installed";
-    return m.category === currentFilter;
+var currentFilter="all",modelsData=[],pollTimers={};
+function showToast(msg,type){var t=document.getElementById("toast");t.textContent=msg;t.className="toast show "+(type||"");setTimeout(function(){t.className="toast"},3000)}
+function sizeBadgeLabel(s){return{S:"Small",M:"Medium",L:"Large",XL:"Very Large"}[s]||s}
+function statusLabel(s){return{running:"Running",installed:"Ready",downloading:"Downloading"}[s]||"Available"}
+function renderModels(){
+  var grid=document.getElementById("modelsGrid");
+  var filtered=modelsData.filter(function(m){
+    if(currentFilter==="all")return true;
+    if(currentFilter==="installed")return m.status==="installed"||m.status==="running";
+    if(currentFilter==="running")return m.status==="running";
+    return m.category===currentFilter;
   });
-
-  if (filtered.length === 0) {
-    grid.innerHTML = '<div class="empty-state"><h3>No models found</h3><p>Try a different filter.</p></div>';
-    return;
-  }
-
-  grid.innerHTML = filtered.map(function(m) {
-    var btnHtml = "";
-    if (m.status === "installed") {
-      btnHtml = '<button class="btn btn-remove" onclick="removeModel(\x27' + m.id + '\x27)">Remove</button>';
-    } else if (m.status === "downloading") {
-      btnHtml = '<button class="btn btn-downloading">Installing... ' + m.progress + '%</button>';
-    } else {
-      btnHtml = '<button class="btn btn-install" onclick="installModel(\x27' + m.id + '\x27)">Install</button>';
+  if(!filtered.length){grid.innerHTML='<div class="empty-state"><h3>No models found</h3><p>Try a different filter.</p></div>';return}
+  grid.innerHTML=filtered.map(function(m){
+    var btn="";
+    if(m.status==="running"){
+      btn='<button class="btn btn-stop" onclick="stopModel(\x27'+m.id+'\x27)">Stop</button><button class="btn btn-remove" onclick="removeModel(\x27'+m.id+'\x27)">Remove</button>';
+    }else if(m.status==="installed"){
+      btn='<button class="btn btn-start" onclick="startModel(\x27'+m.id+'\x27)">Start</button><button class="btn btn-remove" onclick="removeModel(\x27'+m.id+'\x27)">Remove</button>';
+    }else if(m.status==="downloading"){
+      btn='<button class="btn btn-downloading">Downloading... '+m.progress+'%</button>';
+    }else{
+      btn='<button class="btn btn-install" onclick="installModel(\x27'+m.id+'\x27)">Install</button>';
     }
-
-    var progressHtml = m.status === "downloading"
-      ? '<div class="progress-bar" style="width:' + m.progress + '%"></div>'
-      : "";
-
-    return '<div class="model-card' + (m.status === "downloading" ? " downloading" : "") + '">'
-      + '<div class="model-header">'
-      + '<div><div class="model-name">' + m.name + '</div><div class="model-maker">' + m.maker + '</div></div>'
-      + '<span class="size-badge size-' + m.size + '">' + sizeBadgeLabel(m.size) + ' / ' + m.sizeGB + '</span>'
-      + '</div>'
-      + '<div class="model-desc">' + m.description + '</div>'
-      + '<div class="model-meta">'
-      + '<span><span class="status-dot ' + m.status + '"></span> ' + (m.status.charAt(0).toUpperCase() + m.status.slice(1)) + '</span>'
-      + '<span>Needs ' + m.ram + ' RAM</span>'
-      + '</div>'
-      + '<div class="model-actions">' + btnHtml + '</div>'
-      + progressHtml
-      + '</div>';
+    var prog=m.status==="downloading"?'<div class="progress-bar" style="width:'+m.progress+'%"></div>':"";
+    var cls="model-card";
+    if(m.status==="downloading")cls+=" downloading";
+    if(m.status==="running")cls+=" running-card";
+    return'<div class="'+cls+'"><div class="model-header"><div><div class="model-name">'+m.name+'</div><div class="model-maker">'+m.maker+'</div></div><span class="size-badge size-'+m.size+'">'+sizeBadgeLabel(m.size)+' / '+m.sizeGB+'</span></div><div class="model-desc">'+m.description+'</div><div class="model-meta"><span><span class="status-dot '+m.status+'"></span> '+statusLabel(m.status)+'</span><span>Needs '+m.ram+' RAM</span></div><div class="model-actions">'+btn+'</div>'+prog+'</div>';
   }).join("");
 }
-
-function getAuthHeaders() {
-  var h = {};
-  var key = localStorage.getItem("blun_api_key");
-  if (key) h["x-blun-key"] = key;
-  return h;
-}
-
-function loadModels() {
-  fetch("/api/models", { credentials: "include", headers: getAuthHeaders() })
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      modelsData = data.models;
-      document.getElementById("totalCount").textContent = data.models.length;
-      document.getElementById("installedCount").textContent = data.installed;
-      document.getElementById("serverStatus").textContent = "Online";
-      document.getElementById("serverStatus").style.color = "#22c55e";
-      renderModels();
-
-      data.models.forEach(function(m) {
-        if (m.status === "downloading" && !pollTimers[m.id]) {
-          startPolling(m.id);
-        }
-      });
-    })
-    .catch(function() {
-      document.getElementById("serverStatus").textContent = "Offline";
-      document.getElementById("serverStatus").style.color = "#ef4444";
-    });
-}
-
-function installModel(id) {
-  fetch("/api/models/" + encodeURIComponent(id) + "/download", {
-    method: "POST",
-    credentials: "include",
-    headers: getAuthHeaders()
-  })
-  .then(function(r) { return r.json(); })
-  .then(function() {
-    showToast("Installing " + id + " ...", "success");
-    modelsData.forEach(function(m) {
-      if (m.id === id) { m.status = "downloading"; m.progress = 0; }
-    });
+function getAuthHeaders(){var h={};var k=localStorage.getItem("blun_api_key");if(k)h["x-blun-key"]=k;return h}
+function loadModels(){
+  fetch("/api/models",{credentials:"include",headers:getAuthHeaders()}).then(function(r){return r.json()}).then(function(d){
+    modelsData=d.models;
+    document.getElementById("totalCount").textContent=d.models.length;
+    document.getElementById("installedCount").textContent=d.installed;
+    document.getElementById("runningCount").textContent=d.running||0;
+    document.getElementById("serverStatus").textContent="Online";
+    document.getElementById("serverStatus").style.color="#22c55e";
     renderModels();
-    startPolling(id);
-  })
-  .catch(function() { showToast("Failed to start install", "error"); });
+    d.models.forEach(function(m){if(m.status==="downloading"&&!pollTimers[m.id])startPolling(m.id)});
+  }).catch(function(){document.getElementById("serverStatus").textContent="Offline";document.getElementById("serverStatus").style.color="#ef4444"});
 }
-
-function removeModel(id) {
-  if (!confirm("Remove this model? You can always install it again later.")) return;
-  fetch("/api/models/" + encodeURIComponent(id), {
-    method: "DELETE",
-    credentials: "include",
-    headers: getAuthHeaders()
-  })
-  .then(function(r) { return r.json(); })
-  .then(function() {
-    showToast("Model removed", "success");
-    loadModels();
-  })
-  .catch(function() { showToast("Failed to remove model", "error"); });
+function installModel(id){
+  fetch("/api/models/"+encodeURIComponent(id)+"/download",{method:"POST",credentials:"include",headers:getAuthHeaders()}).then(function(r){return r.json()}).then(function(){
+    showToast("Downloading model...","success");
+    modelsData.forEach(function(m){if(m.id===id){m.status="downloading";m.progress=0}});
+    renderModels();startPolling(id);
+  }).catch(function(){showToast("Failed to start download","error")});
 }
-
-function startPolling(id) {
-  if (pollTimers[id]) return;
-  pollTimers[id] = setInterval(function() {
-    fetch("/api/models/" + encodeURIComponent(id) + "/status", {
-      credentials: "include",
-      headers: getAuthHeaders()
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      modelsData.forEach(function(m) {
-        if (m.id === id) {
-          m.status = data.status;
-          m.progress = data.progress;
-        }
-      });
+function removeModel(id){
+  if(!confirm("Remove this model? You can always install it again later."))return;
+  fetch("/api/models/"+encodeURIComponent(id),{method:"DELETE",credentials:"include",headers:getAuthHeaders()}).then(function(r){return r.json()}).then(function(){showToast("Model removed","success");loadModels()}).catch(function(){showToast("Failed to remove model","error")});
+}
+function startModel(id){
+  showToast("Starting model... this may take a moment","success");
+  fetch("/api/models/"+encodeURIComponent(id)+"/load",{method:"POST",credentials:"include",headers:getAuthHeaders()}).then(function(r){return r.json()}).then(function(d){
+    if(d.error){showToast(d.error,"error")}else{showToast("Model is starting up","success");setTimeout(loadModels,2000)}
+  }).catch(function(){showToast("Failed to start model","error")});
+}
+function stopModel(id){
+  fetch("/api/models/"+encodeURIComponent(id)+"/unload",{method:"POST",credentials:"include",headers:getAuthHeaders()}).then(function(r){return r.json()}).then(function(){showToast("Model stopped","success");loadModels()}).catch(function(){showToast("Failed to stop model","error")});
+}
+function startPolling(id){
+  if(pollTimers[id])return;
+  pollTimers[id]=setInterval(function(){
+    fetch("/api/models/"+encodeURIComponent(id)+"/status",{credentials:"include",headers:getAuthHeaders()}).then(function(r){return r.json()}).then(function(d){
+      modelsData.forEach(function(m){if(m.id===id){m.status=d.status;m.progress=d.progress}});
       renderModels();
-      if (data.status !== "downloading") {
-        clearInterval(pollTimers[id]);
-        delete pollTimers[id];
-        if (data.status === "installed") {
-          showToast("Model installed successfully!", "success");
-          loadModels();
-        } else if (data.status === "error") {
-          showToast("Install failed: " + (data.error || "Unknown error"), "error");
-        }
+      if(d.status!=="downloading"){clearInterval(pollTimers[id]);delete pollTimers[id];
+        if(d.status==="installed"){showToast("Model installed! You can now start it.","success");loadModels()}
+        else if(d.status==="error"){showToast("Download failed: "+(d.error||"Unknown error"),"error")}
       }
     });
-  }, 2000);
+  },2000);
 }
-
-document.querySelectorAll(".filter-btn").forEach(function(btn) {
-  btn.addEventListener("click", function() {
-    document.querySelectorAll(".filter-btn").forEach(function(b) { b.classList.remove("active"); });
-    btn.classList.add("active");
-    currentFilter = btn.dataset.filter;
-    renderModels();
-  });
-});
-
-document.getElementById("serverRam").textContent = "3.7 GB";
-document.getElementById("serverDisk").textContent = "67 GB";
-
+document.querySelectorAll(".filter-btn").forEach(function(b){b.addEventListener("click",function(){document.querySelectorAll(".filter-btn").forEach(function(x){x.classList.remove("active")});b.classList.add("active");currentFilter=b.dataset.filter;renderModels()})});
+document.getElementById("serverRam").textContent="3.7 GB";
+document.getElementById("serverDisk").textContent="67 GB";
 loadModels();
 </script>
 </body>
