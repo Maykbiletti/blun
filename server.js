@@ -27,6 +27,7 @@ const authRoutes = require("./src/routes/auth");
 const { authenticate } = require("./src/middleware/auth");
 const billingRoutes = require("./src/routes/billing");
 const { router: skillsRoutes, getAgentSkills } = require("./src/routes/skills");
+const organisatorRoutes = require("./src/routes/organisator");
 
 const PORT = parseInt(process.env.BLUN_PORT || "3200", 10);
 const API_KEY = process.env.BLUN_API_KEY || "blun-dev-key";
@@ -60,6 +61,14 @@ app.use("/api/chat", chatRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/skills", skillsRoutes);
 app.get("/api/agents/:id/skills", getAgentSkills);
+
+// KI-Organisator routes (auth handled inside)
+app.use("/organisator", organisatorRoutes);
+
+app.get("/organisator", authenticate, function (req, res) {
+  if (!req.user) return res.redirect("/login");
+  res.sendFile(path.join(__dirname, "dashboard", "organisator.html"));
+});
 
 app.get("/login", function (req, res) {
   res.sendFile(path.join(__dirname, "dashboard", "login.html"));
