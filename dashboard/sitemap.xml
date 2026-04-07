@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://blun.ai/</loc><priority>1.0</priority><changefreq>weekly</changefreq></url>
+  <url><loc>https://blun.ai/login</loc><priority>0.8</priority><changefreq>monthly</changefreq></url>
+  <url><loc>https://blun.ai/register</loc><priority>0.8</priority><changefreq>monthly</changefreq></url>
+  <url><loc>https://blun.ai/feature/websites</loc><priority>0.9</priority><changefreq>weekly</changefreq></url>
+  <url><loc>https://blun.ai/feature/software</loc><priority>0.9</priority><changefreq>weekly</changefreq></url>
+  <url><loc>https://blun.ai/feature/assistants</loc><priority>0.9</priority><changefreq>weekly</changefreq></url>
+  <url><loc>https://blun.ai/feature/compare</loc><priority>0.8</priority><changefreq>weekly</changefreq></url>
+  <url><loc>https://blun.ai/feature/local-ai</loc><priority>0.9</priority><changefreq>weekly</changefreq></url>
+  <url><loc>https://blun.ai/feature/everything</loc><priority>0.8</priority><changefreq>weekly</changefreq></url>
+  <url><loc>https://blun.ai/privacy</loc><priority>0.3</priority><changefreq>monthly</changefreq></url>
+  <url><loc>https://blun.ai/impressum</loc><priority>0.3</priority><changefreq>monthly</changefreq></url>
+</urlset>

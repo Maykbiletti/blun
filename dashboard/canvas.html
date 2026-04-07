@@ -604,20 +604,47 @@ function detectLang(p) {
 }
 
 async function openFile(id) {
-  const res = await fetch(API + '/canvas/files/' + id, { credentials: 'include' });
-  const file = await res.json();
-  currentFile = file;
-  // Add tab if not open
-  if (!openTabs.find(t => t.id === id)) openTabs.push({ id: file.id, name: file.path.split('/').pop(), language: file.language });
-  renderTabs();
-  renderFileTree();
-  const inp = document.getElementById('codeInput');
-  inp.value = file.content || '';
-  updateHighlight();
-  updateLineNumbers();
-  document.getElementById('statusLang').textContent = file.language || 'plaintext';
-  // Tell WS we opened this file
-  sendWS({ type: 'file.open', fileId: id });
+  showEditorSkeleton();
+  try {
+    const file = await apiFetch(API + '/canvas/files/' + id);
+    currentFile = file;
+    if (!openTabs.find(t => t.id === id)) openTabs.push({ id: file.id, name: file.path.split('/').pop(), language: file.language });
+    renderTabs();
+    renderFileTree();
+    const inp = document.getElementById('codeInput');
+    inp.value = file.content || '';
+    isDirty = false;
+    updateHighlight();
+    updateLineNumbers();
+    hideEditorSkeleton();
+    document.getElementById('statusLang').textContent = file.language || 'plaintext';
+    sendWS({ type: 'file.open', fileId: id });
+  } catch (e) {
+    hideEditorSkeleton();
+    showError('Datei laden fehlgeschlagen: ' + e.message, true);
+    lastAction = () => openFile(id);
+  }
+}
+
+function showEditorSkeleton() {
+  const container = document.getElementById('editorContainer');
+  let sk = document.getElementById('editorSkeleton');
+  if (!sk) {
+    sk = document.createElement('div');
+    sk.id = 'editorSkeleton';
+    sk.style.cssText = 'position:absolute;inset:0;z-index:5;background:var(--bg);padding:10px';
+    for (let i = 0; i < 12; i++) {
+      const line = document.createElement('div');
+      line.className = 'skeleton skeleton-line';
+      sk.appendChild(line);
+    }
+    container.appendChild(sk);
+  }
+  sk.style.display = 'block';
+}
+function hideEditorSkeleton() {
+  const sk = document.getElementById('editorSkeleton');
+  if (sk) sk.style.display = 'none';
 }
 
 function closeTab(id, ev) {
@@ -643,14 +670,21 @@ async function showNewFileDialog() {
   if (!currentProject) { showProjectPicker(); return; }
   const path = prompt('File path (e.g. src/index.js):');
   if (!path) return;
-  const res = await fetch(API + '/canvas/projects/' + currentProject.id + '/files', {
-    method: 'POST', credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ path, content: '' })
-  });
-  const f = await res.json();
-  await loadFiles();
-  openFile(f.id);
+  showLoading('Datei erstellen...');
+  try {
+    const f = await apiFetch(API + '/canvas/projects/' + currentProject.id + '/files', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path, content: '' })
+    });
+    hideLoading();
+    await loadFiles();
+    openFile(f.id);
+  } catch (e) {
+    hideLoading();
+    showError('Datei erstellen fehlgeschlagen: ' + e.message, true);
+    lastAction = () => showNewFileDialog();
+  }
 }
 
 // --- Editor ---
@@ -660,11 +694,15 @@ const highlightLayer = document.getElementById('highlightLayer');
 codeInput.addEventListener('input', () => {
   updateHighlight();
   updateLineNumbers();
+  isDirty = true;
   if (!suppressSend && currentFile) {
-    const lines = codeInput.value.substring(0, codeInput.selectionStart).split('\n');
-    const line = lines.length;
-    const col = lines[lines.length - 1].length + 1;
-    sendWS({ type: 'file.edit', fileId: currentFile.id, content: codeInput.value, cursorLine: line, cursorCol: col });
+    clearTimeout(editDebounceTimer);
+    editDebounceTimer = setTimeout(() => {
+      const lines = codeInput.value.substring(0, codeInput.selectionStart).split('\n');
+      const line = lines.length;
+      const col = lines[lines.length - 1].length + 1;
+      sendWS({ type: 'file.edit', fileId: currentFile.id, content: codeInput.value, cursorLine: line, cursorCol: col });
+    }, EDIT_DEBOUNCE_MS);
   }
 });
 
@@ -681,10 +719,18 @@ codeInput.addEventListener('keydown', (e) => {
     e.preventDefault();
     if (currentFile) {
       sendWS({ type: 'file.save', fileId: currentFile.id, content: codeInput.value });
-      fetch(API + '/canvas/files/' + currentFile.id, {
-        method: 'PUT', credentials: 'include',
+      apiFetch(API + '/canvas/files/' + currentFile.id, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: codeInput.value })
+      }).then(() => {
+        isDirty = false;
+        const si = document.getElementById('saveIndicator');
+        si.classList.add('visible');
+        setTimeout(() => si.classList.remove('visible'), 2000);
+      }).catch(err => {
+        showError('Speichern fehlgeschlagen: ' + err.message, true);
+        lastAction = () => codeInput.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true }));
       });
     }
   }

@@ -1,0 +1,220 @@
+/* BLUN File Upload Component — Drag & Drop, Preview, Thumbnails */
+
+/* ---- Attachment Button (Paperclip) ---- */
+.upload-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text2);
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+  transition: all 0.15s;
+  position: relative;
+}
+
+.upload-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(34, 211, 238, 0.08);
+}
+
+.upload-btn.uploading {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.upload-btn .upload-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: upload-spin 0.6s linear infinite;
+}
+
+@keyframes upload-spin { to { transform: rotate(360deg); } }
+
+/* ---- Hidden File Input ---- */
+.upload-file-input {
+  display: none;
+}
+
+/* ---- Drag & Drop Overlay ---- */
+.upload-dropzone {
+  position: absolute;
+  inset: 0;
+  background: rgba(34, 211, 238, 0.06);
+  border: 2px dashed var(--accent);
+  border-radius: 8px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  pointer-events: none;
+}
+
+.upload-dropzone.active {
+  display: flex;
+}
+
+.upload-dropzone-label {
+  font-size: 14px;
+  color: var(--accent);
+  font-weight: 600;
+  padding: 12px 20px;
+  background: var(--surface);
+  border-radius: 6px;
+  border: 1px solid var(--accent);
+}
+
+/* ---- Preview Bar (below input, above send) ---- */
+.upload-preview-bar {
+  display: none;
+  gap: 8px;
+  padding: 8px 10px;
+  border-top: 1px solid var(--border);
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+.upload-preview-bar.has-files {
+  display: flex;
+}
+
+.upload-preview-item {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--surface2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.upload-preview-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.upload-preview-item .file-icon-preview {
+  font-size: 11px;
+  color: var(--text2);
+  text-align: center;
+  padding: 4px;
+  word-break: break-all;
+  line-height: 1.2;
+}
+
+.upload-preview-item .file-ext {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.upload-preview-item .remove-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 16px;
+  height: 16px;
+  background: rgba(0, 0, 0, 0.7);
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.upload-preview-item:hover .remove-btn {
+  opacity: 1;
+}
+
+.upload-preview-item .remove-btn:hover {
+  background: #ef4444;
+}
+
+/* Upload progress on preview item */
+.upload-preview-item .upload-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: var(--accent);
+  transition: width 0.2s;
+}
+
+.upload-preview-item.error {
+  border-color: #ef4444;
+}
+
+.upload-preview-item.error::after {
+  content: '!';
+  position: absolute;
+  bottom: 2px;
+  right: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #ef4444;
+}
+
+.upload-preview-item.uploaded {
+  border-color: #22c55e;
+}
+
+.upload-preview-item.uploaded::after {
+  content: '\2713';
+  position: absolute;
+  bottom: 2px;
+  right: 4px;
+  font-size: 10px;
+  color: #22c55e;
+}
+
+/* ---- Upload Toast (status messages) ---- */
+.upload-toast {
+  position: fixed;
+  bottom: 40px;
+  right: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 12px;
+  color: var(--text2);
+  z-index: 200;
+  animation: upload-toast-in 0.2s;
+  max-width: 320px;
+}
+
+.upload-toast.error {
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+.upload-toast.success {
+  border-color: #22c55e;
+  color: #22c55e;
+}
+
+@keyframes upload-toast-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
