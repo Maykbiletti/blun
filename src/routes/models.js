@@ -16,6 +16,28 @@ var downloads = {};
 // Track running llama-server processes: modelId -> { process, port, ready }
 var running = {};
 
+// Detect externally started llama-server processes
+var externalRunning = {};
+var { execSync } = require("child_process");
+function refreshExternalRunning() {
+  try {
+    var ps = execSync("ps aux | grep llama-server | grep -v grep", {encoding:"utf8"});
+    var lines = ps.trim().split("\n");
+    externalRunning = {};
+    lines.forEach(function(line) {
+      var mMatch = line.match(/-m\s+(\S+)/);
+      var pMatch = line.match(/--port\s+(\d+)/);
+      if (mMatch) {
+        var modelFile = mMatch[1].split("/").pop();
+        var port = pMatch ? parseInt(pMatch[1]) : 0;
+        externalRunning[modelFile] = { port: port };
+      }
+    });
+  } catch(e) { externalRunning = {}; }
+}
+setInterval(refreshExternalRunning, 10000);
+refreshExternalRunning();
+
 // Next available port for llama-server instances
 var nextPort = 8090;
 
@@ -29,7 +51,9 @@ function isInstalled(model) {
 
 // Helper: check if model is currently loaded (running)
 function isRunning(modelId) {
-  return !!running[modelId];
+  if (running[modelId]) return true;
+  var model = registry.getById(modelId);
+  return model && !!externalRunning[model.filename];
 }
 
 // GET /api/models — list all models with status
@@ -177,7 +201,7 @@ router.post("/:id/load", function(req, res) {
     "-m", filePath,
     "--port", String(port),
     "--host", "127.0.0.1",
-    "-c", "2048",
+    "-c", "8192",
     "-t", "2",
     "--no-mmap"
   ], { stdio: ["ignore", "pipe", "pipe"], env: Object.assign({}, process.env, { LD_LIBRARY_PATH: "/opt/llama" }) });
@@ -209,10 +233,25 @@ router.post("/:id/load", function(req, res) {
 // POST /api/models/:id/unload — stop llama-server
 router.post("/:id/unload", function(req, res) {
   var modelId = req.params.id;
-  if (!running[modelId]) return res.status(400).json({ error: "Model not running" });
-  try { running[modelId].process.kill(); } catch(e) {}
-  delete running[modelId];
-  res.json({ message: "Model stopped", status: "installed" });
+  // Check API-started models first
+  if (running[modelId]) {
+    try { running[modelId].process.kill(); } catch(e) {}
+    delete running[modelId];
+    return res.json({ message: "Model stopped", status: "installed" });
+  }
+  // Check externally started models
+  var model = registry.getById(modelId);
+  if (model && externalRunning[model.filename]) {
+    var port = externalRunning[model.filename].port;
+    try {
+      var { execSync } = require("child_process");
+      var ps = execSync("ps aux | grep llama-server | grep 'port " + port + "' | grep -v grep | awk '{print $2}'", {encoding:"utf8"}).trim();
+      if (ps) { execSync("kill " + ps); }
+      delete externalRunning[model.filename];
+    } catch(e) {}
+    return res.json({ message: "Model stopped (external)", status: "installed" });
+  }
+  res.status(400).json({ error: "Model not running" });
 });
 
 // POST /api/models/:id/chat — send message to loaded model
@@ -258,4 +297,6 @@ router.get("/running/list", function(req, res) {
   res.json({ running: list });
 });
 
+router.running = running;
+router.externalRunning = externalRunning;
 module.exports = router;

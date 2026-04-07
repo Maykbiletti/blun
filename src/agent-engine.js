@@ -7,6 +7,37 @@ const { query, queryOne } = require("./db");
 const { v4: uuid } = require("uuid");
 
 const LLAMA_URL = process.env.LLAMA_URL || "http://127.0.0.1:8090";
+// === Load Balancer: 4 llama-server instances ===
+var modelsRouter = require("./routes/models");
+function getLLMPools() {
+  var pools = [];
+  var running = modelsRouter.running || {};
+  Object.keys(running).forEach(function(id) {
+    if (running[id] && running[id].port) {
+      pools.push({ port: running[id].port, name: id, busy: 0, max: 2 });
+    }
+  });
+  var ext = modelsRouter.externalRunning || {};
+  Object.keys(ext).forEach(function(filename) {
+    if (ext[filename] && ext[filename].port) {
+      pools.push({ port: ext[filename].port, name: filename, busy: 0, max: 2 });
+    }
+  });
+  if (pools.length === 0) {
+    pools.push({ port: 8091, name: "gemma-4-31b", busy: 0, max: 2 });
+  }
+  return pools;
+}
+function pickPool() {
+  var pools = getLLMPools();
+  var best = pools[0];
+  for (var i = 1; i < pools.length; i++) {
+    if (pools[i].busy < best.busy) best = pools[i];
+  }
+  return best;
+}
+// === End Load Balancer ===
+
 const crypto = require("crypto");
 const ENC_KEY = process.env.BLUN_ENCRYPTION_KEY || "blun-dev-encryption-key-32chars!";
 
@@ -23,16 +54,88 @@ function decryptKey(data) {
 // Active agent loops: agentId -> { timer, running }
 const activeAgents = new Map();
 
+// ===== CLI SUBPROCESS ADAPTERS =====
+var child_process = require("child_process");
+
+async function callCLI(cliPath, args, env, input, timeoutMs) {
+  return new Promise(function(resolve, reject) {
+    var proc = child_process.spawn(cliPath, args, {
+      env: Object.assign({}, process.env, env),
+      cwd: "/tmp",
+      stdio: ["pipe", "pipe", "pipe"]
+    });
+    var out = "", err = "";
+    proc.stdout.on("data", function(d){ out += d.toString(); });
+    proc.stderr.on("data", function(d){ err += d.toString(); });
+    proc.on("close", function(code) {
+      if (out.trim()) resolve(out.trim());
+      else reject(new Error("CLI error: " + (err||"no output") + " (exit " + code + ")"));
+    });
+    var timer = setTimeout(function(){ proc.kill(); reject(new Error("CLI timeout")); }, timeoutMs || 90000);
+    proc.on("close", function(){ clearTimeout(timer); });
+    if (input) { proc.stdin.write(input); } proc.stdin.end();
+  });
+}
+
+async function callCodexCLI(messages, model) {
+  // Build prompt from messages - pass via stdin for long content
+  var systemMsg = messages.find(function(m){return m.role==="system";});
+  var userMsg = messages.filter(function(m){return m.role!=="system";}).map(function(m){return m.role+": "+m.content;}).join("\n\n");
+  // For Codex exec: keep prompt focused and short - extract key identity from system
+  // Long personality texts confuse codex exec (task mode, not chat mode)
+  var sysContent = systemMsg ? systemMsg.content : "Du bist ein hilfreicher Agent.";
+  // Keep only first 400 chars of system content for Codex (key identity info)
+  var sysShort = sysContent.substring(0, 400);
+  var prompt = sysShort + "\n\nUser: " + userMsg + "\nAntworte natuerlich als diese Persona (1-3 Saetze):";
+
+  var result = await callCLI("codex", ["exec", "--skip-git-repo-check", prompt], {}, null, 90000);
+  // Extract just the response (codex adds session info, strip it)
+  var lines = result.split("\n");
+  var responseStart = false;
+  var responseLines = [];
+  for (var i = 0; i < lines.length; i++) {
+    if (lines[i] === "codex") { responseStart = true; continue; }
+    if (responseStart && lines[i].startsWith("tokens used")) break;
+    if (responseStart) responseLines.push(lines[i]);
+  }
+  var response = responseLines.join("\n").trim() || result.split("\n").pop().trim();
+  return { content: response, tokens: 5000, cost: 0 }; // Codex uses ChatGPT Pro subscription
+}
+
+async function callClaudeCLI(messages, apiKey) {
+  var systemMsg = messages.find(function(m){return m.role==="system";});
+  var userMsg = messages.filter(function(m){return m.role!=="system";}).map(function(m){return m.role+": "+m.content;}).join("\n\n");
+  var prompt = (systemMsg ? "Context: " + systemMsg.content + "\n\n" : "") + userMsg;
+  // Use OAuth credentials from ~/.claude/.credentials.json (no API key needed)
+  // API key only as fallback
+  var env = apiKey ? { ANTHROPIC_API_KEY: apiKey } : {};
+  var result = await callCLI("claude", ["--print"], env, prompt, 90000);
+  return { content: result.trim(), tokens: 3000, cost: 0 };
+}
+
+
 async function callLLM(model, messages) {
   var isLocal = model.startsWith("local:") || model.includes("llama") || model.includes("tiny") || model.includes("mistral") || model.includes("phi") || model.includes("deepseek") || model.includes("gemma") || model.includes("qwen");
   if (model.startsWith("local:")) model = model.replace("local:", "");
 
   var url, headers, body;
 
+  // Route CLI-based models: gpt-* via Codex CLI, claude-* via Claude CLI
+  if (model.startsWith("claude") && !model.includes("api:")) {
+    try { return await callClaudeCLI(messages, null); } catch(e) {
+      // Fallback to API if CLI fails (e.g. usage limit)
+      console.error("[claude-cli] " + e.message + " — falling back to API");
+    }
+  }
+  var modelLow = model.toLowerCase();
+  if (model.startsWith("codex:") || modelLow.startsWith("gpt-") || model.toUpperCase().startsWith("GPT-") || modelLow.startsWith("o1") || modelLow.startsWith("o3") || modelLow.startsWith("o4")) {
+    var cleanModel = model.replace("codex:", "");
+    try { return await callCodexCLI(messages, cleanModel); } catch(e) { console.error("[codex-cli]", e.message); return { content: "Fehler: " + e.message, tokens: 0, cost: 0 }; }
+  }
   if (isLocal) {
-    url = LLAMA_URL + "/v1/chat/completions";
+    var _pool = pickPool(); _pool.busy++; url = "http://127.0.0.1:" + _pool.port + "/v1/chat/completions"; var _releasePool = function() { _pool.busy = Math.max(0, _pool.busy - 1); };
     headers = { "Content-Type": "application/json" };
-    body = { model: model, messages: messages, max_tokens: 2048, temperature: 0.7 };
+    body = { model: model, messages: messages, max_tokens: 200, temperature: 0.7 };
   } else {
     var provider = model.startsWith("claude") ? "anthropic" : (model.startsWith("gpt") || model.startsWith("o3") || model.startsWith("o1")) ? "openai" : "google";
     var conn = await queryOne(
@@ -43,11 +146,17 @@ async function callLLM(model, messages) {
 
     var apiKey;
     try { apiKey = decryptKey(conn.api_key_encrypted); } catch(e) { throw new Error("Failed to decrypt API key: " + e.message); }
+    // Check if this is an OAuth token (JSON with access_token)
+    try { var oauthData = JSON.parse(apiKey); if (oauthData.access_token) { apiKey = oauthData.access_token; } } catch(e) { /* plain API key, use as-is */ }
     var config = { api_key: apiKey };
 
     if (model.startsWith("claude")) {
       url = "https://api.anthropic.com/v1/messages";
-      headers = { "Content-Type": "application/json", "x-api-key": config.api_key, "anthropic-version": "2023-06-01" };
+      // Check if we should use claude CLI
+    if (process.env.CLAUDE_USE_CLI === "1") {
+      try { return await callClaudeCLI(messages, config.api_key); } catch(e) { console.error("[claude-cli]", e.message); }
+    }
+    headers = { "Content-Type": "application/json", "x-api-key": config.api_key, "anthropic-version": "2023-06-01" };
       var sys = messages.find(function(m) { return m.role === "system"; });
       var msgs = messages.filter(function(m) { return m.role !== "system"; });
       body = { model: model, messages: msgs, max_tokens: 2048 };
@@ -67,8 +176,9 @@ async function callLLM(model, messages) {
     }
   }
 
-  var resp = await fetch(url, { method: "POST", headers: headers, body: JSON.stringify(body) });
+  var _ctrl = new AbortController(); var _fetchTimeout = setTimeout(function(){ _ctrl.abort(); }, 60000); var resp; try { resp = await fetch(url, { method: "POST", headers: headers, body: JSON.stringify(body), signal: _ctrl.signal }); } finally { clearTimeout(_fetchTimeout); }
   var data = await resp.json();
+  if (typeof _releasePool === "function") _releasePool();
 
   var content, tokens = 0;
   if (isLocal || model.startsWith("gpt")) {
@@ -97,6 +207,54 @@ async function loadAgentMemory(agentId) {
   var mem = {};
   for (var i = 0; i < rows.length; i++) mem[rows[i].key] = rows[i].value;
   return mem;
+}
+
+async function loadSmartMemory(agentId, userMessage, maxChars) {
+  maxChars = maxChars || 8000;
+  var rows = await query("SELECT key, content as value, updated_at FROM agent_memory WHERE agent_id = $1 ORDER BY updated_at DESC", [agentId]);
+  if (!rows.length) return "";
+  // Priority: identity, rules, vision always loaded
+  var priority = ["identity", "rules", "security", "rename", "vision"];
+  var selected = [];
+  var totalChars = 0;
+  var msg = (userMessage || "").toLowerCase();
+  // First pass: priority keys
+  for (var i = 0; i < rows.length; i++) {
+    var dominated = false;
+    for (var p = 0; p < priority.length; p++) {
+      if (rows[i].key.indexOf(priority[p]) !== -1) { dominated = true; break; }
+    }
+    if (dominated && totalChars + rows[i].value.length < maxChars) {
+      selected.push(rows[i]);
+      totalChars += rows[i].value.length;
+    }
+  }
+  // Second pass: keyword match from user message
+  var words = msg.split(/\s+/).filter(function(w) { return w.length > 3; });
+  for (var i = 0; i < rows.length; i++) {
+    if (selected.indexOf(rows[i]) !== -1) continue;
+    if (totalChars >= maxChars) break;
+    var keyLow = (rows[i].key + " " + rows[i].value.substring(0, 200)).toLowerCase();
+    var match = false;
+    for (var w = 0; w < words.length; w++) {
+      if (keyLow.indexOf(words[w]) !== -1) { match = true; break; }
+    }
+    if (match && totalChars + rows[i].value.length < maxChars) {
+      selected.push(rows[i]);
+      totalChars += rows[i].value.length;
+    }
+  }
+  // Third pass: most recent memories to fill remaining budget
+  for (var i = 0; i < rows.length; i++) {
+    if (selected.indexOf(rows[i]) !== -1) continue;
+    if (totalChars >= maxChars) break;
+    if (totalChars + rows[i].value.length < maxChars) {
+      selected.push(rows[i]);
+      totalChars += rows[i].value.length;
+    }
+  }
+  if (!selected.length) return "";
+  return "\n\nDein Gedaechtnis (" + selected.length + "/" + rows.length + " Erinnerungen geladen):\n" + selected.map(function(r) { return r.key + ": " + r.value; }).join("\n");
 }
 
 async function saveAgentMemory(agentId, key, value) {
@@ -135,7 +293,7 @@ async function heartbeat(agentId) {
       }
 
       var messages = [
-        { role: "system", content: (agent.system_prompt || "Du bist ein hilfreicher Agent.") + memStr },
+        { role: "system", content: (identityRow ? identityRow.content + "\n\n" : "") + (agent.system_prompt || "Du bist ein hilfreicher Agent.") + skillStr + memStr },
         { role: "user", content: "Task: " + pendingTask.task }
       ];
 
@@ -146,6 +304,12 @@ async function heartbeat(agentId) {
       await query("UPDATE agent_tasks SET status = $1, result = $2, completed_at = NOW() WHERE id = $3", ["completed", result.content, pendingTask.id]);
       await query("INSERT INTO agent_conversations (agent_id, role, content) VALUES ($1, $2, $3)", [agentId, "user", pendingTask.task]);
       await query("INSERT INTO agent_conversations (agent_id, role, content) VALUES ($1, $2, $3)", [agentId, "assistant", result.content]);
+  // Auto-memory: save last activity
+  try {
+    var today = new Date().toISOString().substring(0,10);
+    var summary = result.content.substring(0,300).replace(/\n/g,' ');
+    await saveAgentMemory(agentId, 'zuletzt_' + today, 'User: ' + message.substring(0,80) + ' | Antwort: ' + summary);
+  } catch(me) { console.error('[auto-memory]', me.message); }
 
       status = "active";
     } catch (err) {
@@ -195,21 +359,36 @@ async function chatWithAgent(agentId, message) {
   var agent = await queryOne("SELECT * FROM blun_agents WHERE id = $1", [agentId]);
   if (!agent) throw new Error("Agent not found");
 
-  var memory = await loadAgentMemory(agentId);
-  var memKeys = Object.keys(memory);
-  var memStr = "";
-  if (memKeys.length > 0) {
-    memStr = "\n\nDein Gedaechtnis:\n" + memKeys.map(function(k) { return k + ": " + memory[k]; }).join("\n");
+  // Auto-generate IDENTITY if not set
+  var identityRow = await queryOne("SELECT content FROM agent_memory WHERE agent_id = $1 AND key = 'IDENTITY'", [agentId]);
+  if (!identityRow) {
+    var identityContent = "# " + (agent.name || "Agent") + "\n" +
+      "- Rolle: " + (agent.role || "KI-Agent") + "\n" +
+      (agent.department ? "- Abteilung: " + agent.department + "\n" : "") +
+      "- Team: BLUN.ai Agent-Team\n" +
+      "- Sprache: Deutsch\n" +
+      (agent.personality ? "- Vibe: " + agent.personality.substring(0, 150).split("\n")[0] + "\n" : "") +
+      "\nIch bin " + (agent.name || "ein Agent") + " und Teil des BLUN Agent-Teams. Ich kenne meine Rolle und handle entsprechend.";
+    await query("INSERT INTO agent_memory (agent_id, key, content) VALUES ($1, 'IDENTITY', $2) ON CONFLICT (agent_id, key) DO NOTHING", [agentId, identityContent]);
+    identityRow = { content: identityContent };
   }
 
+  var memBudget = (agent.model && (agent.model.startsWith("local:") || agent.model.includes("gemma") || agent.model.includes("llama"))) ? 500 : 8000;
+  var memStr = await loadSmartMemory(agentId, message, memBudget);
+  var agentSkills = await query(
+    "SELECT s.name, s.code, s.description FROM skills s JOIN agent_skills as2 ON as2.skill_id = s.id WHERE as2.agent_id = $1 AND s.safe = true",
+    [agentId]
+  );
+  var nl = String.fromCharCode(10);
+  var skillStr = agentSkills.length ? nl+nl+"DEINE SKILLS:"+nl + agentSkills.map(function(s){ return "- " + s.name + ": " + (s.code || s.description); }).join(nl) : "";
   var history = await query(
-    "SELECT role, content FROM agent_conversations WHERE agent_id = $1 ORDER BY created_at DESC LIMIT 10",
+    "SELECT role, content FROM agent_conversations WHERE agent_id = $1 ORDER BY created_at DESC LIMIT 3",
     [agentId]
   );
   history.reverse();
 
   var messages = [
-    { role: "system", content: (agent.system_prompt || "Du bist ein hilfreicher Agent.") + memStr }
+    { role: "system", content: (identityRow ? identityRow.content + "\n\n" : "") + (agent.system_prompt || "Du bist ein hilfreicher Agent.") + skillStr + memStr }
   ].concat(history).concat([
     { role: "user", content: message }
   ]);
@@ -218,20 +397,25 @@ async function chatWithAgent(agentId, message) {
 
   await query("INSERT INTO agent_conversations (agent_id, role, content) VALUES ($1, $2, $3)", [agentId, "user", message]);
   await query("INSERT INTO agent_conversations (agent_id, role, content) VALUES ($1, $2, $3)", [agentId, "assistant", result.content]);
+  // Auto-memory: save last activity
+  try {
+    var today = new Date().toISOString().substring(0,10);
+    var summary = result.content.substring(0,300).replace(/\n/g,' ');
+    await saveAgentMemory(agentId, 'zuletzt_' + today, 'User: ' + message.substring(0,80) + ' | Antwort: ' + summary);
+  } catch(me) { console.error('[auto-memory]', me.message); }
 
   if (result.tokens > 0) {
     await query("INSERT INTO agent_heartbeats (agent_id, status, model, tokens_used, cost) VALUES ($1, $2, $3, $4, $5)", [agentId, "chat", agent.model, result.tokens, result.cost]);
   }
 
-  // Check for tool calls in response
-  var toolResult = await executeTools(agentId, message, result.content);
-  if (toolResult) {
-    messages.push({ role: "assistant", content: result.content });
-    messages.push({ role: "user", content: "Tool-Ergebnisse:\n" + toolResult + "\n\nBitte antworte dem User basierend auf diesen Ergebnissen. Keine Tool-Tags mehr benutzen." });
-    var finalResult = await callLLM(agent.model, messages);
-    await query("INSERT INTO agent_conversations (agent_id, role, content) VALUES ($1, $2, $3)", [agentId, "assistant", finalResult.content]);
-    return { response: finalResult.content, tokens: result.tokens + finalResult.tokens, cost: result.cost + finalResult.cost };
-  }
+  // Fire-and-forget tool execution in background (don't block HTTP response)
+  executeTools(agentId, message, result.content).then(function(toolResult) {
+    if (toolResult) {
+      console.log("[tools] Agent " + agentId + " executed tools, results: " + toolResult.substring(0, 200));
+      // Save tool results as a system message
+      query("INSERT INTO agent_conversations (agent_id, role, content) VALUES ($1, $2, $3)", [agentId, "assistant", "Tool-Ergebnisse:\n" + toolResult]).catch(function(e) { console.error("[tools] save error:", e.message); });
+    }
+  }).catch(function(e) { console.error("[tools] execution error:", e.message); });
 
   return { response: result.content, tokens: result.tokens, cost: result.cost };
 }
@@ -259,6 +443,7 @@ function callLocalAPI(method, path, body) {
       });
     });
     req.on('error', reject);
+    req.setTimeout(600000); // 10 min timeout for local models
     if (data) req.write(data);
     req.end();
   });
@@ -271,6 +456,7 @@ async function resolveAgentRef(ref) {
   return agent ? String(agent.id) : null;
 }
 
+function sleepMs(ms) { return new Promise(function(r) { setTimeout(r, ms); }); }
 async function executeTools(agentId, message, aiResponse) {
   // Detect tool commands in AI response
   var cmds = [];
@@ -285,15 +471,15 @@ async function executeTools(agentId, message, aiResponse) {
     if ((m = lines[i].match(/\[TOOL:LIST_AGENTS\]/i))) cmds.push({ tool: 'list_agents' });
     if ((m = lines[i].match(/\[TOOL:SERVER_STATUS\]/i))) cmds.push({ tool: 'server_status' });
     if ((m = lines[i].match(/\[TOOL:CREATE_AGENT:([^|]+)\|([^|]+)\|([^\]]+)\]/i))) cmds.push({ tool: 'create_agent', name: m[1].trim(), role: m[2].trim(), model: m[3].trim() });
-    if ((m = lines[i].match(/\[TOOL:DELETE_AGENT:(\d+)\]/i))) cmds.push({ tool: 'delete_agent', id: m[1].trim() });
-    if ((m = lines[i].match(/\[TOOL:RESET_AGENT:(\d+)\]/i))) cmds.push({ tool: 'reset_agent', id: m[1].trim() });
-    if ((m = lines[i].match(/\[TOOL:AGENT_MEMORY:(\d+)\]/i))) cmds.push({ tool: 'agent_memory', id: m[1].trim() });
-    if ((m = lines[i].match(/\[TOOL:SET_MEMORY:(\d+)\|([^|]+)\|([^\]]+)\]/i))) cmds.push({ tool: 'set_memory', id: m[1].trim(), key: m[2].trim(), value: m[3].trim() });
-    if ((m = lines[i].match(/\[TOOL:CHAT_AGENT:(\d+)\|([^\]]+)\]/i))) cmds.push({ tool: 'chat_agent', id: m[1].trim(), message: m[2].trim() });
+    if ((m = lines[i].match(/\[TOOL:DELETE_AGENT:([^\\]]+)\]/i))) cmds.push({ tool: 'delete_agent', id: m[1].trim() });
+    if ((m = lines[i].match(/\[TOOL:RESET_AGENT:([^\\]]+)\]/i))) cmds.push({ tool: 'reset_agent', id: m[1].trim() });
+    if ((m = lines[i].match(/\[TOOL:AGENT_MEMORY:([^\\]]+)\]/i))) cmds.push({ tool: 'agent_memory', id: m[1].trim() });
+    if ((m = lines[i].match(/\[TOOL:SET_MEMORY:([^|]+)\|([^|]+)\|([^\]]+)\]/i))) cmds.push({ tool: 'set_memory', id: m[1].trim(), key: m[2].trim(), value: m[3].trim() });
+    if ((m = lines[i].match(/\[TOOL:CHAT_AGENT:([^|]+)\|([^\]]+?)(?:\|PRIORITY:\d+)?\]/i))) cmds.push({ tool: 'chat_agent', ref: m[1].trim(), message: m[2].trim() });
     if ((m = lines[i].match(/\[TOOL:CREATE_COMPANY:([^\]]+)\]/i))) cmds.push({ tool: 'create_company', name: m[1].trim() });
     if ((m = lines[i].match(/\[TOOL:LIST_COMPANIES\]/i))) cmds.push({ tool: 'list_companies' });
     if ((m = lines[i].match(/\[TOOL:LIST_SKILLS\]/i))) cmds.push({ tool: 'list_skills' });
-    if ((m = lines[i].match(/\[TOOL:ASSIGN_TASK:(\d+)\|([^\]]+)\]/i))) cmds.push({ tool: 'assign_task', agent_id: m[1].trim(), description: m[2].trim() });
+    if ((m = lines[i].match(/\[TOOL:ASSIGN_TASK:([^|]+)\|([^\]]+?)(?:\|PRIORITY:\d+)?\]/i))) cmds.push({ tool: 'assign_task', agent_ref: m[1].trim(), description: m[2].trim() });
     if ((m = lines[i].match(/\[TOOL:LIST_TASKS\]/i))) cmds.push({ tool: 'list_tasks' });
     if ((m = lines[i].match(/\[TOOL:BUILD_COMPANY:([^|]+)\|([^\]]+)\]/i))) cmds.push({ tool: 'build_company', name: m[1].trim(), description: m[2].trim() });
   }
@@ -355,6 +541,7 @@ async function executeTools(agentId, message, aiResponse) {
         if (!chatId) { results.push('Agent "' + cmd.ref + '" nicht gefunden'); continue; }
         var r = await callLocalAPI('POST', '/api/organisator/agents/' + chatId + '/chat', { message: cmd.message });
         results.push('Antwort von ' + cmd.ref + ': ' + (r.response || r.error || JSON.stringify(r)));
+        await sleepMs(2000); // Wait before next agent call
       } else if (cmd.tool === 'create_company') {
         var r = await callLocalAPI('POST', '/api/organisator/companies', { name: cmd.name, description: '' });
         results.push('Firma erstellt: ' + (r.name || r.error || JSON.stringify(r)) + (r.id ? ' (ID: ' + r.id + ')' : ''));

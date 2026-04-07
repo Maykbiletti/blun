@@ -180,6 +180,77 @@ async function checkRAM() {
   }
 }
 
+
+
+// ========== TASK DISTRIBUTION ==========
+
+async function distributeTasks(db) {
+  // Check for pending tasks
+  var pending = await db.query(
+    "SELECT * FROM agent_tasks WHERE status = 'pending' ORDER BY created_at ASC LIMIT 5"
+  );
+  if (!pending.rows.length) {
+    // Check master task list
+    var masterList = await db.query(
+      "SELECT content FROM agent_memory WHERE agent_id = 1 AND key = 'task_list'"
+    );
+    if (!masterList.rows.length) return { msg: 'Keine Tasks', distributed: 0 };
+    return { msg: 'Task-Liste vorhanden, keine pending', distributed: 0 };
+  }
+
+  log('Found ' + pending.rows.length + ' pending tasks');
+  var distributed = 0;
+
+  for (var i = 0; i < pending.rows.length; i++) {
+    var task = pending.rows[i];
+    if (task.agent_id) {
+      // Already assigned — send via chat
+      try {
+        var chatResult = await callAPI('POST', '/api/organisator/agents/' + task.agent_id + '/chat', {
+          message: 'AUFGABE: ' + task.task
+        });
+        await db.query("UPDATE agent_tasks SET status = 'in_progress' WHERE id = $1", [task.id]);
+        log('Task ' + task.id + ' sent to agent ' + task.agent_id);
+        distributed++;
+      } catch(e) {
+        log('Task send error: ' + e.message);
+      }
+    } else {
+      // Not assigned — let Dieter decide
+      try {
+        var agents = await db.query("SELECT id, name, role, department FROM blun_agents WHERE id != 1 AND status = 'active'");
+        var agentList = agents.rows.map(function(a) { return a.name + ' (' + a.role + ')'; }).join(', ');
+        var decisionResult = await callAPI('POST', '/api/organisator/agents/1/chat', {
+          message: 'Verteile diese Aufgabe an den passenden Agent. Antworte NUR mit [TOOL:ASSIGN_TASK:AgentName|Aufgabe]. Aufgabe: ' + task.task + '. Verfuegbare Agents: ' + agentList
+        });
+        log('Dieter decision for task ' + task.id + ': ' + (decisionResult.response || '').substring(0, 100));
+        distributed++;
+      } catch(e) {
+        log('Dieter decision error: ' + e.message);
+      }
+    }
+  }
+
+  return { msg: distributed + ' Tasks verteilt', distributed: distributed };
+}
+
+async function autoDistributeFromList(db) {
+  // Load the master feature list from Dieter's memory
+  var masterList = await db.query(
+    "SELECT content FROM agent_memory WHERE agent_id = 1 AND key = 'task_list'"
+  );
+  if (!masterList.rows.length) return;
+
+  // Check if there are already tasks in progress
+  // No limit — distribute ALL tasks
+
+  // Ask Dieter to pick next tasks from the list
+  var result = await callAPI('POST', '/api/organisator/agents/1/chat', {
+    message: 'Du bist der CEO. Schau dir die offene Task-Liste an und verteile ALLE offenen Tasks an deine 12 Agents. Jeder Agent bekommt 2-3 Tasks. Verteile nach Expertise: Fritz=Canvas/Frontend, Greta=Architektur, Heinrich=Backend, Klaus=Security, Sandra=QA, Petra=Datenbank, Guenter=DevOps, Brigitte=Marketing, Hanno=Business, Werner=Kommunikation, Rolf=Mobile, Marlene=Video/Medien. Benutze [TOOL:CHAT_AGENT:Name|Aufgabe] fuer jeden. Keine Rueckfragen, einfach machen.'
+  });
+  log('Auto-distribute: ' + (result.response || '').substring(0, 200));
+}
+
 // ========== MAIN LOOP ==========
 
 async function runCheck() {
@@ -209,6 +280,15 @@ async function runCheck() {
     if (!disk.ok) problems.push('⚠️ ' + disk.msg);
     if (!pm2.ok) problems.push('⚠️ PM2: ' + pm2.msg);
     if (!ram.ok) problems.push('⚠️ ' + ram.msg);
+
+    // Distribute tasks
+    try {
+      var taskResult = await distributeTasks(db);
+      report.push(taskResult.msg);
+      // Auto-distribute from master list every 15 minutes
+      var mins = new Date().getMinutes();
+      await autoDistributeFromList(db);
+    } catch(e) { log('Task distribution error: ' + e.message); }
 
     // Save heartbeat
     var status = problems.length > 0 ? 'warning' : 'healthy';

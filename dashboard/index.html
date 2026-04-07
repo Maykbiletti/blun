@@ -1,550 +1,1659 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" type="image/png" href="/favicon.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="google-site-verification" content="rLDlUP_U15jNWjucswiqKuhWk-hj0-NdAbYKlz7ivO4" />
+<meta http-equiv="Cache-Control" content="no-cache,no-store,must-revalidate">
 <title>BLUN Dashboard</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:"Inter",sans-serif;background:#0a0a0a;color:#e5e5e5;display:flex;min-height:100vh}
-a{color:#3b82f6;text-decoration:none}
+:root{--b:#3b82f6;--bd:#2563eb;--bg:#0a0a0a;--bg2:#111;--bg3:#1a1a1a;--bg4:#222;--tx:#e5e5e5;--tx2:#888;--brd:#2a2a2a;--green:#22c55e;--red:#ef4444;--amber:#f59e0b;--purple:#a855f7}
+html,body{height:100%;background:var(--bg);color:var(--tx);font-family:'Inter',system-ui,sans-serif;overflow:hidden}
+a{color:var(--b);text-decoration:none}
 button{font-family:inherit;cursor:pointer;border:none;outline:none}
-input,textarea,select{font-family:inherit;background:#1a1a1a;border:1px solid #2a2a2a;color:#e5e5e5;padding:10px 14px;border-radius:8px;width:100%;font-size:14px}
-input:focus,textarea:focus,select:focus{border-color:#3b82f6;outline:none}
+input,textarea,select{font-family:inherit;background:var(--bg3);border:1px solid var(--brd);color:var(--tx);padding:10px 14px;border-radius:8px;width:100%;font-size:16px;outline:none}
+input:focus,textarea:focus,select:focus{border-color:var(--b)}
+textarea{resize:vertical;min-height:80px}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#333;border-radius:3px}
 
-.sidebar{width:260px;background:#1a1a1a;border-right:1px solid #2a2a2a;display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;transition:transform .2s}
-.sidebar-header{padding:20px;border-bottom:1px solid #2a2a2a}
-.sidebar-logo{font-size:20px;font-weight:700;color:#3b82f6}
-.sidebar-user{margin-top:12px;font-size:13px;color:#a3a3a3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sidebar-nav{flex:1;padding:12px 0}
-.nav-item{display:flex;align-items:center;gap:10px;padding:10px 20px;color:#a3a3a3;font-size:14px;font-weight:500;cursor:pointer;transition:all .15s}
-.nav-item:hover{color:#e5e5e5;background:#2a2a2a}
-.nav-item.active{color:#3b82f6;background:rgba(59,130,246,.1);border-right:3px solid #3b82f6}
-.nav-item svg{width:20px;height:20px;flex-shrink:0}
-.sidebar-footer{padding:16px 20px;border-top:1px solid #2a2a2a}
-.logout-btn{width:100%;padding:10px;background:transparent;color:#ef4444;border:1px solid #ef4444;border-radius:8px;font-size:14px;font-weight:500;transition:all .15s}
-.logout-btn:hover{background:#ef4444;color:#fff}
+/* LAYOUT */
+.shell{display:flex;height:100vh}
+.sidebar{width:240px;background:var(--bg2);border-right:1px solid var(--brd);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}
+.sidebar-head{padding:20px;border-bottom:1px solid var(--brd)}
+.sidebar-logo{font-size:22px;font-weight:800;letter-spacing:1px}
+.sidebar-logo span{color:var(--b)}
+.sidebar-user{margin-top:8px;font-size:12px;color:var(--tx2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sidebar-nav{flex:1;padding:8px 0;overflow-y:auto}
+.nav-section{padding:16px 16px 4px;font-size:10px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:1.5px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 16px;color:var(--tx2);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;border-left:3px solid transparent}
+.nav-item:hover{color:var(--tx);background:rgba(255,255,255,.03)}
+.nav-item.active{color:var(--b);background:rgba(59,130,246,.08);border-left-color:var(--b)}
+.nav-item svg{width:18px;height:18px;flex-shrink:0}
+.nav-item .badge-count{margin-left:auto;background:var(--b);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;min-width:18px;text-align:center}
+.sidebar-foot{padding:12px 16px;border-top:1px solid var(--brd)}
+.logout-btn{width:100%;padding:8px;background:transparent;color:var(--red);border:1px solid rgba(239,68,68,.3);border-radius:8px;font-size:13px;font-weight:500;transition:all .15s}
+.logout-btn:hover{background:var(--red);color:#fff}
 
-.main{flex:1;margin-left:260px;min-height:100vh}
-.topbar{height:60px;background:#1a1a1a;border-bottom:1px solid #2a2a2a;display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:50}
-.topbar-left{display:flex;align-items:center;gap:12px}
-.hamburger{display:none;background:none;color:#e5e5e5;font-size:24px;padding:4px}
-.page-title{font-size:18px;font-weight:600}
-.ws-dot{width:10px;height:10px;border-radius:50%;background:#ef4444;transition:background .3s}
-.ws-dot.connected{background:#22c55e}
-.content{padding:24px}
+.main{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden}
+.topbar{height:52px;background:var(--bg2);border-bottom:1px solid var(--brd);display:flex;align-items:center;padding:0 20px;flex-shrink:0;gap:12px}
+.topbar-title{font-size:16px;font-weight:700}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.topbar-search{background:var(--bg3);border:1px solid var(--brd);border-radius:8px;padding:6px 12px;color:var(--tx);font-size:13px;width:240px}
+.ws-dot{width:8px;height:8px;border-radius:50%;background:var(--red);transition:background .3s}
+.ws-dot.on{background:var(--green)}
 
-.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
-.stat-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:20px}
-.stat-label{font-size:13px;color:#a3a3a3;margin-bottom:4px}
-.stat-value{font-size:28px;font-weight:700}
-.stat-value.blue{color:#3b82f6}
+.page{display:none;flex:1;overflow:hidden}
+.page.active{display:flex;flex-direction:column}
 
-.card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:20px;margin-bottom:16px}
-.card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
-.card-title{font-size:16px;font-weight:600}
-.btn{padding:8px 16px;border-radius:8px;font-size:14px;font-weight:500;transition:all .15s}
-.btn-primary{background:#3b82f6;color:#fff}
-.btn-primary:hover{background:#2563eb}
-.btn-sm{padding:6px 12px;font-size:13px}
-.btn-danger{background:#ef4444;color:#fff}
-.btn-danger:hover{background:#dc2626}
-.btn-outline{background:transparent;color:#3b82f6;border:1px solid #3b82f6}
-.btn-outline:hover{background:#3b82f6;color:#fff}
+/* CARDS & COMPONENTS */
+.card{background:var(--bg3);border:1px solid var(--brd);border-radius:10px;padding:16px}
+.card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.card-title{font-size:14px;font-weight:700}
+.btn{padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;transition:all .15s}
+.btn-primary{background:var(--b);color:#fff}.btn-primary:hover{background:var(--bd)}
+.btn-sm{padding:4px 10px;font-size:12px}
+.btn-outline{background:transparent;color:var(--b);border:1px solid rgba(59,130,246,.4)}.btn-outline:hover{background:rgba(59,130,246,.1)}
+.btn-danger{background:transparent;color:var(--red);border:1px solid rgba(239,68,68,.3)}.btn-danger:hover{background:var(--red);color:#fff}
+.btn-icon{background:transparent;color:var(--tx2);padding:4px;border-radius:6px}.btn-icon:hover{color:var(--tx);background:var(--bg4)}
+.badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600}
+.badge-green{background:rgba(34,197,94,.12);color:var(--green)}
+.badge-amber{background:rgba(245,158,11,.12);color:var(--amber)}
+.badge-blue{background:rgba(59,130,246,.12);color:var(--b)}
+.badge-red{background:rgba(239,68,68,.12);color:var(--red)}
+.badge-purple{background:rgba(168,85,247,.12);color:var(--purple)}
+.status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+.status-dot.on{background:var(--green)}.status-dot.off{background:#555}
+.tag{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600;background:var(--bg4);color:var(--tx2);margin:1px}
+.empty{text-align:center;padding:60px 20px;color:var(--tx2)}
+.empty-icon{font-size:40px;margin-bottom:8px}
+.spinner{width:20px;height:20px;border:2px solid var(--brd);border-top-color:var(--b);border-radius:50%;animation:spin .6s linear infinite;margin:20px auto}
+@keyframes spin{to{transform:rotate(360deg)}}
 
-.list-item{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #2a2a2a}
-.list-item:last-child{border-bottom:none}
-.list-item-title{font-weight:500}
-.list-item-sub{font-size:13px;color:#a3a3a3;margin-top:2px}
+/* GRID LAYOUTS */
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px}
+.stat-card{background:var(--bg3);border:1px solid var(--brd);border-radius:10px;padding:14px 16px}
+.stat-label{font-size:11px;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px}
+.stat-val{font-size:24px;font-weight:800;margin-top:2px}
 
-.status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
-.status-dot.online{background:#22c55e}
-.status-dot.offline{background:#a3a3a3}
-.status-dot.error{background:#ef4444}
+/* OPERATOR BANNER */
+.operator-banner{background:linear-gradient(135deg,rgba(59,130,246,.12),rgba(59,130,246,.04));border:1px solid rgba(59,130,246,.3);border-radius:12px;padding:16px;margin-bottom:16px;display:flex;align-items:center;gap:16px;cursor:pointer;transition:border-color .2s}
+.operator-banner:hover{border-color:var(--b)}
+.operator-av{width:52px;height:52px;border-radius:14px;background:var(--b);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#fff;flex-shrink:0}
+.operator-info{flex:1;min-width:0}
+.operator-name{font-size:16px;font-weight:700}
+.operator-role{font-size:12px;color:var(--b);font-weight:600}
+.operator-status{font-size:11px;color:var(--tx2);margin-top:2px}
 
-.welcome{text-align:center;padding:80px 20px}
-.welcome h2{font-size:28px;font-weight:700;margin-bottom:12px}
-.welcome p{color:#a3a3a3;font-size:16px;margin-bottom:32px;max-width:500px;margin-left:auto;margin-right:auto}
-.welcome .btn{font-size:16px;padding:14px 32px}
+/* DEPARTMENT SECTIONS */
+.dept-section{margin-bottom:16px}
+.dept-head{display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer;user-select:none}
+.dept-head h3{font-size:12px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:1px}
+.dept-count{font-size:10px;color:var(--tx2);background:var(--bg4);padding:0 6px;border-radius:10px}
+.dept-agents{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px}
 
-.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:center;justify-content:center}
-.modal-overlay.show{display:flex}
-.modal{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:24px;width:90%;max-width:480px}
-.modal h3{font-size:18px;font-weight:600;margin-bottom:16px}
-.modal label{display:block;font-size:13px;color:#a3a3a3;margin-bottom:4px;margin-top:12px}
+/* AGENT CARD */
+.agent-card{background:var(--bg3);border:1px solid var(--brd);border-radius:10px;padding:12px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:all .15s}
+.agent-card:hover{border-color:#444;background:var(--bg4)}
+.agent-card.operator{border-color:rgba(59,130,246,.4);background:rgba(59,130,246,.05)}
+.agent-av{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#fff;flex-shrink:0;position:relative}
+.agent-av .online-dot{position:absolute;bottom:-1px;right:-1px;width:10px;height:10px;border-radius:50%;background:var(--green);border:2px solid var(--bg3)}
+.agent-info{flex:1;min-width:0}
+.agent-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.agent-role{font-size:11px;color:var(--tx2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.agent-meta{display:flex;gap:4px;margin-top:3px;flex-wrap:wrap}
+.agent-actions{display:flex;gap:4px;flex-shrink:0}
+
+/* SPLIT PANE (for Chat/Agent Detail) */
+.split{display:flex;flex:1;overflow:hidden}
+.split-left{width:280px;border-right:1px solid var(--brd);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}
+.split-left-head{padding:12px;border-bottom:1px solid var(--brd);display:flex;align-items:center;gap:8px}
+.split-left-list{flex:1;overflow-y:auto;padding:8px}
+.split-right{flex:1;display:flex;flex-direction:column;overflow:hidden}
+
+/* CHAT */
+.chat-head{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--brd);flex-shrink:0}
+.chat-head select{width:auto;min-width:140px;padding:5px 8px;font-size:12px;border-radius:6px}
+.chat-msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:6px}
+.msg{max-width:70%;padding:10px 14px;border-radius:14px;font-size:13px;line-height:1.5;word-break:break-word}
+.msg-user{background:var(--b);color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
+.msg-ai{background:var(--bg4);color:var(--tx);align-self:flex-start;border-bottom-left-radius:4px}
+.msg-ai pre{background:var(--bg);padding:8px;border-radius:6px;overflow-x:auto;font-size:12px;margin:4px 0}
+.msg-ai code{font-size:12px}
+.chat-input-wrap{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--brd);flex-shrink:0;align-items:flex-end}
+.chat-input{flex:1;min-width:0;background:var(--bg4);border:1px solid var(--brd);border-radius:12px;padding:10px 14px;color:var(--tx);font-size:14px;outline:none;resize:none;max-height:120px;line-height:1.4}
+.chat-send{background:var(--b);color:#fff;border:none;border-radius:10px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.chat-send:hover{background:var(--bd)}
+.chat-send:disabled{opacity:.4;cursor:not-allowed}
+
+/* AGENT DETAIL PANEL */
+.detail-panel{padding:20px;overflow-y:auto;flex:1}
+.detail-header{flex-shrink:0;display:flex;align-items:center;gap:16px;margin-bottom:20px}
+.detail-av{width:56px;height:56px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:#fff;flex-shrink:0}
+.detail-tabs{flex-shrink:0;display:flex;gap:4px;border-bottom:1px solid var(--brd);margin-bottom:16px;padding-bottom:0}
+.detail-tab{padding:8px 14px;font-size:13px;font-weight:600;color:var(--tx2);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s}
+.detail-tab:hover{color:var(--tx)}
+.detail-tab.active{color:var(--b);border-bottom-color:var(--b)}
+.detail-section{display:none}.detail-section.active{display:block}#opSec-chats.active{display:flex}
+.detail-field{margin-bottom:12px}
+.detail-field label{display:block;font-size:11px;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+
+/* LIVELOG */
+.log-line{padding:6px 12px;font-family:'Courier New',monospace;font-size:12px;border-bottom:1px solid rgba(255,255,255,.03);display:flex;gap:8px;line-height:1.4}
+.log-time{color:var(--tx2);flex-shrink:0;width:60px}
+.log-agent{color:var(--b);font-weight:600;flex-shrink:0;width:80px;overflow:hidden;text-overflow:ellipsis}
+.log-type{flex-shrink:0;width:70px}
+.log-content{flex:1;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* MODEL CARDS */
+.model-card{background:var(--bg3);border:1px solid var(--brd);border-radius:10px;padding:14px;display:flex;align-items:center;gap:12px}
+.model-icon{width:40px;height:40px;border-radius:10px;background:var(--bg4);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.model-info{flex:1;min-width:0}
+.model-name{font-size:14px;font-weight:600}
+.model-meta{font-size:11px;color:var(--tx2)}
+
+/* MODAL */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:none;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:var(--bg3);border:1px solid var(--brd);border-radius:14px;padding:24px;width:90%;max-width:500px;max-height:80vh;overflow-y:auto}
+.modal h3{font-size:17px;font-weight:700;margin-bottom:16px}
+.modal label{display:block;font-size:12px;color:var(--tx2);margin-bottom:4px;margin-top:12px}
 .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
 
-.agent-actions{display:flex;gap:6px}
-.agent-actions .btn{padding:4px 10px;font-size:12px}
+/* SETUP WIZARD */
+.setup{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:40px;text-align:center}
+.setup h2{font-size:28px;font-weight:800;margin-bottom:8px}
+.setup p{color:var(--tx2);margin-bottom:24px;max-width:400px}
+.setup-form{width:100%;max-width:380px;text-align:left}
+.setup-form label{display:block;font-size:12px;color:var(--tx2);margin-bottom:4px;margin-top:14px}
 
-.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99}
+/* LOGIN */
+.login-wrap{display:flex;align-items:center;justify-content:center;height:100vh;padding:20px}
+.login-box{width:100%;max-width:380px;text-align:center}
+.login-logo{font-size:48px;font-weight:800;letter-spacing:2px;margin-bottom:4px}
+.login-logo span{color:var(--b)}
+.login-sub{color:var(--tx2);font-size:14px;margin-bottom:32px}
+.login-box input{margin-bottom:10px}
+.login-err{color:var(--red);font-size:13px;min-height:20px;margin-bottom:8px}
+.login-btn{width:100%;padding:12px;background:var(--b);color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer}
+.login-btn:hover{background:var(--bd)}
+.login-link{margin-top:12px;font-size:13px;color:var(--tx2)}
+.login-link a{color:var(--b);cursor:pointer}
+
+/* RESPONSIVE */
 @media(max-width:768px){
-  .sidebar{transform:translateX(-100%)}
+  .sidebar{position:fixed;z-index:100;transform:translateX(-100%);transition:transform .2s}
   .sidebar.open{transform:translateX(0)}
-  .sidebar-overlay.show{display:block}
-  .main{margin-left:0}
-  .hamburger{display:block}
-  .stats-grid{grid-template-columns:1fr 1fr}
+  .split-left{width:100%}
+  .split-right{display:none}
+  .split-right.active{display:flex;position:absolute;inset:0;z-index:10;background:var(--bg)}
+  .dept-agents{grid-template-columns:1fr}
+  .topbar-search{display:none}
 }
-@media(max-width:480px){
-  .stats-grid{grid-template-columns:1fr}
-}
+#loginView{display:none}
 
-.page{display:none}
-.page.active{display:block}
+#wsPanel{display:none;flex-direction:column;height:calc(100vh - 72px);overflow:hidden}
+#wsPanel.open{display:flex}
+.ws-head{display:flex;align-items:center;gap:12px;padding:10px 0 8px;border-bottom:1px solid var(--brd);flex-shrink:0}
+.ws-body{display:flex;flex:1;min-height:0}
+.ws-sidebar{width:360px;flex-shrink:0;display:flex;flex-direction:column;border-right:1px solid var(--brd);overflow:hidden}
+.ws-sidebar .detail-tabs{flex-shrink:0;padding:0 12px}
+.ws-sidebar .detail-section{flex:1;overflow-y:auto;padding:12px;display:none;flex-direction:column}
+.ws-sidebar .detail-section.active{display:flex}
+.ws-cp{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.ws-cp-head{padding:8px 12px;border-bottom:1px solid var(--brd);flex-shrink:0;font-size:13px;color:var(--tx2)}
 
-.msg{padding:10px 0;border-bottom:1px solid #2a2a2a}
-.msg-sender{font-size:12px;font-weight:600;color:#3b82f6;margin-bottom:2px}
-.msg-body{font-size:14px;white-space:pre-wrap}
-.msg-time{font-size:11px;color:#a3a3a3;margin-top:2px}
-
-.settings-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #2a2a2a}
-.settings-label{font-weight:500}
-.settings-value{color:#a3a3a3;font-size:14px}
+#confirmModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center}
+#confirmModal.open{display:flex}
+.confirm-box{background:var(--bg2);border:1px solid var(--brd);border-radius:12px;padding:24px;max-width:360px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.4)}
+.confirm-box h4{margin:0 0 8px;font-size:16px}
+.confirm-box p{margin:0 0 20px;color:var(--tx2);font-size:14px}
+.confirm-box .confirm-btns{display:flex;gap:8px;justify-content:flex-end}
 </style>
 </head>
 <body>
+<!-- LOGIN -->
+<div id="loginView" class="login-wrap">
+<div class="login-box">
+<div class="login-logo">BL<span>UN</span></div>
+<div class="login-sub">Dashboard</div>
+<input id="loginEmail" type="email" placeholder="Email" autocomplete="email">
+<input id="loginPw" type="password" placeholder="Passwort" autocomplete="current-password">
+<div id="loginErr" class="login-err"></div>
+<button class="login-btn" onclick="doLogin()">Anmelden</button>
+</div>
+</div>
 
-<div class="sidebar-overlay" id="sidebarOverlay"></div>
-<aside class="sidebar" id="sidebar">
-  <div class="sidebar-header">
-    <div class="sidebar-logo"><span style="color:#fff">BL</span><span style="color:#3b82f6">UN</span></div>
-    <div class="sidebar-user" id="userInfo">Loading...</div>
-  </div>
-  <nav class="sidebar-nav">
-    <div class="nav-item active" data-page="overview">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-      Overview
-    </div>
-    <div class="nav-item" data-page="companies">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 7v14M21 7v14M6 21V10M10 21V10M14 21V10M18 21V10M3 7l9-4 9 4"/></svg>
-      Companies
-    </div>
-    <div class="nav-item" data-page="agents">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M6 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/></svg>
-      Agents
-    </div>
-    <div class="nav-item" data-page="conversations">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-      Conversations
-    </div>
-<a class="nav-item" href="/dashboard/teams" style="text-decoration:none">      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>      Teams    </a>
-<a class="nav-item" href="/dashboard/blun-code" style="text-decoration:none">      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 9l3 3-3 3"/><path d="M13 15h3"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg>      BLUN Code    </a>
-<a class="nav-item" href="/voice" style="text-decoration:none">      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>      Voice Chat    </a>
-<a class="nav-item" href="/dashboard/models" style="text-decoration:none">      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>      AI Models    </a>
-<a class="nav-item" href="/dashboard/connections" style="text-decoration:none">      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>      AI Connections    </a>
-<a class="nav-item" href="/monitor" style="text-decoration:none">      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>      Monitor    </a>
-<a class="nav-item" href="/admin-plans" style="text-decoration:none">      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>      Plaene    </a>
-    <a class="nav-item" href="/profile" style="text-decoration:none">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      Profile
-    </a>
-    <div class="nav-item" data-page="settings">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-      Settings
-    </div>
-  </nav>
-  <div class="sidebar-footer">
-    <button class="logout-btn" id="logoutBtn">Log out</button>
-  </div>
-</aside>
+<!-- MAIN SHELL -->
+<div id="appShell" class="shell" style="display:none">
 
+<!-- SIDEBAR -->
+<nav class="sidebar" id="sidebar">
+<div class="sidebar-head">
+<div class="sidebar-logo">BL<span>UN</span></div>
+<div class="sidebar-user" id="sidebarUser">-</div>
+</div>
+<div class="sidebar-nav">
+<div class="nav-section">Steuerung</div>
+<div class="nav-item active" data-page="agents" onclick="showPage('agents')">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M6 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/></svg>
+Agents <span class="badge-count" id="agentCount">0</span>
+</div>
+<div class="nav-item" data-page="operator" onclick="showPage('operator')">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/></svg>
+Operator
+</div>
+<div class="nav-item" data-page="chat" onclick="showPage('chat')">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+Chat
+</div>
+<div class="nav-item" data-page="livelog" onclick="showPage('livelog')">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M8 10l4 4 4-4"/></svg>
+Livelog
+</div>
+<div class="nav-section">Tools</div>
+<div class="nav-item" onclick="window.location='/dashboard/blun-code'">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+BLUN Code
+</div>
+<div class="nav-item" onclick="window.location='/dashboard/connections'">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+Connections
+</div>
+<div class="nav-item" onclick="window.location='/dashboard/websites'">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+Websites
+</div>
+<div class="nav-item" onclick="window.location='/dashboard/software'">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+Software
+</div>
+<div class="nav-item" onclick="window.location='/dashboard/billing'">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><path d="M1 10h22"/></svg>
+Billing
+</div>
+<div class="nav-section">Verwaltung</div>
+<div class="nav-item" data-page="companies" onclick="showPage('companies')">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
+Firmen
+</div>
+<div class="nav-item" onclick="window.location='/dashboard/models'">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6M9 13h6M9 17h4"/></svg>
+Modelle
+</div>
+<div class="nav-item" data-page="settings" onclick="showPage('settings')">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+Einstellungen
+</div>
+</div>
+<div class="sidebar-foot">
+<div class="nav-item" onclick="window.location='/dashboard/profile'" style="padding:6px 0;border:none;margin-bottom:8px">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><circle cx="12" cy="8" r="4"/><path d="M6 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/></svg>
+Profil
+</div>
+<button class="logout-btn" onclick="doLogout()">Abmelden</button>
+</div>
+</nav>
+
+<!-- MAIN CONTENT -->
 <div class="main">
-  <div class="topbar">
-    <div class="topbar-left">
-      <button class="hamburger" id="hamburger">&#9776;</button>
-      <div class="page-title" id="pageTitle">Overview</div>
-    </div>
-    <div class="ws-dot" id="wsDot" title="WebSocket disconnected"></div>
-  </div>
-  <div class="content">
-
-    <div class="page active" id="page-overview">
-      <div id="welcomeState" style="display:none">
-        <div class="welcome">
-          <h2>Welcome to BLUN!</h2>
-          <p>Create your first company to get started. A company groups your AI agents together and keeps everything organized.</p>
-          <button class="btn btn-primary" onclick="showModal('company')">Create Company</button>
-        </div>
-      </div>
-      <div id="dashboardState">
-        <div class="stats-grid">
-          <div class="stat-card"><div class="stat-label">Companies</div><div class="stat-value blue" id="statCompanies">-</div></div>
-          <div class="stat-card"><div class="stat-label">Agents</div><div class="stat-value blue" id="statAgents">-</div></div>
-          <div class="stat-card"><div class="stat-label">Tokens (30d)</div><div class="stat-value blue" id="statMessages">-</div></div>
-          <div class="stat-card"><div class="stat-label">Cost (30d)</div><div class="stat-value blue" id="statCost">-</div></div>
-        </div>
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">Recent Tasks</div>
-            <button class="btn btn-primary btn-sm" onclick="showModal('company')">New Company</button>
-          </div>
-          <div id="recentTasks">No recent tasks.</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="page" id="page-companies">
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">Companies</div>
-          <button class="btn btn-primary btn-sm" onclick="showModal('company')">Create Company</button>
-        </div>
-        <div id="companiesList">Loading...</div>
-      </div>
-      <div id="companyDetail" style="display:none">
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title" id="companyDetailName"></div>
-            <button class="btn btn-outline btn-sm" onclick="document.getElementById('companyDetail').style.display='none'">Close</button>
-          </div>
-          <div id="companyAgentsList"></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="page" id="page-agents">
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">Agents</div>
-          <button class="btn btn-primary btn-sm" onclick="showModal('agent')">Create Agent</button>
-        </div>
-        <div id="agentsList">Loading...</div>
-      </div>
-    </div>
-
-    <div class="page" id="page-conversations">
-      <div class="card">
-        <div class="card-header"><div class="card-title">Conversations</div></div>
-        <div id="convList">Select an agent to see conversations.</div>
-      </div>
-      <div class="card" id="convMessages" style="display:none">
-        <div class="card-header"><div class="card-title" id="convTitle"></div></div>
-        <div id="msgList"></div>
-      </div>
-    </div>
-
-      </div>
-    </div>
-
-    <div class="page" id="page-settings">
-      <div class="card">
-        <div class="card-header"><div class="card-title">Profile</div></div>
-        <div id="settingsProfile">Loading...</div>
-      </div>
-    </div>
-
-  </div>
+<div class="topbar">
+<button class="btn-icon" id="menuBtn" onclick="document.getElementById('sidebar').classList.toggle('open')" style="display:none">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+</button>
+<div class="topbar-title" id="topbarTitle">Agents</div>
+<div class="topbar-right">
+<input class="topbar-search" id="searchInput" placeholder="Suchen..." oninput="onSearch(this.value)">
+<div class="ws-dot" id="wsDot" title="Server-Verbindung"></div>
+</div>
 </div>
 
-<div class="modal-overlay" id="modalCompany">
-  <div class="modal">
-    <h3>Create Company</h3>
-    <label>Name</label>
-    <input id="companyName" placeholder="My Company">
-    <label>Description</label>
-    <textarea id="companyDesc" rows="3" placeholder="What does this company do?"></textarea>
-    <div class="modal-actions">
-      <button class="btn btn-outline" onclick="hideModals()">Cancel</button>
-      <button class="btn btn-primary" onclick="createCompany()">Create</button>
+<!-- PAGE: AGENTS -->
+<div class="page active" id="page-agents" style="overflow-y:auto;padding:16px">
+<div class="stats-row" id="statsRow"></div>
+<div id="operatorBanner"></div>
+<div id="deptList"></div>
+<div id="wsPanel">
+  <div class="ws-head">
+    <button class="btn btn-sm btn-outline" onclick="closeWorkspace()">&#8592; Zurueck</button>
+    <div class="agent-av" id="wsAv" style="width:36px;height:36px;font-size:14px;flex-shrink:0"></div>
+    <div style="min-width:0">
+      <div id="wsName" style="font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+      <div id="wsRole" style="font-size:12px;color:var(--tx2)"></div>
+    </div>
+    <div style="margin-left:auto"></div>
+  </div>
+  <div class="ws-body">
+    <div class="ws-sidebar">
+      <div class="detail-tabs">
+        <div class="detail-tab active" onclick="showWsTab('info')">Info</div>
+        <div class="detail-tab" onclick="showWsTab('tasks')">Tasks</div>
+        <div class="detail-tab" onclick="showWsTab('issues')">Issues</div>
+        <div class="detail-tab" onclick="showWsTab('skills')">Skills</div>
+      </div>
+      <div class="detail-section active" id="wsSec-info">
+        <div class="detail-field"><label>Name</label><input id="wsFieldName"></div>
+        <div class="detail-field"><label>Rolle</label><input id="wsFieldRole"></div>
+        <div class="detail-field"><label>Abteilung</label><select id="wsFieldDept"></select></div>
+        <div class="detail-field"><label>Modell</label><select id="wsFieldModel"></select></div>
+        <div class="modal-actions" style="justify-content:flex-start;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-sm btn-outline" onclick="openIdentityEdit('IDENTITY')">&#128196; Identität bearbeiten</button>
+          <button class="btn btn-sm btn-outline" onclick="openIdentityEdit('SYSTEM_PROMPT')">&#129504; System-Prompt</button>
+          <button class="btn btn-sm btn-outline" onclick="openIdentityEdit('SOUL')">&#10024; Soul / Werte</button>
+        </div>
+        <div class="modal-actions" style="margin-top:8px">
+          <button class="btn btn-danger btn-sm" onclick="deleteAgentWs()">Loeschen</button>
+          <button class="btn btn-primary btn-sm" onclick="saveAgentWs()">Speichern</button>
+        </div>
+      </div>
+      <div class="detail-section" id="wsSec-tasks">
+        <div id="wsTaskList"><div class="spinner"></div></div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <input id="wsNewTask" placeholder="Neuen Task...">
+          <button class="btn btn-sm btn-primary" onclick="assignTaskWs()">+</button>
+        </div>
+      </div>
+      <div class="detail-section" id="wsSec-issues">
+        <div id="wsIssueList"></div>
+        <div style="margin-top:8px">
+          <input id="wsIssueTitle" placeholder="Issue-Titel...">
+          <button class="btn btn-sm btn-primary" style="margin-top:6px;width:100%" onclick="createIssueWs()">+ Issue</button>
+        </div>
+      </div>
+      <div class="detail-section" id="wsSec-skills">
+        <button class="btn btn-sm btn-outline" style="margin-bottom:8px;width:100%" onclick="openSkillMarketplace()">&#127757; Skill Marketplace</button>
+        <div id="wsSkillList"><div class="spinner"></div></div>
+      </div>
+    </div>
+    <div class="ws-cp">
+      <div class="ws-cp-head">Chat</div>
+      <div class="chat-msgs" id="wsChatMsgs" style="flex:1;overflow-y:auto;padding:12px"></div>
+      <div class="chat-input-wrap" style="flex-shrink:0">
+        <textarea class="chat-input" id="wsChatInput" rows="1" placeholder="Nachricht..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendWsChat()}"></textarea>
+        <button class="btn btn-primary" id="wsChatSendBtn" onclick="sendWsChat()">Senden</button>
+      </div>
     </div>
   </div>
 </div>
 
-<div class="modal-overlay" id="modalAgent">
-  <div class="modal">
-    <h3>Create Agent</h3>
-    <label>Company</label>
-    <select id="agentCompany"></select>
-    <label>Name</label>
-    <input id="agentName" placeholder="Agent name">
-    <label>Role</label>
-    <input id="agentRole" placeholder="e.g. assistant, developer">
-    <label>Model</label>
-    <input id="agentModel" placeholder="e.g. gpt-4o-mini" value="gpt-4o-mini">
-    <div class="modal-actions">
-      <button class="btn btn-outline" onclick="hideModals()">Cancel</button>
-      <button class="btn btn-primary" onclick="createAgent()">Create</button>
-    </div>
-  </div>
 </div>
 
+<!-- PAGE: OPERATOR -->
+<div class="page" id="page-operator" style="padding:16px">
+<div id="operatorDetail" style="flex:1;display:flex;flex-direction:column;overflow:hidden"></div>
+</div>
+
+<!-- PAGE: CHAT -->
+<div class="page" id="page-chat">
+<div class="split">
+<div class="split-left">
+<div class="split-left-head">
+<input placeholder="Agent suchen..." style="padding:6px 10px;font-size:12px" oninput="filterChatAgents(this.value)">
+</div>
+<div class="split-left-list" id="chatAgentList"></div>
+</div>
+<div class="split-right" id="chatRight">
+<div class="empty"><div class="empty-icon">💬</div>Agent auswaehlen um zu chatten</div>
+</div>
+</div>
+</div>
+
+<!-- PAGE: LIVELOG -->
+<div class="page" id="page-livelog" style="display:none;flex-direction:column">
+<div style="padding:12px 16px;border-bottom:1px solid var(--brd);display:flex;align-items:center;gap:8px;flex-shrink:0">
+<span class="badge badge-green" id="logStatus">LIVE</span>
+<span style="font-size:12px;color:var(--tx2)" id="logCount">0 Eintraege</span>
+<button class="btn btn-sm btn-outline" style="margin-left:auto" onclick="clearLog()">Loeschen</button>
+<button class="btn btn-sm btn-outline" onclick="loadLivelog()">Aktualisieren</button>
+</div>
+<div id="logContainer" style="flex:1;overflow-y:auto;font-family:'Courier New',monospace"></div>
+</div>
+
+<!-- PAGE: COMPANIES -->
+<div class="page" id="page-companies" style="overflow-y:auto;padding:16px">
+<div class="card-head"><div class="card-title">Firmen</div><button class="btn btn-sm btn-primary" onclick="openModal('companyModal')">+ Neue Firma</button></div>
+<div id="companyList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px"></div>
+</div>
+
+<!-- PAGE: MODELS -->
+<div class="page" id="page-models" style="overflow-y:auto;padding:16px">
+<div class="stats-row" id="modelStats"></div>
+<div class="card-head"><div class="card-title">KI-Modelle</div><button class="btn btn-sm btn-outline" onclick="loadModels()">Aktualisieren</button></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px;margin-top:8px" id="modelList"></div>
+</div>
+
+<!-- PAGE: SETTINGS -->
+<div class="page" id="page-settings" style="overflow-y:auto;padding:16px">
+<div class="card" style="max-width:600px">
+<div class="card-title" style="margin-bottom:16px">Abteilungen verwalten</div>
+<div id="deptMgmt"></div>
+<div style="display:flex;gap:8px;margin-top:12px">
+<input id="newDeptInput" placeholder="Neue Abteilung...">
+<button class="btn btn-sm btn-primary" onclick="addDepartment()">Hinzufuegen</button>
+</div>
+</div>
+</div>
+
+</div><!-- /main -->
+</div><!-- /shell -->
+
+<!-- AGENT DETAIL MODAL (full screen overlay) -->
+<div class="modal-bg" id="agentDetailModal">
+<div class="modal" style="max-width:700px;max-height:90vh">
+<div style="display:flex;justify-content:space-between;align-items:start">
+<h3 id="adName">Agent</h3>
+<button class="btn-icon" onclick="closeModal('agentDetailModal')">✕</button>
+</div>
+<div class="detail-tabs" id="adTabs">
+<div class="detail-tab active" onclick="showDetailTab('info')">Info</div>
+<div class="detail-tab" onclick="showDetailTab('memory')">Erinnerungen</div>
+<div class="detail-tab" onclick="showDetailTab('tasks')">Tasks</div>
+<div class="detail-tab" onclick="showDetailTab('issues')">Issues</div>
+<div class="detail-tab" onclick="showDetailTab('skills')">Skills</div>
+</div>
+<div class="detail-section active" id="adSec-info">
+<div class="detail-field"><label>Name</label><input id="adFieldName"></div>
+<div class="detail-field"><label>Rolle</label><input id="adFieldRole"></div>
+<div class="detail-field"><label>Abteilung</label><select id="adFieldDept"></select></div>
+<div class="detail-field"><label>Modell</label><select id="adFieldModel"></select></div>
+<div class="detail-field"><label>System Prompt</label><textarea id="adFieldPrompt" rows="4"></textarea></div>
+<div class="detail-field"><label>Persoenlichkeit</label><textarea id="adFieldPersonality" rows="3"></textarea></div>
+<div class="modal-actions">
+<button class="btn btn-danger btn-sm" onclick="deleteAgent()">Loeschen</button>
+<button class="btn btn-primary btn-sm" onclick="saveAgentDetail()">Speichern</button>
+</div>
+</div>
+<div class="detail-section" id="adSec-memory"><div id="adMemoryList"><div class="spinner"></div></div></div>
+<div class="detail-section" id="adSec-tasks"><div id="adTaskList"><div class="spinner"></div></div>
+<div style="display:flex;gap:8px;margin-top:12px"><input id="newTaskInput" placeholder="Neuen Task zuweisen..."><button class="btn btn-sm btn-primary" onclick="assignTask()">Zuweisen</button></div>
+</div>
+<div class="detail-section" id="adSec-issues"><div id="adIssueList"><div class="spinner"></div></div>
+<div style="margin-top:12px"><input id="newIssueTitle" placeholder="Issue-Titel..." style="margin-bottom:6px"><textarea id="newIssueDesc" placeholder="Beschreibung..." rows="2"></textarea><button class="btn btn-sm btn-primary" style="margin-top:6px" onclick="createIssue()">Issue erstellen</button></div>
+</div>
+<div class="detail-section" id="adSec-skills"><div id="adSkillList"><div class="spinner"></div></div></div>
+</div>
+</div>
+
+<!-- NEW AGENT MODAL -->
+<div class="modal-bg" id="agentModal">
+<div class="modal">
+<h3>Neuen Agent erstellen</h3>
+<label>Name</label><input id="newAgentName" placeholder="z.B. Brigitte">
+<label>Rolle</label><input id="newAgentRole" placeholder="z.B. Marketing Managerin">
+<label>Abteilung</label><select id="newAgentDept"></select>
+<label>Vorlage (Persönlichkeit)</label>
+<select id="newAgentTemplate" onchange="applyAgentTemplate(this.value)" style="margin-bottom:8px">
+  <option value="">— Keine Vorlage —</option>
+  <option value="marketing">Marketing Manager</option>
+  <option value="developer">Software Developer</option>
+  <option value="sales">Sales Agent</option>
+  <option value="ceo">CEO / Operator</option>
+  <option value="finance">Finance / Controlling</option>
+  <option value="designer">UX / Designer</option>
+  <option value="support">Customer Support</option>
+  <option value="seo">SEO / Content</option>
+</select>
+<label>KI-Modell</label>
+<select id="newAgentModel"></select>
+<label>Firma</label><select id="newAgentCompany"></select>
+<div class="modal-actions">
+<button class="btn btn-outline btn-sm" onclick="closeModal('agentModal')">Abbrechen</button>
+<button class="btn btn-primary btn-sm" onclick="createAgent()">Erstellen</button>
+</div>
+</div>
+</div>
+
+<!-- NEW COMPANY MODAL -->
+<div class="modal-bg" id="companyModal">
+<div class="modal">
+<h3>Neue Firma gruenden</h3>
+<label>Name</label><input id="newCompanyName" placeholder="z.B. BLUN GmbH">
+<label>Beschreibung</label><textarea id="newCompanyDesc" placeholder="Was macht diese Firma?"></textarea>
+<div class="modal-actions">
+<button class="btn btn-outline btn-sm" onclick="closeModal('companyModal')">Abbrechen</button>
+<button class="btn btn-primary btn-sm" onclick="createCompany()">Gruenden</button>
+</div>
+</div>
+</div>
 <script>
-var currentPage = "overview";
-var dashData = null;
-var ws = null;
+// ===== STATE =====
+var TOKEN = localStorage.getItem('blun_token') || '';
+if(!TOKEN){ fetch('/auth/me',{credentials:'include'}).then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(d){if(d.user&&d.token){TOKEN=d.token;localStorage.setItem('blun_token',TOKEN);showApp();loadAll();}}).catch(function(){}); }
+var USER = null;
+var agents = [], companies = [], allModels = [], activeProviders = [];
+var currentAgent = null; // for detail modal
+var chatAgent = null; // for chat pane
+var logInterval = null;
+var DEPARTMENTS = JSON.parse(localStorage.getItem('blun_depts') || '["Management","Marketing & SEO","Video & Medien","Design & Frontend","Backend & Coding","Infrastruktur & DevOps","KI & Modelle","QA & Testing","Business & Sales","Mobile & Desktop","Agent System","Sonstige"]');
+var COLORS = ['#3b82f6','#22c55e','#ef4444','#f59e0b','#a855f7','#ec4899','#14b8a6','#f97316','#6366f1','#84cc16','#06b6d4','#e11d48'];
+function modelLogo(name) {
+  if(!name) return '<div style="width:28px;height:28px;border-radius:8px;background:#555;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff">AI</div>';
+  var n=name.toLowerCase();
+  if(n.indexOf('gemma')>=0||n.indexOf('gemini')>=0||n.indexOf('google')>=0) return '<div style="width:28px;height:28px;border-radius:8px;background:#4285F4;display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#fff"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#fff" opacity=".7"/></svg></div>';
+  if(n.indexOf('llama')>=0||n.indexOf('meta')>=0||n.indexOf('codellama')>=0||n.indexOf('tinyllama')>=0) return '<div style="width:28px;height:28px;border-radius:8px;background:#0668E1;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:800">∞</div>';
+  if(n.indexOf('claude')>=0||n.indexOf('anthropic')>=0) return '<div style="width:28px;height:28px;border-radius:8px;background:#D97706;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:800">A</div>';
+  if(n.indexOf('gpt')>=0||n.indexOf('openai')>=0) return '<div style="width:28px;height:28px;border-radius:8px;background:#10A37F;display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M22.2 14.6c.4-1.4.2-3-.6-4.2a5.5 5.5 0 00-5.3-2.5A5.5 5.5 0 0012.2 6a5.5 5.5 0 00-5.2 3.3 5.5 5.5 0 00-3.7 2.7 5.5 5.5 0 00.7 6.4 5.5 5.5 0 005.3 2.5c1.4 1.4 3.4 2 5.3 1.5a5.5 5.5 0 004.2-2.5 5.5 5.5 0 003.4-5.3z"/></svg></div>';
+  if(n.indexOf('phi')>=0||n.indexOf('microsoft')>=0) return '<div style="width:28px;height:28px;border-radius:8px;background:#00A4EF;display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24"><rect x="1" y="1" width="10" height="10" fill="#F25022"/><rect x="13" y="1" width="10" height="10" fill="#7FBA00"/><rect x="1" y="13" width="10" height="10" fill="#00A4EF"/><rect x="13" y="13" width="10" height="10" fill="#FFB900"/></svg></div>';
+  if(n.indexOf('mistral')>=0) return '<div style="width:28px;height:28px;border-radius:8px;background:#FF7000;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:800">M</div>';
+  if(n.indexOf('deepseek')>=0) return '<div style="width:28px;height:28px;border-radius:8px;background:#4F6BED;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:800">DS</div>';
+  if(n.indexOf('qwen')>=0) return '<div style="width:28px;height:28px;border-radius:8px;background:#6C3AED;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:800">Q</div>';
+  if(n.indexOf('yi')>=0) return '<div style="width:28px;height:28px;border-radius:8px;background:#FF9800;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:800">Yi</div>';
+  if(n.indexOf('starcoder')>=0) return '<div style="width:28px;height:28px;border-radius:8px;background:#FFC107;display:flex;align-items:center;justify-content:center;font-size:16px">⭐</div>';
+  if(n.indexOf('falcon')>=0) return '<div style="width:28px;height:28px;border-radius:8px;background:#1E3A5F;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:800">F</div>';
+  if(n.indexOf('command')>=0||n.indexOf('cohere')>=0) return '<div style="width:28px;height:28px;border-radius:8px;background:#39594D;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:800">C</div>';
+  return '<div style="width:28px;height:28px;border-radius:8px;background:#555;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff">AI</div>';
+}
+function modelLogoText(name) {
+  // For <option> tags where HTML doesn't work, return emoji fallback
+  if(!name) return '🤖';
+  var n=name.toLowerCase();
+  if(n.indexOf('llama')>=0||n.indexOf('meta')>=0) return '🦙';
+  if(n.indexOf('gemma')>=0||n.indexOf('gemini')>=0||n.indexOf('google')>=0) return '💎';
+  if(n.indexOf('qwen')>=0) return '🟣';
+  if(n.indexOf('deepseek')>=0) return '🔍';
+  if(n.indexOf('yi')>=0) return '🟡';
+  if(n.indexOf('mistral')>=0) return '🌊';
+  if(n.indexOf('phi')>=0) return '🔬';
+  if(n.indexOf('claude')>=0||n.indexOf('anthropic')>=0) return '🟠';
+  if(n.indexOf('gpt')>=0||n.indexOf('openai')>=0) return '🟢';
+  return '🤖';
+}
 
-function api(url, opts) {
+// ===== API =====
+function api(path, opts) {
   opts = opts || {};
-  opts.credentials = "include";
-  opts.headers = Object.assign({"Content-Type": "application/json"}, opts.headers || {});
-  return fetch(url, opts).then(function(r) {
-    if (r.status === 401) { window.location.href = "/login"; return Promise.reject("auth"); }
+  var headers = Object.assign({'Content-Type':'application/json'}, opts.headers || {});
+  if (TOKEN) headers['Authorization'] = 'Bearer ' + TOKEN;
+  return fetch(path, Object.assign({}, opts, {headers:headers})).then(function(r) {
+    if (r.status === 401) { localStorage.removeItem('blun_token'); window.location='/login'; throw new Error('unauthorized'); }
     return r.json();
   });
 }
 
-document.querySelectorAll(".nav-item").forEach(function(el) {
-  el.addEventListener("click", function() {
-    navigate(el.dataset.page);
-    closeSidebar();
-  });
+// ===== AUTH =====
+function doLogin() {
+  var email = document.getElementById('loginEmail').value;
+  var pw = document.getElementById('loginPw').value;
+  document.getElementById('loginErr').textContent = '';
+  api('/auth/login', {method:'POST', body:JSON.stringify({email:email,password:pw})}).then(function(d) {
+    if (d.error) { document.getElementById('loginErr').textContent = d.error; return; }
+    TOKEN = d.token; localStorage.setItem('blun_token', TOKEN);
+    USER = d.user; showApp();
+  }).catch(function(e) { document.getElementById('loginErr').textContent = 'Login fehlgeschlagen'; });
+}
+function doLogout() {
+  api('/auth/logout', {method:'POST'}).catch(function(){});
+  TOKEN = ''; localStorage.removeItem('blun_token'); window.location='/login';
+}
+function showLogin() { document.getElementById('loginView').style.display='flex'; document.getElementById('appShell').style.display='none'; }
+function showApp() {
+  document.getElementById('loginView').style.display='none'; document.getElementById('appShell').style.display='flex';
+  document.getElementById('sidebarUser').textContent = USER ? USER.name || USER.email : '';
+  if(window.innerWidth<=768) document.getElementById('menuBtn').style.display='block';
+  loadAll();
+  if(!logInterval) logInterval = setInterval(loadLivelog, 5000);
+}
+
+// ===== NAVIGATION =====
+function showPage(name) {
+  if(name !== 'agents') {
+    // Close workspace when leaving agents page
+    var ws = document.getElementById('wsPanel');
+    if(ws && ws.classList.contains('open')) closeWorkspace();
+  }
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active')});
+  document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active')});
+  var p = document.getElementById('page-'+name);
+  if(p) p.classList.add('active');
+  var n = document.querySelector('.nav-item[data-page="'+name+'"]');
+  if(n) n.classList.add('active');
+  var titles = {agents:'Agents',operator:'Operator',chat:'Chat',livelog:'Livelog',companies:'Firmen',models:'Modelle',settings:'Einstellungen'};
+  document.getElementById('topbarTitle').textContent = titles[name]||name;
+  if(name==='models') loadModels();
+  if(name==='livelog') loadLivelog();
+  if(name==='operator') renderOperatorPage();
+  if(window.innerWidth<=768) document.getElementById('sidebar').classList.remove('open');
+  history.pushState(null,'','/dashboard/'+name);
+}
+window.addEventListener('popstate', function(){
+  var p=getPageFromPath();
+  if(p&&document.getElementById('page-'+p)){
+    document.querySelectorAll('.page').forEach(function(el){el.classList.remove('active')});
+    document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active')});
+    var el=document.getElementById('page-'+p);if(el)el.classList.add('active');
+    var n=document.querySelector('.nav-item[data-page="'+p+'"]');if(n)n.classList.add('active');
+  }
 });
-
-function navigate(page) {
-  currentPage = page;
-  document.querySelectorAll(".nav-item").forEach(function(n) { n.classList.toggle("active", n.dataset.page === page); });
-  document.querySelectorAll(".page").forEach(function(p) { p.classList.toggle("active", p.id === "page-" + page); });
-  var titles = {overview: "Overview", companies: "Companies", agents: "Agents", conversations: "Conversations", settings: "Settings"};
-  document.getElementById("pageTitle").textContent = titles[page] || page;
-  if (page === "overview") loadDashboard();
-  if (page === "companies") loadCompanies();
-  if (page === "agents") loadAgents();
-  if (page === "conversations") loadConversations();
-  if (page === "settings") loadSettings();
+function getPageFromPath(){
+  var path=window.location.pathname.replace('/dashboard/','').replace('/dashboard','');
+  return path&&path!=='/'?path:'agents';
 }
 
-document.getElementById("hamburger").addEventListener("click", function() {
-  document.getElementById("sidebar").classList.add("open");
-  document.getElementById("sidebarOverlay").classList.add("show");
-});
-document.getElementById("sidebarOverlay").addEventListener("click", closeSidebar);
-function closeSidebar() {
-  document.getElementById("sidebar").classList.remove("open");
-  document.getElementById("sidebarOverlay").classList.remove("show");
+// ===== LOAD ALL =====
+function loadAll() {
+  api('/api/organisator/agents').then(function(d){agents=d;renderAgents();renderChatList();document.getElementById('agentCount').textContent=d.length;});
+  api('/api/organisator/companies').then(function(d){companies=d;renderCompanies();});
+  api('/api/organisator/stats').then(function(d){renderStats(d);}).catch(function(){});
+  api('/api/models').then(function(d){allModels=d.models||d||[];}).catch(function(){});
+  api('/api/connections').then(function(d){var c=d.connections||d||[];activeProviders=c.filter(function(x){return x.status==='active';}).map(function(x){return x.provider;});}).catch(function(){});
+}
+function modelOptions(cur) {
+  var models = [
+    {value:'claude-haiku-4-5-20251001', label:'claude-haiku-4-5-20251001 (Standard)'},
+    {value:'claude-sonnet-4-6', label:'claude-sonnet-4-6'},
+    {value:'claude-opus-4-6', label:'claude-opus-4-6'},
+    {value:'GPT-5.4', label:'GPT-5.4'},
+    {value:'GPT-5.4-Mini', label:'GPT-5.4-Mini'},
+    {value:'GPT-5.3-Codex', label:'GPT-5.3-Codex'},
+    {value:'o4-mini', label:'o4-mini'},
+    {value:'gpt-4o', label:'gpt-4o'}
+  ];
+  return models.map(function(m){return '<option value="'+m.value+'"'+(m.value===cur?' selected':'')+'>'+m.label+'</option>';}).join('');
 }
 
-document.getElementById("logoutBtn").addEventListener("click", function() {
-  fetch("/auth/logout", {method: "POST", credentials: "include"}).then(function() {
-    document.cookie = "blun_session=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
-    window.location.href = "/login";
+// ===== STATS =====
+function renderStats(s) {
+  document.getElementById('statsRow').innerHTML =
+    '<div class="stat-card"><div class="stat-label">Agents</div><div class="stat-val">'+s.total_agents+'</div></div>'+
+    '<div class="stat-card"><div class="stat-label">Aktiv</div><div class="stat-val" style="color:var(--green)">'+s.active_agents+'</div></div>'+
+    '<div class="stat-card"><div class="stat-label">Tasks erledigt</div><div class="stat-val">'+s.tasks_completed+'</div></div>'+
+    '<div class="stat-card"><div class="stat-label">Firmen</div><div class="stat-val">'+s.total_companies+'</div></div>';
+}
+
+// ===== AGENTS =====
+function getOperator() { return agents.find(function(a){return a.role&&(a.role.toLowerCase().indexOf('operator')>=0||a.role.toLowerCase().indexOf('organisator')>=0||a.role.toLowerCase().indexOf('ceo')>=0);}); }
+function agentColor(a) { return COLORS[(a.id||0)%COLORS.length]; }
+function agentInitials(a) { var n=a.name||'?'; var parts=n.split(/\s+/); return parts.length>1?parts[0][0]+parts[1][0]:n.substring(0,2); }
+
+function renderAgents() {
+  var op = getOperator();
+  // Operator banner
+  var bannerEl = document.getElementById('operatorBanner');
+  if (op) {
+    var isOn = op.status==='active'||op.status==='working'||op.runtime_active;
+    bannerEl.innerHTML = '<div class="operator-banner" onclick="openAgentDetail('+op.id+')">'+
+      '<div class="operator-av">'+agentInitials(op).toUpperCase()+'</div>'+
+      '<div class="operator-info"><div class="operator-name">'+esc(op.name)+' <span class="badge badge-blue">OPERATOR</span></div>'+
+      '<div class="operator-role">'+esc(op.role||'')+'</div>'+
+      '<div class="operator-status">'+(isOn?'<span class="status-dot on"></span> Online':'<span class="status-dot off"></span> Offline')+' &middot; '+esc(op.model||'?')+'</div></div>'+
+      '<div style="display:flex;gap:4px">'+
+      '<button class="btn btn-sm btn-outline" onclick="event.stopPropagation();showPage(\'operator\')">Steuern</button>'+
+      '<button class="btn btn-sm btn-primary" onclick="event.stopPropagation();openChat('+op.id+')">Chat</button></div></div>';
+  } else {
+    bannerEl.innerHTML = '<div class="operator-banner" onclick="openModal(\'agentModal\')" style="border-style:dashed"><div class="operator-av" style="background:var(--bg4);color:var(--tx2)">+</div><div class="operator-info"><div class="operator-name" style="color:var(--tx2)">Operator einrichten</div><div class="operator-role" style="color:var(--tx2)">Erstelle deinen Superagent</div></div></div>';
+  }
+
+  // Group by department
+  var byDept = {};
+  agents.forEach(function(a) {
+    if (op && a.id === op.id) return; // skip operator
+    var dept = a.department || 'Sonstige';
+    if (!byDept[dept]) byDept[dept] = [];
+    byDept[dept].push(a);
   });
-});
 
-function loadUser() {
-  api("/auth/me").then(function(u) {
-    if (u && u.name) {
-      document.getElementById("userInfo").textContent = u.name + (u.email ? " - " + u.email : "");
-    } else if (u && u.email) {
-      document.getElementById("userInfo").textContent = u.email;
-    }
-  }).catch(function() {});
-}
-
-function loadDashboard() {
-  api("/api/dashboard").then(function(d) {
-    dashData = d;
-    if (!d.companies || d.companies.length === 0) {
-      document.getElementById("welcomeState").style.display = "block";
-      document.getElementById("dashboardState").style.display = "none";
-      return;
-    }
-    document.getElementById("welcomeState").style.display = "none";
-    document.getElementById("dashboardState").style.display = "block";
-    document.getElementById("statCompanies").textContent = d.companies.length;
-    document.getElementById("statAgents").textContent = d.agents.length;
-    var totalTokens = 0;
-    if (d.costSummary) totalTokens = parseInt(d.costSummary.total_input_tokens || 0) + parseInt(d.costSummary.total_output_tokens || 0);
-    document.getElementById("statMessages").textContent = totalTokens.toLocaleString();
-    var cost = d.costSummary ? (parseFloat(d.costSummary.total_cost_cents || 0) / 100).toFixed(2) : "0.00";
-    document.getElementById("statCost").textContent = "$" + cost;
-    var tasksHtml = "";
-    if (d.recentTasks && d.recentTasks.length > 0) {
-      d.recentTasks.slice(0, 10).forEach(function(t) {
-        tasksHtml += '<div class="list-item"><div><div class="list-item-title">' + esc(t.title) + '</div><div class="list-item-sub">' + esc(t.status || "pending") + '</div></div><div style="color:#a3a3a3;font-size:12px">' + timeAgo(t.created_at) + '</div></div>';
-      });
-    } else {
-      tasksHtml = '<div style="color:#a3a3a3;padding:12px 0">No recent tasks.</div>';
-    }
-    document.getElementById("recentTasks").innerHTML = tasksHtml;
-  }).catch(function() {});
-}
-
-function loadCompanies() {
-  api("/api/companies").then(function(list) {
-    if (!list || list.length === 0) {
-      document.getElementById("companiesList").innerHTML = '<div style="color:#a3a3a3;padding:12px 0">No companies yet.</div>';
-      return;
-    }
-    var html = "";
-    list.forEach(function(c) {
-      html += '<div class="list-item" style="cursor:pointer" onclick="showCompany(\x27' + c.id + '\x27)"><div><div class="list-item-title">' + esc(c.name) + '</div><div class="list-item-sub">Created ' + timeAgo(c.created_at) + '</div></div></div>';
-    });
-    document.getElementById("companiesList").innerHTML = html;
-  });
-}
-
-function showCompany(id) {
-  api("/api/company/" + id).then(function(c) {
-    document.getElementById("companyDetailName").textContent = c.name;
-    var html = "";
-    if (c.agents && c.agents.length > 0) {
-      c.agents.forEach(function(a) {
-        var st = a.status || "offline";
-        html += '<div class="list-item"><div><span class="status-dot ' + st + '"></span><span class="list-item-title">' + esc(a.name) + '</span><div class="list-item-sub">' + esc(a.role || "agent") + ' / ' + esc(a.model || "default") + '</div></div></div>';
-      });
-    } else {
-      html = '<div style="color:#a3a3a3;padding:12px 0">No agents in this company.</div>';
-    }
-    document.getElementById("companyAgentsList").innerHTML = html;
-    document.getElementById("companyDetail").style.display = "block";
-  });
-}
-
-function loadAgents() {
-  api("/api/agents").then(function(list) {
-    if (!list || list.length === 0) {
-      document.getElementById("agentsList").innerHTML = '<div style="color:#a3a3a3;padding:12px 0">No agents yet. Create a company first, then add agents.</div>';
-      return;
-    }
-    var html = "";
+  var html = '<div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button class="btn btn-sm btn-primary" onclick="openModal(\'agentModal\')">+ Neuer Agent</button></div>';
+  DEPARTMENTS.forEach(function(dept) {
+    var list = byDept[dept];
+    if (!list || !list.length) return;
+    html += '<div class="dept-section"><div class="dept-head" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'grid\':\'none\'"><h3>'+esc(dept)+'</h3><span class="dept-count">'+list.length+'</span></div><div class="dept-agents">';
     list.forEach(function(a) {
-      var st = a.status || "offline";
-      html += '<div class="list-item"><div><span class="status-dot ' + st + '"></span><span class="list-item-title">' + esc(a.name) + '</span><div class="list-item-sub">' + esc(a.company_name || "Unknown") + ' / ' + esc(a.role || "agent") + ' / ' + esc(a.model || "default") + '</div></div><div class="agent-actions"><button class="btn btn-outline btn-sm" onclick="agentAction(\x27' + a.id + '\x27,\x27start\x27)">Start</button><button class="btn btn-outline btn-sm" onclick="agentAction(\x27' + a.id + '\x27,\x27stop\x27)">Stop</button><button class="btn btn-outline btn-sm" onclick="agentAction(\x27' + a.id + '\x27,\x27restart\x27)">Restart</button></div></div>';
+      var isOn = a.status==='active'||a.status==='working'||a.runtime_active;
+      var modelTag = (a.model||'').indexOf('local')>=0||(a.model||'').indexOf('gemma')>=0||(a.model||'').indexOf('llama')>=0||(a.model||'').indexOf('deepseek')>=0 ? '<span class="tag" style="color:var(--green)">Lokal</span>' : '<span class="tag" style="color:var(--amber)">API</span>';
+      html += '<div class="agent-card" onclick="openAgentDetail('+a.id+')">'+
+        '<div class="agent-av" style="background:'+agentColor(a)+'">'+agentInitials(a).toUpperCase()+(isOn?'<div class="online-dot"></div>':'')+'</div>'+
+        '<div class="agent-info"><div class="agent-name">'+esc(a.name)+'</div><div class="agent-role">'+esc(a.role||'')+'</div>'+
+        '<div class="agent-meta">'+modelTag+'<span class="tag">'+esc(a.model||'?')+'</span></div></div>'+
+        '<div class="agent-actions">'+(isOn?'<button class="btn-icon" title="Stoppen" onclick="event.stopPropagation();toggleAgent('+a.id+',false)" style="color:var(--red)">⏹</button>':'<button class="btn-icon" title="Starten" onclick="event.stopPropagation();toggleAgent('+a.id+',true)" style="color:var(--green)">▶</button>')+'<button class="btn-icon" title="Chat" onclick="event.stopPropagation();openChat('+a.id+')">💬</button></div></div>';
     });
-    document.getElementById("agentsList").innerHTML = html;
+    html += '</div></div>';
   });
-}
-
-function agentAction(id, action) {
-  api("/api/agent/" + id + "/" + action, {method: "POST"}).then(function() { loadAgents(); });
-}
-
-function loadConversations() {
-  api("/api/agents").then(function(agents) {
-    if (!agents || agents.length === 0) {
-      document.getElementById("convList").innerHTML = '<div style="color:#a3a3a3;padding:12px 0">No agents yet.</div>';
-      return;
-    }
-    var html = "";
-    agents.forEach(function(a) {
-      html += '<div class="list-item" style="cursor:pointer" onclick="loadAgentConvs(\x27' + a.id + '\x27,\x27' + esc(a.name) + '\x27)"><div><div class="list-item-title">' + esc(a.name) + '</div><div class="list-item-sub">' + esc(a.company_name || "") + '</div></div></div>';
+  // Uncategorized
+  Object.keys(byDept).forEach(function(dept) {
+    if (DEPARTMENTS.indexOf(dept) >= 0) return;
+    var list = byDept[dept];
+    html += '<div class="dept-section"><div class="dept-head"><h3>'+esc(dept)+'</h3><span class="dept-count">'+list.length+'</span></div><div class="dept-agents">';
+    list.forEach(function(a) {
+      var isOn = a.status==='active'||a.runtime_active;
+      html += '<div class="agent-card" onclick="openAgentDetail('+a.id+')"><div class="agent-av" style="background:'+agentColor(a)+'">'+agentInitials(a).toUpperCase()+(isOn?'<div class="online-dot"></div>':'')+'</div><div class="agent-info"><div class="agent-name">'+esc(a.name)+'</div><div class="agent-role">'+esc(a.role||'')+'</div></div></div>';
     });
-    document.getElementById("convList").innerHTML = html;
+    html += '</div></div>';
   });
+  document.getElementById('deptList').innerHTML = html;
 }
 
-function loadAgentConvs(agentId, name) {
-  api("/api/agent/" + agentId + "/conversations").then(function(convs) {
-    if (!convs || convs.length === 0) {
-      document.getElementById("convList").innerHTML = '<div style="color:#a3a3a3;padding:12px 0">No conversations for ' + name + '.</div>';
-      return;
-    }
-    var html = "";
-    convs.forEach(function(c) {
-      html += '<div class="list-item" style="cursor:pointer" onclick="loadConvMessages(\x27' + c.id + '\x27)"><div><div class="list-item-title">' + esc(c.title || "Untitled") + '</div><div class="list-item-sub">' + (c.message_count || 0) + ' messages / ' + timeAgo(c.updated_at) + '</div></div></div>';
+// ===== OPERATOR PAGE =====
+function renderOperatorPage() {
+  var op = getOperator();
+  if (!op) { document.getElementById('operatorDetail').innerHTML='<div class="empty"><div class="empty-icon">⭐</div>Kein Operator eingerichtet.<br><button class="btn btn-primary" style="margin-top:12px" onclick="openModal(\'agentModal\')">Operator erstellen</button></div>'; return; }
+  var html = '<div class="detail-header"><div class="detail-av" style="background:var(--b)">'+agentInitials(op).toUpperCase()+'</div><div><div style="font-size:20px;font-weight:800">'+esc(op.name)+' <span class="badge badge-blue">OPERATOR</span></div><div style="color:var(--tx2);font-size:13px">'+esc(op.role||'')+'</div></div></div>';
+  html += '<div class="detail-tabs"><div class="detail-tab active" onclick="opTab(\'settings\')">Einstellungen</div><div class="detail-tab" onclick="opTab(\'memory\')">Erinnerungen</div><div class="detail-tab" onclick="opTab(\'chats\')">Chats</div><div class="detail-tab" onclick="opTab(\'tasks\')">Tasks</div></div>';
+  html += '<div id="opSec-settings" class="detail-section active">';
+  html += '<div class="card" style="margin-bottom:12px"><div class="detail-field"><label>Name</label><input id="opName" value="'+esc(op.name)+'"></div>';
+  html += '<div class="detail-field"><label>Rolle</label><input id="opRole" value="'+esc(op.role||'')+'"></div>';
+  html += '<div class="detail-field"><label>Modell</label><input id="opModel" value="'+esc(op.model||'')+'"></div>';
+  html += '<div class="detail-field"><label>System Prompt</label><textarea id="opPrompt" rows="6">'+esc(op.system_prompt||'')+'</textarea></div>';
+  html += '<div class="detail-field"><label>Persoenlichkeit</label><textarea id="opPersonality" rows="4">'+esc(op.personality||'')+'</textarea></div>';
+  html += '<button class="btn btn-primary btn-sm" onclick="saveOperator()">Speichern</button></div></div>';
+  html += '<div id="opSec-memory" class="detail-section"><div id="opMemList"><div class="spinner"></div></div></div>';
+  html += '<div id="opSec-chats" class="detail-section" style="display:none;flex-direction:column;flex:1;overflow:hidden"><div id="opChatHistory" style="display:flex;flex-direction:column;flex:1;overflow:hidden"><div class="spinner"></div></div></div>';
+  html += '<div id="opSec-tasks" class="detail-section"><div id="opTaskList"><div class="spinner"></div></div><div style="display:flex;gap:8px;margin-top:12px"><input id="opNewTaskInput" placeholder="Neuen Task fuer '+esc(op.name)+' erstellen..."><button class="btn btn-sm btn-primary" onclick="assignOperatorTask()">Zuweisen</button></div></div>';
+  var od=document.getElementById('operatorDetail'); od.innerHTML=html; od.style.display='flex'; od.style.flexDirection='column'; od.style.flex='1'; od.style.overflow='hidden';
+  // Load memory + tasks
+  api('/api/organisator/agents/'+op.id+'/memory').then(function(d) {
+    var h = d.length ? d.map(function(m){return '<div class="card" style="margin-bottom:8px;padding:10px"><div style="display:flex;justify-content:space-between"><strong style="font-size:13px">'+esc(m.key)+'</strong><span style="font-size:10px;color:var(--tx2)">'+timeAgo(m.updated_at)+'</span></div><div style="font-size:12px;color:var(--tx2);margin-top:4px;white-space:pre-wrap;max-height:100px;overflow:hidden">'+esc((m.value||'').substring(0,300))+'</div></div>';}).join('') : '<div class="empty">Keine Erinnerungen</div>';
+    document.getElementById('opMemList').innerHTML = h;
+  });
+  api('/api/organisator/agents/'+op.id+'/conversations').then(function(d) {
+    var h = d.length ? '<div class="chat-msgs" style="flex:1;overflow-y:auto">'+d.map(function(m){return '<div class="msg msg-'+(m.role==='user'?'user':'ai')+'">'+esc(m.content)+'</div>';}).join('')+'</div>' : '<div class="empty">Keine Chats</div>';
+    h += '<div class="chat-input-wrap"><textarea class="chat-input" id="opChatInput" rows="1" placeholder="Nachricht an '+esc(op.name)+'..." onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();sendOperatorChat()}"></textarea><button class="chat-send" onclick="sendOperatorChat()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg></button></div>';
+    document.getElementById('opChatHistory').innerHTML = h;
+  });
+  api('/api/organisator/agents/'+op.id+'/tasks').then(function(d) {
+    var h = d.length ? d.map(function(t){var sc=t.status==='completed'?'green':t.status==='pending'?'amber':'blue'; return '<div class="card" style="margin-bottom:6px;padding:8px"><div style="display:flex;align-items:center;gap:8px"><span class="badge badge-'+sc+'">'+esc(t.status)+'</span><span style="font-size:13px">'+esc(t.task)+'</span></div></div>';}).join('') : '<div class="empty">Keine Tasks</div>';
+    document.getElementById('opTaskList').innerHTML = h;
+  });
+}
+function opTab(name) {
+  var pg=document.getElementById("page-operator"); if(name==="chats"){pg.style.overflow="hidden";pg.style.padding="0";}else{pg.style.overflowY="auto";pg.style.padding="16px";}
+  document.querySelectorAll('#page-operator .detail-tab').forEach(function(t){t.classList.remove('active')});
+  document.querySelectorAll('#page-operator .detail-section').forEach(function(s){s.classList.remove('active');s.style.display='none';});
+  event.target.classList.add('active');
+  var s=document.getElementById('opSec-'+name);
+  if(s){s.classList.add('active');s.style.display=name==='chats'?'flex':'block';}
+}
+function sendOperatorChat() {
+  var op=getOperator(); if(!op) return;
+  var input=document.getElementById('opChatInput');
+  var msg=input.value.trim(); if(!msg) return;
+  input.value='';
+  var container=document.getElementById('opChatHistory').querySelector('.chat-msgs');
+  if(container){container.innerHTML+='<div class="msg msg-user">'+esc(msg)+'</div>';container.scrollTop=container.scrollHeight;}
+  api('/api/organisator/agents/'+op.id+'/chat',{method:'POST',body:JSON.stringify({message:msg})}).then(function(d){
+    var reply=d.response||d.content||d.message||JSON.stringify(d);
+    if(container){container.innerHTML+='<div class="msg msg-ai">'+formatMsg(reply)+'</div>';container.scrollTop=container.scrollHeight;}
+  }).catch(function(e){if(container)container.innerHTML+='<div class="msg msg-ai" style="color:var(--red)">Fehler: '+esc(e.message)+'</div>';});
+}
+function assignOperatorTask() {
+  var op=getOperator(); if(!op) return;
+  var task=document.getElementById('opNewTaskInput').value.trim(); if(!task) return;
+  api('/api/organisator/agents/'+op.id+'/task',{method:'POST',body:JSON.stringify({task:task})}).then(function(){
+    document.getElementById('opNewTaskInput').value='';
+    api('/api/organisator/agents/'+op.id+'/tasks').then(function(d){
+      var h=d.length?d.map(function(t){var sc=t.status==='completed'?'green':t.status==='pending'?'amber':'blue';return '<div class="card" style="margin-bottom:6px;padding:8px"><div style="display:flex;align-items:center;gap:8px"><span class="badge badge-'+sc+'">'+esc(t.status)+'</span><span style="font-size:13px">'+esc(t.task)+'</span></div></div>';}).join(''):'<div class="empty">Keine Tasks</div>';
+      document.getElementById('opTaskList').innerHTML=h;
     });
-    document.getElementById("convList").innerHTML = html;
-  });
+  }).catch(function(e){alert('Fehler: '+e.message);});
+}
+function saveOperator() {
+  var op=getOperator(); if(!op)return;
+  api('/api/organisator/agents/'+op.id,{method:'PUT',body:JSON.stringify({name:document.getElementById('opName').value,role:document.getElementById('opRole').value,model:document.getElementById('opModel').value,system_prompt:document.getElementById('opPrompt').value,personality:document.getElementById('opPersonality').value})}).then(function(){loadAll();renderOperatorPage();});
 }
 
-function loadConvMessages(convId) {
-  api("/api/conversation/" + convId).then(function(c) {
-    document.getElementById("convTitle").textContent = c.title || "Conversation";
-    var html = "";
-    if (c.messages && c.messages.length > 0) {
-      c.messages.forEach(function(m) {
-        html += '<div class="msg"><div class="msg-sender">' + esc(m.sender_type || "unknown") + '</div><div class="msg-body">' + esc(m.body) + '</div><div class="msg-time">' + timeAgo(m.created_at) + '</div></div>';
-      });
-    } else {
-      html = '<div style="color:#a3a3a3;padding:12px 0">No messages.</div>';
-    }
-    document.getElementById("msgList").innerHTML = html;
-    document.getElementById("convMessages").style.display = "block";
-  });
+// ===== AGENT DETAIL =====
+function openAgentDetail(id) {
+  currentAgent = agents.find(function(a){return a.id===id;});
+  if (!currentAgent) return;
+  document.getElementById('adName').textContent = currentAgent.name;
+  document.getElementById('adFieldName').value = currentAgent.name||'';
+  document.getElementById('adFieldRole').value = currentAgent.role||'';
+  document.getElementById('adFieldModel').innerHTML = modelOptions(currentAgent.model||'');
+  document.getElementById('adFieldPrompt').value = currentAgent.system_prompt||'';
+  document.getElementById('adFieldPersonality').value = currentAgent.personality||'';
+  // Dept select
+  var sel = document.getElementById('adFieldDept');
+  sel.innerHTML = DEPARTMENTS.map(function(d){return '<option'+(d===(currentAgent.department||'Sonstige')?' selected':'')+'>'+esc(d)+'</option>';}).join('');
+  openAgentWorkspace(id); return;
+  // Preload memory + tasks
+  loadAgentMemories(id);
+  loadAgentTasks(id);
+  loadAgentSkills(id);
+  // Issues (stored in localStorage for now)
+  renderIssues(id);
+}
+function showDetailTab(name) {
+  document.querySelectorAll('#agentDetailModal .detail-tab').forEach(function(t,i){t.classList.toggle('active',['info','memory','tasks','issues','skills'][i]===name)});
+  document.querySelectorAll('#agentDetailModal .detail-section').forEach(function(s){s.classList.remove('active')});
+  var s=document.getElementById('adSec-'+name); if(s)s.classList.add('active');
+}
+function saveAgentDetail() {
+  if(!currentAgent) return;
+  api('/api/organisator/agents/'+currentAgent.id,{method:'PUT',body:JSON.stringify({
+    name:document.getElementById('adFieldName').value,
+    role:document.getElementById('adFieldRole').value,
+    department:document.getElementById('adFieldDept').value,
+    model:document.getElementById('adFieldModel').value||currentAgent.model,
+    system_prompt:document.getElementById('adFieldPrompt').value,
+    personality:document.getElementById('adFieldPersonality').value
+  })}).then(function(){closeModal('agentDetailModal');loadAll();});
+}
+function deleteAgent() {
+  if(!currentAgent||!confirm('Agent "'+currentAgent.name+'" wirklich loeschen?')) return;
+  api('/api/organisator/agents/'+currentAgent.id,{method:'DELETE'}).then(function(){closeModal('agentDetailModal');loadAll();});
+}
+function toggleAgent(id, start) {
+  api('/api/organisator/agents/'+id+'/'+(start?'start':'stop'),{method:'POST'}).then(function(){setTimeout(loadAll,500);});
+}
+function assignTask() {
+  if(!currentAgent)return;
+  var task=document.getElementById('newTaskInput').value.trim(); if(!task)return;
+  api('/api/organisator/agents/'+currentAgent.id+'/task',{method:'POST',body:JSON.stringify({task:task})}).then(function(){document.getElementById('newTaskInput').value='';openAgentDetail(currentAgent.id);});
 }
 
-
-function loadSettings() {
-  api("/auth/me").then(function(u) {
-    var html = '<div class="settings-row"><div class="settings-label">Name</div><div class="settings-value">' + esc(u.name || "-") + '</div></div>';
-    html += '<div class="settings-row"><div class="settings-label">Email</div><div class="settings-value">' + esc(u.email || "-") + '</div></div>';
-    html += '<div class="settings-row"><div class="settings-label">Role</div><div class="settings-value">' + esc(u.role || "-") + '</div></div>';
-    html += '<div class="settings-row"><div class="settings-label">Plan</div><div class="settings-value">' + esc(u.plan || "free") + '</div></div>';
-    document.getElementById("settingsProfile").innerHTML = html;
+// ===== ISSUES (localStorage) =====
+function getIssues(agentId) { return JSON.parse(localStorage.getItem('blun_issues_'+agentId)||'[]'); }
+function saveIssues(agentId, issues) { localStorage.setItem('blun_issues_'+agentId, JSON.stringify(issues)); }
+function loadAgentMemories(id) {
+  api('/api/organisator/agents/'+id+'/memory').then(function(d){
+    var html = d.length ? d.map(function(m,i){
+      return '<div class="card" style="margin-bottom:6px;padding:8px;position:relative">'+
+        '<div style="display:flex;justify-content:space-between;align-items:start">'+
+        '<strong style="font-size:12px">'+esc(m.key)+'</strong>'+
+        '<div style="display:flex;gap:4px">'+
+        '<button class="btn-icon" style="font-size:10px;color:var(--b)" onclick="editMemory('+id+',\''+esc(m.key).replace(/'/g,"\\'")+'\',\''+esc((m.value||'').replace(/'/g,"\\'").replace(/\n/g,'\\n'))+'\')">✏</button>'+
+        '<button class="btn-icon" style="font-size:10px;color:var(--red)" onclick="deleteMemory('+id+','+JSON.stringify(m.key)+')">✕</button>'+
+        '</div></div>'+
+        '<div style="font-size:11px;color:var(--tx2);margin-top:2px;max-height:60px;overflow:hidden">'+esc((m.value||'').substring(0,200))+'</div></div>';
+    }).join('') : '<div style="color:var(--tx2);font-size:13px">Keine Erinnerungen</div>';
+    html += '<div style="display:flex;gap:8px;margin-top:12px"><input id="newMemKey" placeholder="Schluessel..." style="flex:1"><input id="newMemVal" placeholder="Wert..." style="flex:2"><button class="btn btn-sm btn-primary" onclick="addMemory('+id+')">+</button></div>';
+    document.getElementById('adMemoryList').innerHTML = html;
   });
 }
+function addMemory(agentId) {
+  var key = document.getElementById('newMemKey').value.trim();
+  var val = document.getElementById('newMemVal').value.trim();
+  if(!key||!val) return;
+  api('/api/organisator/agents/'+agentId+'/memory',{method:'POST',body:JSON.stringify({key:key,value:val})}).then(function(){loadAgentMemories(agentId);}).catch(function(e){alert('Fehler: '+e.message);});
+}
+function deleteMemory(agentId, key) {
+  if(!confirm('Erinnerung "'+key+'" loeschen?')) return;
+  api('/api/organisator/agents/'+agentId+'/memory/'+encodeURIComponent(key),{method:'DELETE'}).then(function(){loadAgentMemories(agentId);}).catch(function(e){alert('Fehler: '+e.message);});
+}
+function editMemory(agentId, key, val) {
+  var newVal = prompt('Wert bearbeiten:', val.replace(/\\n/g,'\n'));
+  if(newVal===null) return;
+  api('/api/organisator/agents/'+agentId+'/memory',{method:'POST',body:JSON.stringify({key:key,value:newVal})}).then(function(){loadAgentMemories(agentId);}).catch(function(e){alert('Fehler: '+e.message);});
+}
 
-function showModal(type) {
-  if (type === "company") {
-    document.getElementById("modalCompany").classList.add("show");
-  } else if (type === "agent") {
-    api("/api/companies").then(function(list) {
-      var sel = document.getElementById("agentCompany");
-      sel.innerHTML = "";
-      (list || []).forEach(function(c) {
-        var o = document.createElement("option");
-        o.value = c.id;
-        o.textContent = c.name;
-        sel.appendChild(o);
-      });
+function loadAgentSkills(id) {
+  api('/api/agents/'+id+'/skills').then(function(d){
+    var skills = d.skills || d || [];
+    var html = skills.length ? skills.map(function(s){
+      return '<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--brd)">'+
+        '<span class="badge badge-blue">'+esc(s.name||s)+'</span>'+
+        '<span style="font-size:10px;color:var(--tx2);flex:1">'+esc(s.description||'')+'</span>'+
+        '<button class="btn-icon" style="font-size:10px;color:var(--red)" onclick="removeSkill('+id+','+(s.id||0)+')">✕</button>'+
+        '</div>';
+    }).join('') : '<div style="color:var(--tx2);font-size:13px">Keine Skills</div>';
+    // Available skills to install
+    html += '<div style="margin-top:12px"><div style="font-size:11px;color:var(--tx2);margin-bottom:6px">Skill installieren:</div>';
+    html += '<div style="display:flex;gap:8px"><select id="skillPicker" style="flex:1"><option value="">-- Skill waehlen --</option></select><button class="btn btn-sm btn-primary" onclick="installSkillFromPicker('+id+')">+</button></div>';
+    html += '<div style="display:flex;gap:8px;margin-top:8px"><input id="skillGithubUrl" placeholder="GitHub URL (z.B. https://github.com/user/skill)" style="flex:1"><button class="btn btn-sm btn-outline" onclick="installSkillFromGithub('+id+')">Von GitHub</button></div>';
+    html += '<button class="btn btn-sm btn-outline" style="margin-top:8px" onclick="autoInstallSkills('+id+')">Auto-Install (nach Rolle)</button>';
+    html += '</div>';
+    document.getElementById('adSkillList').innerHTML = html;
+    // Load available skills for picker
+    api('/api/skills').then(function(all){
+      var picker=document.getElementById('skillPicker');
+      if(!picker) return;
+      var installed=skills.map(function(s){return s.id;});
+      (all||[]).forEach(function(s){if(installed.indexOf(s.id)<0){picker.innerHTML+='<option value="'+s.id+'">'+esc(s.name)+' — '+esc((s.description||'').substring(0,50))+'</option>';}});
     });
-    document.getElementById("modalAgent").classList.add("show");
+  }).catch(function(){document.getElementById('adSkillList').innerHTML='<div style="color:var(--tx2);font-size:13px">Skills nicht verfuegbar</div>';});
+}
+function installSkillFromPicker(agentId) {
+  var sel=document.getElementById('skillPicker');
+  if(!sel||!sel.value) return;
+  api('/api/skills/'+sel.value+'/assign/'+agentId,{method:'POST'}).then(function(){loadAgentSkills(agentId);}).catch(function(e){alert('Fehler: '+e.message);});
+}
+function installSkillFromGithub(agentId) {
+  var url=document.getElementById('skillGithubUrl').value.trim();
+  if(!url) return;
+  var name=url.split('/').pop().replace('.git','');
+  api('/api/skills/install',{method:'POST',body:JSON.stringify({name:name,source_url:url,description:'Installiert von '+url,category:'custom',system_prompt:'Custom skill from '+url})}).then(function(skill){
+    api('/api/skills/'+skill.id+'/assign/'+agentId,{method:'POST'}).then(function(){loadAgentSkills(agentId);});
+  }).catch(function(e){alert('Fehler: '+e.message);});
+}
+function autoInstallSkills(agentId) {
+  api('/api/agents/'+agentId+'/skills/auto',{method:'POST'}).then(function(){loadAgentSkills(agentId);}).catch(function(e){alert('Fehler: '+e.message);});
+}
+function removeSkill(agentId, skillId) {
+  if(!confirm('Skill entfernen?')) return;
+  api('/api/skills/'+skillId+'/assign/'+agentId,{method:'DELETE'}).then(function(){loadAgentSkills(agentId);}).catch(function(e){alert('Fehler: '+e.message);});
+}
+
+function loadAgentTasks(id) {
+  api('/api/organisator/agents/'+id+'/tasks').then(function(d){
+    var html = d.length ? d.map(function(t){
+      var sc=t.status==='completed'?'green':t.status==='pending'?'amber':'blue';
+      var nextStatus=t.status==='pending'?'in_progress':t.status==='in_progress'?'completed':'pending';
+      return '<div style="display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid var(--brd)">'+
+        '<span class="badge badge-'+sc+'" style="min-width:70px;text-align:center;cursor:pointer" onclick="updateTaskStatus('+id+','+t.id+',\''+nextStatus+'\')">'+esc(t.status)+'</span>'+
+        '<span style="font-size:12px;flex:1">'+esc(t.task)+'</span>'+
+        '<span style="font-size:10px;color:var(--tx2)">'+timeAgo(t.created_at)+'</span>'+
+        '<button class="btn-icon" style="font-size:10px;color:var(--red)" onclick="deleteTask('+id+','+t.id+')">✕</button>'+
+        '</div>';
+    }).join('') : '<div style="color:var(--tx2);font-size:13px">Keine Tasks</div>';
+    document.getElementById('adTaskList').innerHTML = html;
+  });
+}
+function updateTaskStatus(agentId, taskId, newStatus) {
+  api('/api/organisator/agents/'+agentId+'/tasks/'+taskId,{method:'PUT',body:JSON.stringify({status:newStatus})}).then(function(){loadAgentTasks(agentId);}).catch(function(e){alert('Fehler: '+e.message);});
+}
+function deleteTask(agentId, taskId) {
+  if(!confirm('Task loeschen?')) return;
+  api('/api/organisator/agents/'+agentId+'/tasks/'+taskId,{method:'DELETE'}).then(function(){loadAgentTasks(agentId);}).catch(function(e){alert('Fehler: '+e.message);});
+}
+
+function renderIssues(agentId) {
+  var issues = getIssues(agentId);
+  var html = issues.length ? issues.map(function(iss,i){
+    var sc=iss.status==='closed'?'green':iss.priority==='high'?'red':'amber';
+    return '<div class="card" style="margin-bottom:6px;padding:10px"><div style="display:flex;align-items:center;gap:6px"><span class="badge badge-'+sc+'">'+esc(iss.status||'open')+'</span><strong style="font-size:13px;flex:1">'+esc(iss.title)+'</strong><button class="btn-icon" style="font-size:10px" onclick="toggleIssue('+agentId+','+i+')">'+(iss.status==='closed'?'Reopen':'Close')+'</button></div>'+(iss.desc?'<div style="font-size:11px;color:var(--tx2);margin-top:4px">'+esc(iss.desc)+'</div>':'')+'</div>';
+  }).join('') : '<div style="color:var(--tx2);font-size:13px">Keine Issues</div>';
+  document.getElementById('adIssueList').innerHTML = html;
+}
+function createIssue() {
+  if(!currentAgent)return;
+  var title=document.getElementById('newIssueTitle').value.trim(); if(!title)return;
+  var desc=document.getElementById('newIssueDesc').value.trim();
+  var issues=getIssues(currentAgent.id);
+  issues.unshift({title:title,desc:desc,status:'open',priority:'normal',created:new Date().toISOString()});
+  saveIssues(currentAgent.id,issues);
+  document.getElementById('newIssueTitle').value='';document.getElementById('newIssueDesc').value='';
+  renderIssues(currentAgent.id);
+}
+function toggleIssue(agentId,idx) {
+  var issues=getIssues(agentId);
+  if(issues[idx]) issues[idx].status = issues[idx].status==='closed'?'open':'closed';
+  saveIssues(agentId,issues);renderIssues(agentId);
+}
+
+// ===== CHAT =====
+function renderChatList() {
+  var html = '';
+  var op = getOperator();
+  if(op) html += chatAgentItem(op, true);
+  agents.forEach(function(a){if(!op||a.id!==op.id) html+=chatAgentItem(a,false);});
+  document.getElementById('chatAgentList').innerHTML = html;
+}
+function chatAgentItem(a, isOp) {
+  var isOn=a.status==='active'||a.runtime_active;
+  return '<div class="agent-card'+(isOp?' operator':'')+'" style="margin-bottom:4px" onclick="openChat('+a.id+')"><div class="agent-av" style="background:'+agentColor(a)+'">'+agentInitials(a).toUpperCase()+(isOn?'<div class="online-dot"></div>':'')+'</div><div class="agent-info"><div class="agent-name">'+esc(a.name)+(isOp?' <span class="badge badge-blue" style="font-size:9px">OP</span>':'')+'</div><div class="agent-role">'+esc(a.role||'')+'</div></div></div>';
+}
+function filterChatAgents(q) {
+  q=q.toLowerCase();
+  document.querySelectorAll('#chatAgentList .agent-card').forEach(function(c){
+    c.style.display=c.textContent.toLowerCase().indexOf(q)>=0?'flex':'none';
+  });
+}
+function openChat(agentId) {
+  chatAgent = agents.find(function(a){return a.id===agentId;});
+  if(!chatAgent) return;
+  showPage('chat');
+  var right = document.getElementById('chatRight');
+  right.innerHTML = '<div class="chat-head"><div class="agent-av" style="background:'+agentColor(chatAgent)+';width:32px;height:32px;font-size:13px">'+agentInitials(chatAgent).toUpperCase()+'</div><div><div style="font-size:14px;font-weight:600">'+esc(chatAgent.name)+'</div><div style="font-size:11px;color:var(--tx2)">'+esc(chatAgent.model||'')+'</div></div><select style="margin-left:auto;width:auto;min-width:160px;padding:4px 8px;font-size:11px" onchange="switchChatModel(this.value)">'+modelOptions(chatAgent.model)+'</select></div>'+
+    '<div class="chat-msgs" id="chatMsgs"><div class="spinner"></div></div>'+
+    '<div class="chat-input-wrap"><textarea class="chat-input" id="chatInput" rows="1" placeholder="Nachricht..." onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();sendChat()}"></textarea><button class="chat-send" id="chatSendBtn" onclick="sendChat()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg></button></div>';
+  // Load history
+  api('/api/organisator/agents/'+agentId+'/conversations').then(function(d){
+    var el=document.getElementById('chatMsgs');
+    el.innerHTML=d.map(function(m){return '<div class="msg msg-'+(m.role==='user'?'user':'ai')+'">'+formatMsg(m.content)+'</div>';}).join('');
+    el.scrollTop=el.scrollHeight;
+  });
+  if(window.innerWidth<=768) right.classList.add('active');
+}
+function sendChat() {
+  if(!chatAgent) return;
+  var input=document.getElementById('chatInput');
+  var msg=input.value.trim(); if(!msg) return;
+  input.value='';
+  var msgs=document.getElementById('chatMsgs');
+  msgs.innerHTML+='<div class="msg msg-user">'+esc(msg)+'</div>';
+  msgs.scrollTop=msgs.scrollHeight;
+  document.getElementById('chatSendBtn').disabled=true;
+  api('/api/organisator/agents/'+chatAgent.id+'/chat',{method:'POST',body:JSON.stringify({message:msg})}).then(function(d){
+    var reply=d.response||d.content||d.message||JSON.stringify(d);
+    msgs.innerHTML+='<div class="msg msg-ai">'+formatMsg(reply)+'</div>';
+    msgs.scrollTop=msgs.scrollHeight;
+  }).catch(function(e){
+    msgs.innerHTML+='<div class="msg msg-ai" style="color:var(--red)">Fehler: '+esc(e.message)+'</div>';
+  }).finally(function(){document.getElementById('chatSendBtn').disabled=false;});
+}
+function switchChatModel(model) {
+  if(!chatAgent||!model) return;
+  api('/api/organisator/agents/'+chatAgent.id,{method:'PUT',body:JSON.stringify({model:model})}).then(function(){chatAgent.model=model;loadAll();});
+}
+function formatMsg(txt) {
+  if(!txt) return '';
+  txt=esc(txt);
+  txt=txt.replace(/```([\s\S]*?)```/g,'<pre>$1</pre>');
+  txt=txt.replace(/`([^`]+)`/g,'<code>$1</code>');
+  txt=txt.replace(/\n/g,'<br>');
+  return txt;
+}
+
+// ===== LIVELOG =====
+function loadLivelog() {
+  api('/api/organisator/agents').then(function(agts){
+    // Get recent heartbeats for all agents
+    var promises = agts.slice(0,20).map(function(a){return api('/api/organisator/agents/'+a.id+'/heartbeats?limit=5').then(function(hbs){return hbs.map(function(h){h.agent_name=a.name;return h;});}).catch(function(){return [];});});
+    Promise.all(promises).then(function(results){
+      var all=[];results.forEach(function(r){all=all.concat(r);});
+      all.sort(function(a,b){return new Date(b.created_at)-new Date(a.created_at);});
+      var container=document.getElementById('logContainer');
+      container.innerHTML=all.slice(0,100).map(function(h){
+        var t=new Date(h.created_at);
+        var typeClass=h.status==='active'?'badge-green':h.status==='error'?'badge-red':'badge-amber';
+        return '<div class="log-line"><span class="log-time">'+pad(t.getHours())+':'+pad(t.getMinutes())+':'+pad(t.getSeconds())+'</span><span class="log-agent">'+esc(h.agent_name||'?')+'</span><span class="log-type"><span class="badge '+typeClass+'">'+esc(h.status||'?')+'</span></span><span class="log-content">'+(h.tokens_used?'Tokens: '+h.tokens_used:'')+(h.cost?' | $'+parseFloat(h.cost).toFixed(4):'')+'</span></div>';
+      }).join('');
+      document.getElementById('logCount').textContent=all.length+' Eintraege';
+    });
+  });
+}
+function clearLog(){document.getElementById('logContainer').innerHTML='';document.getElementById('logCount').textContent='0 Eintraege';}
+
+// ===== COMPANIES =====
+function renderCompanies() {
+  document.getElementById('companyList').innerHTML = companies.map(function(c){
+    return '<div class="card"><div class="card-head"><div class="card-title">'+esc(c.name)+'</div><span class="badge badge-blue">'+(c.agent_count||0)+' Agents</span></div>'+
+      '<div style="font-size:12px;color:var(--tx2)">'+esc((c.config&&c.config.description)||'')+'</div></div>';
+  }).join('');
+}
+function createCompany() {
+  var name=document.getElementById('newCompanyName').value.trim(); if(!name) return;
+  var desc=document.getElementById('newCompanyDesc').value.trim();
+  api('/api/organisator/companies',{method:'POST',body:JSON.stringify({name:name,description:desc})}).then(function(){
+    closeModal('companyModal');document.getElementById('newCompanyName').value='';document.getElementById('newCompanyDesc').value='';loadAll();
+  });
+}
+
+// ===== CREATE AGENT =====
+function createAgent() {
+  var name=document.getElementById('newAgentName').value.trim(); if(!name) return; var tmplKey=document.getElementById('newAgentTemplate')&&document.getElementById('newAgentTemplate').value;
+  api('/api/organisator/agents',{method:'POST',body:JSON.stringify({
+    name:name,
+    role:document.getElementById('newAgentRole').value.trim(),
+    model:document.getElementById('newAgentModel').value.trim()||'gemma-4-27b',
+    company_id:document.getElementById('newAgentCompany').value||null
+  })}).then(function(a){
+    if(a.error){alert(a.error);return;}
+    // Set department
+    var dept=document.getElementById('newAgentDept').value;
+    if(dept) api('/api/organisator/agents/'+a.id,{method:'PUT',body:JSON.stringify({department:dept})});
+    // Auto-generate IDENTITY + set system_prompt from template
+    var tmpl = document.getElementById('newAgentTemplate') ? document.getElementById('newAgentTemplate').value : '';
+    var updates = {};
+    if(tmpl && AGENT_TEMPLATES[tmpl]) updates.system_prompt = AGENT_TEMPLATES[tmpl].prompt;
+    var identity = "# " + name + "\n- Rolle: " + (a.role||document.getElementById('newAgentRole').value||'Agent') + "\n- Team: BLUN.ai Agent-Team\n- Vibe: " + (tmpl ? AGENT_TEMPLATES[tmpl].prompt.substring(0,80) : 'hilfsbereit, direkt') + "\nIch bin " + name + ".";
+    if(updates.system_prompt) api('/api/organisator/agents/'+a.id,{method:'PUT',body:JSON.stringify(updates)});
+    api('/api/organisator/agents/'+a.id+'/memory',{method:'POST',body:JSON.stringify({key:'IDENTITY',value:identity})});
+    closeModal('agentModal');document.getElementById('newAgentName').value='';document.getElementById('newAgentRole').value='';
+    if(document.getElementById('newAgentTemplate')) document.getElementById('newAgentTemplate').value='';
+    loadAll();
+  });
+}
+
+// ===== MODELS =====
+function loadModels() {
+  // Load monitoring stats
+  api('/api/monitor').then(function(m){
+    var el=document.getElementById('modelStats');
+    var cpuPct = m.cpu&&m.cpu.percent!==undefined?m.cpu.percent:(typeof m.cpu==='number'?m.cpu:'?');
+    var ramStr = m.ram&&m.ram.used_gb?m.ram.used_gb+'/'+m.ram.total_gb+'GB':(typeof m.ram==='string'?m.ram:'?');
+    var diskStr = m.disk&&m.disk.used?m.disk.used+'/'+m.disk.total:(typeof m.disk==='string'?m.disk:'?');
+    var llamaCount = m.llama_processes?m.llama_processes.length:0;
+    var totalTokens = m.total_tokens||m.totalTokens||0;
+    if(el) el.innerHTML=
+      '<div class="stat-card"><div class="stat-label">Laufende Modelle</div><div class="stat-val" style="color:var(--green)">'+llamaCount+'</div></div>'+
+      '<div class="stat-card"><div class="stat-label">CPU</div><div class="stat-val">'+cpuPct+'%</div></div>'+
+      '<div class="stat-card"><div class="stat-label">RAM</div><div class="stat-val">'+ramStr+'</div></div>'+
+      '<div class="stat-card"><div class="stat-label">Disk</div><div class="stat-val">'+diskStr+'</div></div>'+
+      '<div class="stat-card"><div class="stat-label">Tokens gesamt</div><div class="stat-val">'+totalTokens+'</div></div>';
+  }).catch(function(){});
+  api('/api/models').then(function(d){
+    allModels = d.models || d || [];
+    // No agent mapping needed here
+    // Sort: running first, then by maker priority
+    function detectMaker(m){var n=((m.name||'')+(m.id||'')+(m.maker||'')).toLowerCase();if(n.indexOf('gemma')>=0||n.indexOf('gemini')>=0||n.match(/google/))return 1;if(n.indexOf('llama')>=0||n.match(/meta/))return 2;if(n.indexOf('claude')>=0||n.match(/anthropic/))return 3;if(n.indexOf('gpt')>=0||n.match(/openai/))return 4;if(n.indexOf('phi')>=0||n.match(/microsoft/))return 5;if(n.indexOf('mistral')>=0)return 6;if(n.indexOf('deepseek')>=0)return 7;if(n.indexOf('qwen')>=0)return 8;if(n.indexOf('yi')>=0)return 9;if(n.indexOf('starcoder')>=0)return 10;return 50;}
+    allModels.sort(function(a,b){
+      var aRun=a.running||a.status==='running'?0:1;
+      var bRun=b.running||b.status==='running'?0:1;
+      if(aRun!==bRun) return aRun-bRun;
+      var aO=detectMaker(a), bO=detectMaker(b);
+      if(aO!==bO) return aO-bO;
+      return (a.name||'').localeCompare(b.name||'');
+    });
+    document.getElementById('modelList').innerHTML = allModels.map(function(m){
+      var running = m.status==='running';
+      var installed = m.status==='installed';
+      var mid = m.id||m.name||'?';
+      var statusBadge = running?'<span class="badge badge-green">Laeuft</span>':(installed?'<span class="badge" style="background:rgba(59,130,246,.15);color:#3b82f6">Installiert</span>':'<span class="badge" style="background:rgba(107,114,128,.15);color:#9ca3af">Nicht installiert</span>');
+      var buttons = '';
+      if(running){buttons='<button class="btn btn-sm btn-danger" onclick="modelAction(\''+esc(mid)+'\',\'unload\')">Stop</button>';}
+      else if(installed){buttons='<button class="btn btn-sm btn-primary" onclick="modelAction(\''+esc(mid)+'\',\'load\')">Start</button>';}
+      else{buttons='<button class="btn btn-sm btn-primary" onclick="downloadModel(\''+esc(mid)+'\')">Download</button>';}
+      buttons+='<button class="btn btn-sm btn-outline" style="color:var(--red);border-color:rgba(239,68,68,.3)" onclick="deleteModel(\''+esc(mid)+'\')">🗑</button>';
+      return '<div class="model-card" style="flex-direction:column;align-items:stretch;gap:8px">'+
+        '<div style="display:flex;align-items:center;gap:12px">'+
+        '<div class="model-icon" style="font-size:22px;'+(running?'background:rgba(34,197,94,.15)':'')+'">'+modelLogo(mid)+'</div>'+
+        '<div class="model-info"><div class="model-name">'+esc(m.name||mid)+' '+statusBadge+'</div>'+
+        '<div class="model-meta">'+esc(m.size||'')+' &middot; '+(m.sizeGB?esc(m.sizeGB)+' &middot; ':'')+( m.ram?'RAM: '+esc(m.ram)+' &middot; ':'')+esc(m.category||m.backend||m.type||'')+'</div></div>'+
+        '<div style="display:flex;gap:4px;flex-shrink:0">'+buttons+'</div></div>'+
+        (m.description?'<div style="font-size:11px;color:var(--tx2);padding:0 4px">'+esc(m.description)+'</div>':'')+
+        (m.progress&&m.progress>0&&m.progress<100?'<div style="background:var(--bg4);border-radius:4px;height:4px;overflow:hidden"><div style="background:var(--b);height:100%;width:'+m.progress+'%"></div></div>':'')+
+        '</div>';
+    }).join('') || '<div class="empty">Keine Modelle gefunden</div>';
+  }).catch(function(){document.getElementById('modelList').innerHTML='<div class="empty">Modelle nicht verfuegbar</div>';});
+}
+function modelAction(id, action) {
+  api('/api/models/'+encodeURIComponent(id)+'/'+action,{method:'POST'}).then(function(){setTimeout(loadModels,1000);}).catch(function(){});
+}
+function downloadModel(id) {
+  api('/api/models/'+encodeURIComponent(id)+'/download',{method:'POST'}).then(function(){alert('Download gestartet fuer '+id);setTimeout(loadModels,2000);}).catch(function(e){alert('Download fehlgeschlagen: '+e.message);});
+}
+function deleteModel(id) {
+  if(!confirm('Modell "'+id+'" wirklich loeschen?')) return;
+  api('/api/models/'+encodeURIComponent(id),{method:'DELETE'}).then(function(){setTimeout(loadModels,1000);}).catch(function(){});
+}
+
+// ===== DEPARTMENTS =====
+function renderDepartments() {
+  document.getElementById('deptMgmt').innerHTML = DEPARTMENTS.map(function(d,i){
+    return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--brd)"><span style="flex:1;font-size:13px">'+esc(d)+'</span><button class="btn-icon" style="color:var(--red);font-size:11px" onclick="removeDept('+i+')">✕</button></div>';
+  }).join('');
+}
+function addDepartment() {
+  var v=document.getElementById('newDeptInput').value.trim(); if(!v||DEPARTMENTS.indexOf(v)>=0) return;
+  DEPARTMENTS.push(v); localStorage.setItem('blun_depts',JSON.stringify(DEPARTMENTS));
+  document.getElementById('newDeptInput').value=''; renderDepartments();
+}
+function removeDept(i) { DEPARTMENTS.splice(i,1); localStorage.setItem('blun_depts',JSON.stringify(DEPARTMENTS)); renderDepartments(); }
+
+// ===== SEARCH =====
+function onSearch(q) {
+  q=q.toLowerCase();
+  document.querySelectorAll('.agent-card,.model-card').forEach(function(c){
+    c.style.display=c.textContent.toLowerCase().indexOf(q)>=0?'':'none';
+  });
+}
+
+// ===== MODAL =====
+function openModal(id) {
+  if (id === 'agentModal') {
+    var sel = document.getElementById('newAgentModel');
+    if (sel) sel.innerHTML = buildModelOptions('claude-haiku-4-5-20251001');
+  }
+  document.getElementById(id).classList.add('open');
+  // Populate selects
+  if(id==='agentModal') {
+    var ds=document.getElementById('newAgentDept');
+    ds.innerHTML=DEPARTMENTS.map(function(d){return '<option>'+esc(d)+'</option>';}).join('');
+    var cs=document.getElementById('newAgentCompany');
+    cs.innerHTML='<option value="">-- Keine --</option>'+companies.map(function(c){return '<option value="'+c.id+'">'+esc(c.name)+'</option>';}).join('');
+  }
+}
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// ===== UTIL =====
+function esc(s) { if(!s) return ''; var d=document.createElement('div');d.textContent=String(s);return d.innerHTML; }
+function pad(n) { return n<10?'0'+n:''+n; }
+function timeAgo(d) {
+  if(!d) return '';
+  var diff=Date.now()-new Date(d).getTime();
+  var m=Math.floor(diff/60000);
+  if(m<1) return 'gerade';
+  if(m<60) return m+'m';
+  var h=Math.floor(m/60);
+  if(h<24) return h+'h';
+  return Math.floor(h/24)+'d';
+}
+
+// Close modals on backdrop click
+document.addEventListener('click', function(e){
+  if(e.target.classList.contains('modal-bg')) e.target.classList.remove('open');
+});
+
+// ===== INIT =====
+(function(){
+  if(TOKEN) {
+    api('/auth/me').then(function(d){
+      if(d.user){USER=d.user;showApp();var p=getPageFromPath();if(p&&document.getElementById('page-'+p))showPage(p);
+      // Ensure workspace is closed on load
+      var ws=document.getElementById('wsPanel');if(ws)ws.classList.remove('open');}else showLogin();
+    }).catch(function(){showLogin();});
+  } else showLogin();
+  // Health check dot
+  setInterval(function(){
+    fetch('/api/health').then(function(r){return r.json();}).then(function(d){
+      document.getElementById('wsDot').classList.toggle('on',d.status==='ok');
+    }).catch(function(){document.getElementById('wsDot').classList.remove('on');});
+  },10000);
+  renderDepartments();
+})();
+
+// ===== AGENT WORKSPACE =====
+function openAgentWorkspace(id) {
+  currentAgent = agents.find(function(a){return a.id===id;});
+  if (!currentAgent) return;
+  chatAgent = currentAgent;
+  var pg = document.getElementById('page-agents');
+  pg.style.overflow = 'hidden';
+  pg.style.padding = '0 16px';
+  document.getElementById('operatorBanner').style.display = 'none';
+  document.getElementById('deptList').style.display = 'none';
+  document.getElementById('wsPanel').classList.add('open');
+  // Header
+  var av = document.getElementById('wsAv');
+  av.style.background = agentColor(currentAgent);
+  av.textContent = agentInitials(currentAgent).toUpperCase();
+  document.getElementById('wsName').textContent = currentAgent.name;
+  document.getElementById('wsRole').textContent = currentAgent.role || '';
+  // Info form
+  document.getElementById('wsFieldName').value = currentAgent.name||'';
+  document.getElementById('wsFieldRole').value = currentAgent.role||'';
+  document.getElementById('wsFieldModel').innerHTML = modelOptions(currentAgent.model||'');
+  var sel = document.getElementById('wsFieldDept');
+  sel.innerHTML = DEPARTMENTS.map(function(d){return '<option'+(d===(currentAgent.department||'Sonstige')?' selected':'')+'>'+esc(d)+'</option>';}).join('');
+  // Model select header
+
+  showWsTab('info');
+  loadWsTasks(id); loadWsSkills(id); renderWsIssues(id); loadWsChat(id);
+}
+function closeWorkspace() {
+  document.getElementById('wsPanel').classList.remove('open');
+  var pg = document.getElementById('page-agents');
+  pg.style.overflow = 'auto';
+  pg.style.padding = '16px';
+  document.getElementById('operatorBanner').style.display = '';
+  document.getElementById('deptList').style.display = '';
+}
+function showWsTab(name) {
+  var tabs = ['info','tasks','issues','skills'];
+  document.querySelectorAll('#wsPanel .ws-sidebar .detail-tabs .detail-tab').forEach(function(t,i){
+    t.classList.toggle('active', tabs[i]===name);
+  });
+  tabs.forEach(function(n){
+    var s=document.getElementById('wsSec-'+n); if(s) s.classList.toggle('active', n===name);
+  });
+}
+function saveAgentWs() {
+  if(!currentAgent) return;
+  api('/api/organisator/agents/'+currentAgent.id,{method:'PUT',body:JSON.stringify({
+    name:document.getElementById('wsFieldName').value,
+    role:document.getElementById('wsFieldRole').value,
+    department:document.getElementById('wsFieldDept').value,
+    model:document.getElementById('wsFieldModel').value||currentAgent.model,
+    system_prompt:currentAgent.system_prompt||''
+  })}).then(function(){currentAgent.model=document.getElementById('wsFieldModel').value||currentAgent.model; loadAll();});
+}
+function deleteAgentWs() {
+  if(!currentAgent||!confirm('Agent "'+currentAgent.name+'" loeschen?')) return;
+  api('/api/organisator/agents/'+currentAgent.id,{method:'DELETE'}).then(function(){closeWorkspace();loadAll();});
+}
+function assignTaskWs() {
+  if(!currentAgent) return;
+  var task=document.getElementById('wsNewTask').value.trim(); if(!task) return;
+  api('/api/organisator/agents/'+currentAgent.id+'/task',{method:'POST',body:JSON.stringify({task:task})}).then(function(){
+    document.getElementById('wsNewTask').value=''; loadWsTasks(currentAgent.id);
+  });
+}
+function loadWsMemory(id) { if(!document.getElementById('wsMemoryList')) return;
+  api('/api/organisator/agents/'+id+'/memory').then(function(d){
+    var html=d.length?d.map(function(m){
+      return '<div class="card" style="margin-bottom:6px;padding:8px">'+
+        '<div style="display:flex;justify-content:space-between"><strong style="font-size:12px">'+esc(m.key)+'</strong>'+
+        '<button class="btn-icon" style="font-size:10px;color:var(--red)" onclick="wsDeleteMem(this)" data-agid="'+id+'" data-key="'+esc(m.key)+'">&#x2715;</button></div>'+
+        '<div style="font-size:11px;color:var(--tx2)">'+esc((m.value||'').substring(0,200))+'</div></div>';
+    }).join(''):'<div style="color:var(--tx2);font-size:13px">Keine Erinnerungen</div>';
+    html+='<div style="display:flex;gap:8px;margin-top:8px"><input id="wsMemKey" placeholder="Key" style="flex:1"><input id="wsMemVal" placeholder="Wert" style="flex:2"><button class="btn btn-sm btn-primary" onclick="addWsMemory('+id+')">+</button></div>';
+    document.getElementById('wsMemoryList').innerHTML=html;
+  });
+}
+function addWsMemory(agentId) {
+  var key=document.getElementById('wsMemKey').value.trim(), val=document.getElementById('wsMemVal').value.trim();
+  if(!key||!val) return;
+  api('/api/organisator/agents/'+agentId+'/memory',{method:'POST',body:JSON.stringify({key:key,value:val})}).then(function(){loadWsMemory(agentId);});
+}
+function loadWsTasks(id) {
+  api('/api/organisator/agents/'+id+'/tasks').then(function(d){
+    var html=d.length?d.map(function(t){
+      return '<div class="card" style="margin-bottom:6px;padding:8px;display:flex;gap:8px;align-items:start">'+
+        '<div style="flex:1"><div style="font-size:12px;font-weight:600">'+esc(t.title||t.task||'')+'</div>'+
+        '<div style="font-size:11px;color:var(--tx2)">'+esc(t.status||'open')+'</div></div>'+
+        '<button class="btn-icon" style="font-size:10px;color:var(--red)" onclick="deleteTaskWs('+id+','+t.id+')">&#x2715;</button></div>';
+    }).join(''):'<div style="color:var(--tx2);font-size:13px">Keine Tasks</div>';
+    document.getElementById('wsTaskList').innerHTML=html;
+  }).catch(function(){document.getElementById('wsTaskList').innerHTML='<div style="color:var(--tx2)">Fehler</div>';});
+}
+function deleteTaskWs(agentId, taskId) {
+  api('/api/organisator/agents/'+agentId+'/tasks/'+taskId,{method:'DELETE'}).then(function(){loadWsTasks(agentId);});
+}
+function loadWsSkills(id) {
+  Promise.all([api('/api/skills'), api('/api/organisator/agents/'+id+'/skills')]).then(function(res){
+    var all=res[0], assigned=res[1];
+    var html=assigned.length?assigned.map(function(s){
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--brd)">'+
+        '<span style="font-size:13px">'+esc(s.name)+'</span>'+
+        '<button class="btn btn-sm btn-outline" onclick="unassignSkillWs('+id+','+s.id+')">&#x2212;</button></div>';
+    }).join(''):'<div style="color:var(--tx2);font-size:13px;padding:8px 0">Keine Skills — Marketplace öffnen um Skills hinzuzufügen.</div>';
+    document.getElementById('wsSkillList').innerHTML=html;
+  }).catch(function(){document.getElementById('wsSkillList').innerHTML='<div style="color:var(--tx2)">–</div>';});
+}
+
+function unassignSkillWs(agentId,skillId){api('/api/skills/'+skillId+'/assign/'+agentId,{method:'DELETE'}).then(function(){loadWsSkills(agentId);});}
+function renderWsIssues(id) {
+  var issues=getIssues(id);
+  var html=issues.length?issues.map(function(issue,i){
+    return '<div class="card" style="margin-bottom:6px;padding:8px">'+
+      '<div style="display:flex;justify-content:space-between"><span style="font-size:12px;font-weight:600">'+esc(issue.title)+'</span>'+
+      '<button class="btn-icon" style="font-size:12px" onclick="toggleWsIssue('+id+','+i+')">'+(issue.status==='closed'?'&#x2713;':'&#x25CB;')+'</button></div>'+
+      '<div style="font-size:11px;color:var(--tx2)">'+esc(issue.desc||'')+'</div></div>';
+  }).join(''):'<div style="color:var(--tx2);font-size:13px">Keine Issues</div>';
+  document.getElementById('wsIssueList').innerHTML=html;
+}
+function toggleWsIssue(agentId,idx){var issues=getIssues(agentId);if(issues[idx])issues[idx].status=issues[idx].status==='closed'?'open':'closed';saveIssues(agentId,issues);renderWsIssues(agentId);}
+function createIssueWs(){
+  if(!currentAgent)return;
+  var title=document.getElementById('wsIssueTitle').value.trim();if(!title)return;
+  var issues=getIssues(currentAgent.id);issues.unshift({title:title,desc:'',status:'open',created:new Date().toISOString()});
+  saveIssues(currentAgent.id,issues);document.getElementById('wsIssueTitle').value='';renderWsIssues(currentAgent.id);
+}
+function loadWsChat(id) {
+  var msgs=document.getElementById('wsChatMsgs');
+  msgs.innerHTML='<div class="spinner"></div>';
+  api('/api/organisator/agents/'+id+'/conversations').then(function(d){
+    msgs.innerHTML=d.map(function(m){return '<div class="msg msg-'+(m.role==='user'?'user':'ai')+'">'+formatMsg(m.content)+'</div>';}).join('');
+    msgs.scrollTop=msgs.scrollHeight;
+  }).catch(function(){msgs.innerHTML='';});
+}
+function sendWsChat() {
+  if(!currentAgent)return;
+  var input=document.getElementById('wsChatInput');
+  var msg=input.value.trim();if(!msg)return;
+  input.value='';
+  var msgs=document.getElementById('wsChatMsgs');
+  msgs.innerHTML+='<div class="msg msg-user">'+esc(msg)+'</div>';
+  msgs.scrollTop=msgs.scrollHeight;
+  document.getElementById('wsChatSendBtn').disabled=true;
+  api('/api/organisator/agents/'+currentAgent.id+'/chat',{method:'POST',body:JSON.stringify({message:msg})}).then(function(d){
+    var reply=d.response||d.content||d.message||JSON.stringify(d);
+    msgs.innerHTML+='<div class="msg msg-ai">'+formatMsg(reply)+'</div>';
+    msgs.scrollTop=msgs.scrollHeight;
+  }).catch(function(e){
+    msgs.innerHTML+='<div class="msg msg-ai" style="color:var(--red)">Fehler: '+esc(e.message)+'</div>';
+  }).finally(function(){document.getElementById('wsChatSendBtn').disabled=false;});
+}
+
+
+function wsDeleteMem(btn) {
+  var agentId = btn.getAttribute('data-agid');
+  var key = btn.getAttribute('data-key');
+  showConfirm('Erinnerung löschen', '"'+key+'" wirklich löschen?').then(function(ok) {
+    if(!ok) return;
+    api('/api/organisator/agents/'+agentId+'/memory/'+encodeURIComponent(key),{method:'DELETE'})
+      .then(function(){
+        if(document.getElementById('wsPanel').classList.contains('open')) loadWsMemory(agentId);
+        else loadAgentMemories(agentId);
+      }).catch(function(e){alert('Fehler: '+e.message);});
+  });
+}
+
+
+var _confirmResolve = null;
+function showConfirm(title, msg) {
+  return new Promise(function(resolve) {
+    _confirmResolve = resolve;
+    document.getElementById('confirmTitle').textContent = title;
+    document.getElementById('confirmMsg').textContent = msg;
+    document.getElementById('confirmModal').classList.add('open');
+  });
+}
+function confirmResolve(val) {
+  document.getElementById('confirmModal').classList.remove('open');
+  if(_confirmResolve) { _confirmResolve(val); _confirmResolve = null; }
+}
+
+
+var AGENT_TEMPLATES = {
+  marketing: { role: 'Marketing Manager', prompt: 'Du bist ein erfahrener Marketing Manager. Du denkst strategisch, markenbewusst und kreativ. Du entwickelst Inhalte, Kampagnen und Positionierungsstrategien. Klares Deutsch, professionell aber zugänglich, keine leeren Floskeln.' },
+  developer: { role: 'Software Developer', prompt: 'Du bist ein erfahrener Software Developer. Du denkst lösungsorientiert, schreibst sauberen Code und kommunizierst technische Sachverhalte klar. Du arbeitest strukturiert, dokumentierst wichtige Entscheidungen und fragst bei Unklarheiten nach.' },
+  sales: { role: 'Sales Agent', prompt: 'Du bist ein erfahrener Sales Agent. Du baust Beziehungen auf, erkennst Kundenbedürfnisse und überzeugst durch echten Nutzen statt Druck. Du bist direkt, empathisch und zielorientiert.' },
+  ceo: { role: 'CEO / Operator', prompt: 'Du bist der CEO und Operator des BLUN Agent-Teams. Du priorisierst, delegierst und behältst den Überblick. Du triffst klare Entscheidungen, koordinierst andere Agenten und arbeitest immer am Gesamtziel.' },
+  finance: { role: 'Finance Controller', prompt: 'Du bist ein erfahrener Finance Controller. Du analysierst Zahlen, erkennst Trends und gibst klare finanzielle Einschätzungen. Du arbeitest präzise, datengetrieben und kommunizierst Zahlen verständlich.' },
+  designer: { role: 'UX Designer', prompt: 'Du bist ein erfahrener UX Designer. Du denkst nutzerzentriert, erkennst Usability-Probleme und entwickelst klare visuelle Lösungen. Du kommunizierst Design-Entscheidungen begründet und verständlich.' },
+  support: { role: 'Customer Support', prompt: 'Du bist ein freundlicher und kompetenter Customer Support Agent. Du hilfst Kunden schnell und effektiv, behältst Ruhe bei Problemen und findest immer eine Lösung oder einen klaren nächsten Schritt.' },
+  seo: { role: 'SEO / Content Manager', prompt: 'Du bist ein erfahrener SEO und Content Manager. Du schreibst Texte die sowohl für Menschen als auch Suchmaschinen funktionieren, analysierst Rankings und entwickelst Content-Strategien mit klarem Ziel.' }
+};
+
+function applyAgentTemplate(val) {
+  if (!val || !AGENT_TEMPLATES[val]) return;
+  var tmpl = AGENT_TEMPLATES[val];
+  document.getElementById('newAgentRole').value = tmpl.role;
+}
+
+
+var _identityEditKey = null;
+
+function openIdentityEdit(key) {
+  if(!currentAgent) return;
+  _identityEditKey = key;
+  var btn=document.getElementById('identityEditSaveBtn'); if(btn) btn.setAttribute('data-key', key);
+  var titles = { IDENTITY: 'Identität (IDENTITY.md)', SYSTEM_PROMPT: 'System-Prompt', SOUL: 'Soul / Werte (SOUL.md)' };
+  document.getElementById('identityEditTitle').textContent = titles[key] || key;
+  // Load current value from memory
+  api('/api/organisator/agents/'+currentAgent.id+'/memory').then(function(entries) {
+    var entry = entries.find(function(e){ return e.key === key; });
+    var defaults = {
+      IDENTITY: "# " + currentAgent.name + "\n- Rolle: " + (currentAgent.role||'Agent') + "\n- Team: BLUN.ai Agent-Team\n- Vibe: direkt, kompetent\nIch bin " + currentAgent.name + ".",
+      SYSTEM_PROMPT: currentAgent.system_prompt || '',
+      SOUL: "Du bist nicht chatbot. Du hast eine Meinung. Du hilfst direkt ohne Floskeln. Du bist Teil von BLUN.ai."
+    };
+    document.getElementById('identityEditContent').value = entry ? entry.value : (defaults[key]||'');
+    openModal('identityEditModal');
+  });
+}
+
+function saveIdentityEdit() {
+  if(!currentAgent) return;
+  var key = _identityEditKey || document.getElementById('identityEditSaveBtn').getAttribute('data-key');
+  if(!key) return;
+  var content = document.getElementById('identityEditContent').value.trim();
+  if(key === 'SYSTEM_PROMPT') {
+    api('/api/organisator/agents/'+currentAgent.id, {method:'PUT', body:JSON.stringify({system_prompt:content})}).then(function(){
+      currentAgent.system_prompt = content;
+      closeModal('identityEditModal');
+      _identityEditKey = null;
+    }).catch(function(e){alert('Fehler: '+e.message);});
+  } else {
+    api('/api/organisator/agents/'+currentAgent.id+'/memory', {method:'POST', body:JSON.stringify({key:key, value:content})}).then(function(){
+      closeModal('identityEditModal');
+      _identityEditKey = null;
+      loadWsMemory(currentAgent.id);
+    }).catch(function(e){alert('Fehler: '+e.message);});
   }
 }
 
-function hideModals() {
-  document.querySelectorAll(".modal-overlay").forEach(function(m) { m.classList.remove("show"); });
+function buildModelOptions(currentModel) {
+  return BLUN_MODELS.map(function(m){
+    return '<option value="'+m.value+'"'+(m.value===currentModel?' selected':'')+'>'+m.label+'</option>';
+  }).join('');
 }
 
-function createCompany() {
-  var name = document.getElementById("companyName").value.trim();
-  if (!name) return;
-  api("/api/companies", {method: "POST", body: JSON.stringify({name: name, config: {description: document.getElementById("companyDesc").value.trim()}})}).then(function() {
-    hideModals();
-    document.getElementById("companyName").value = "";
-    document.getElementById("companyDesc").value = "";
-    navigate(currentPage);
-  });
-}
 
-function createAgent() {
-  var companyId = document.getElementById("agentCompany").value;
-  var name = document.getElementById("agentName").value.trim();
-  if (!companyId || !name) return;
-  api("/api/agents", {method: "POST", body: JSON.stringify({company_id: companyId, name: name, role: document.getElementById("agentRole").value.trim(), model: document.getElementById("agentModel").value.trim()})}).then(function() {
-    hideModals();
-    document.getElementById("agentName").value = "";
-    document.getElementById("agentRole").value = "";
-    navigate("agents");
-  });
-}
+var SKILL_REGISTRY = [
+  {name:'marketing_content', cat:'marketing', label:'Marketing Content Writer', desc:'Erstellt überzeugende Marketing-Texte für Web, Social Media und Email', prompt:'Du bist ein erfahrener Marketing Copywriter. Du schreibst präzise, überzeugend und zielgruppengerecht.'},
+  {name:'seo_optimizer', cat:'seo', label:'SEO Optimizer', desc:'Optimiert Texte und Strukturen für Suchmaschinen', prompt:'Du bist ein SEO-Experte. Du optimierst Texte für Suchmaschinen und analysierst Keywords.'},
+  {name:'landing_page', cat:'marketing', label:'Landing Page Creator', desc:'Entwickelt konvertierende Landing Pages mit klaren CTAs', prompt:'Du bist ein Landing Page Spezialist. Du entwickelst strukturierte, konvertierende Seiten.'},
+  {name:'social_media', cat:'marketing', label:'Social Media Manager', desc:'Erstellt Social Media Posts und Content-Pläne', prompt:'Du bist ein Social Media Manager. Du erstellst ansprechenden Content für alle Plattformen.'},
+  {name:'sales_pitch', cat:'sales', label:'Sales Pitch Generator', desc:'Erstellt überzeugende Verkaufsargumente und Pitch-Decks', prompt:'Du bist ein Sales-Experte. Du erstellst überzeugende Pitches und Verkaufsargumente.'},
+  {name:'crm_analyst', cat:'sales', label:'CRM Analyst', desc:'Analysiert Kundenbeziehungen und identifiziert Chancen', prompt:'Du bist ein CRM-Analyst. Du analysierst Kundendaten und entwickelst Strategien.'},
+  {name:'code_debugger', cat:'coding', label:'Code Debugger', desc:'Findet und behebt Bugs in Code', prompt:'Du bist ein erfahrener Debugger. Du analysierst Code systematisch und findest Fehler.'},
+  {name:'api_designer', cat:'coding', label:'API Designer', desc:'Entwirft saubere REST APIs', prompt:'Du bist ein API Design Experte. Du entwirfst klare, konsistente REST APIs.'},
+  {name:'financial_analyst', cat:'finance', label:'Financial Analyst', desc:'Analysiert Finanzdaten und erstellt Berichte', prompt:'Du bist ein Finanzanalyst. Du analysierst Zahlen und erstellt verständliche Berichte.'},
+  {name:'ux_reviewer', cat:'design', label:'UX Reviewer', desc:'Bewertet Benutzeroberflächen und gibt Feedback', prompt:'Du bist ein UX-Experte. Du bewertest Interfaces nach Usability-Kriterien.'},
+  {name:'brand_voice', cat:'marketing', label:'Brand Voice Guardian', desc:'Stellt konsistente Markenkommunikation sicher', prompt:'Du bist ein Brand Stratege. Du achtest auf konsistente Markensprache und Positionierung.'},
+  {name:'email_marketer', cat:'marketing', label:'Email Marketer', desc:'Erstellt effektive Email-Kampagnen', prompt:'Du bist ein Email Marketing Spezialist. Du erstellst zielgerichtete, konvertierende Emails.'},
+  {name:'keyword_research', cat:'seo', label:'Keyword Research', desc:'Analysiert und findet die besten Keywords für SEO', prompt:'Du bist ein SEO-Keyword-Experte. Du analysierst Suchvolumen, Wettbewerb und findest die besten Keywords.'},
+  {name:'technical_seo', cat:'seo', label:'Technical SEO Auditor', desc:'Prüft technische SEO-Faktoren', prompt:'Du bist ein Technical SEO Experte. Du analysierst Seitenstruktur, Ladezeiten, Core Web Vitals und technische Fehler.'},
+  {name:'content_strategy', cat:'seo', label:'Content Strategy Planner', desc:'Entwickelt SEO-basierte Content-Strategien', prompt:'Du bist ein Content Stratege mit SEO-Fokus. Du entwickelst Redaktionspläne und Content-Strategien für maximale organische Reichweite.'}
+];
 
-document.querySelectorAll(".modal-overlay").forEach(function(m) {
-  m.addEventListener("click", function(e) { if (e.target === m) hideModals(); });
-});
+var _marketplaceAgentId = null;
 
-function connectWS() {
-  var proto = location.protocol === "https:" ? "wss:" : "ws:";
-  ws = new WebSocket(proto + "//" + location.host + "?role=dashboard");
-  ws.onopen = function() { document.getElementById("wsDot").classList.add("connected"); document.getElementById("wsDot").title = "Connected"; };
-  ws.onclose = function() { document.getElementById("wsDot").classList.remove("connected"); document.getElementById("wsDot").title = "Disconnected"; setTimeout(connectWS, 3000); };
-  ws.onerror = function() { ws.close(); };
-  ws.onmessage = function(e) {
-    try {
-      var msg = JSON.parse(e.data);
-      if (msg.type === "agent.status" || msg.type === "heartbeat") {
-        if (currentPage === "overview") loadDashboard();
-        if (currentPage === "agents") loadAgents();
-      }
-    } catch(ex) {}
+function openSkillMarketplace() {
+  if(!currentAgent) return;
+  _marketplaceAgentId = currentAgent.id;
+  // Auto-filter by department
+  var deptMap = {
+    'Marketing & SEO': 'marketingseo',
+    'Design & Frontend': 'design',
+    'Backend & Coding': 'coding',
+    'Sales & Business': 'sales',
+    'Finance & Controlling': 'finance',
+    'Management': '',
+    'Operations & DevOps': 'coding',
+    'Customer & Support': 'sales'
   };
+  var dept = currentAgent.department || '';
+  var autoFilter = deptMap[dept] || '';
+  // Hide irrelevant category buttons, only show own dept
+  var catBtns = document.getElementById('skillCategoryBtns');
+  if(catBtns && autoFilter) {
+    catBtns.querySelectorAll('button').forEach(function(btn){
+      var matches = btn.textContent.toLowerCase().trim() === autoFilter || btn.textContent.toLowerCase() === 'alle';
+      btn.style.display = matches ? '' : 'none';
+    });
+  }
+  filterMarketSkills(autoFilter);
+  openModal('skillMarketModal');
 }
 
-function esc(s) { if (!s) return ""; var d = document.createElement("div"); d.textContent = String(s); return d.innerHTML; }
-function timeAgo(ts) {
-  if (!ts) return "";
-  var diff = (Date.now() - new Date(ts).getTime()) / 1000;
-  if (diff < 60) return "just now";
-  if (diff < 3600) return Math.floor(diff / 60) + "m ago";
-  if (diff < 86400) return Math.floor(diff / 3600) + "h ago";
-  return Math.floor(diff / 86400) + "d ago";
+function filterMarketSkills(q) {
+
+  var filtered = q ? SKILL_REGISTRY.filter(function(s){
+    var qArr = q === 'marketingseo' ? ['marketing','seo'] : [q.toLowerCase()];
+    return qArr.some(function(term){ return s.cat.includes(term) || s.label.toLowerCase().includes(term) || s.desc.toLowerCase().includes(term); });
+  }) : SKILL_REGISTRY;
+
+  document.getElementById('skillMarketList').innerHTML = filtered.length ? filtered.map(function(s){
+    return '<div class="card" style="margin-bottom:8px;padding:10px;display:flex;justify-content:space-between;align-items:start">'+
+      '<div style="flex:1"><div style="font-weight:600;font-size:14px">'+esc(s.label)+'</div>'+
+      '<div style="font-size:12px;color:var(--tx2);margin-top:2px">'+esc(s.desc)+'</div>'+
+      '<span style="font-size:11px;background:var(--bg3);padding:2px 6px;border-radius:4px;margin-top:4px;display:inline-block">'+esc(s.cat)+'</span></div>'+
+      '<button class="btn btn-sm btn-primary" style="margin-left:8px;flex-shrink:0" data-sname="'+s.name+'" onclick="installMarketSkillBtn(this)">+ Installieren</button></div>';
+  }).join('') : '<div style="color:var(--tx2);padding:16px">Keine Skills gefunden</div>';
 }
 
-loadUser();
-loadDashboard();
-connectWS();
+
+function installMarketSkillBtn(btn) {
+  var name = btn.getAttribute('data-sname');
+  var skill = SKILL_REGISTRY.find(function(s){return s.name===name;});
+  if(!skill) return;
+  btn.textContent = '✓';
+  installMarketSkill(skill.name, skill.label, skill.desc, skill.prompt);
+}
+function installMarketSkill(name, label, desc, prompt) {
+  api('/api/skills/install', {method:'POST', body:JSON.stringify({name:name, description:desc, system_prompt:prompt, category:'marketplace'})}).then(function(r){
+    var id = r.id || (r.skill && r.skill.id);
+    if(id) {
+      assignSkillToAgent(id, label);
+    } else {
+      api('/api/skills').then(function(all){
+        var ex = all.find(function(s){return s.name===name;});
+        if(ex) assignSkillToAgent(ex.id, label);
+        else alert(label + ' nicht gefunden');
+      });
+    }
+  }).catch(function(e){ console.error('skill install error:', e.message); });
+}
+
+function assignSkillToAgent(skillId, label) {
+  if(!_marketplaceAgentId) return;
+  api('/api/skills/'+skillId+'/assign/'+_marketplaceAgentId, {method:'POST'}).then(function(){
+    closeModal('skillMarketModal');
+    loadWsSkills(_marketplaceAgentId);
+  }).catch(function(e){ alert('Fehler: '+e.message); });
+}
+
+function installFromUrl() {
+  var url = document.getElementById('skillUrlInput').value.trim();
+  if(!url) return;
+  // Convert GitHub blob URL to raw URL
+  var rawUrl = url.replace('github.com', 'raw.githubusercontent.com').replace('/blob/', '/');
+  fetch(rawUrl).then(function(r){return r.text();}).then(function(txt){
+    var skill;
+    try { skill = JSON.parse(txt); } catch(e) {
+      // Try to parse as markdown/text - extract name from filename
+      var parts = rawUrl.split('/');
+      var fname = parts[parts.length-1].replace('.json','').replace('.md','');
+      skill = {name: fname, description: 'Importierter Skill', prompt: txt.substring(0,2000)};
+    }
+    if(!skill.name) { alert('Kein gültiger Skill gefunden (braucht name-Feld)'); return; }
+    api('/api/skills', {method:'POST', body:JSON.stringify({
+      name: skill.name,
+      description: skill.description || skill.label || '',
+      prompt: skill.prompt || skill.system_prompt || ''
+    })}).then(function(r){
+      if(r.id) {
+        assignSkillToAgent(r.id, skill.name);
+        document.getElementById('skillUrlInput').value = '';
+      } else { alert('Fehler: '+JSON.stringify(r)); }
+    });
+  }).catch(function(e){ alert('URL konnte nicht geladen werden: '+e.message); });
+}
+
 </script>
-</body>
-</html>
+
+<div id="confirmModal">
+  <div class="confirm-box">
+    <h4 id="confirmTitle">Bestätigen</h4>
+    <p id="confirmMsg">Bist du sicher?</p>
+    <div class="confirm-btns">
+      <button class="btn btn-outline btn-sm" onclick="confirmResolve(false)">Abbrechen</button>
+      <button class="btn btn-danger btn-sm" onclick="confirmResolve(true)">Ja, löschen</button>
+    </div>
+  </div>
+</div>
+
+<div id="identityEditModal" class="modal-bg">
+  <div class="modal" style="max-width:600px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h3 id="identityEditTitle">Bearbeiten</h3>
+      <button class="btn-icon" onclick="closeModal('identityEditModal')">&#x2715;</button>
+    </div>
+    <textarea id="identityEditContent" rows="16" style="width:100%;font-family:monospace;font-size:13px;resize:vertical"></textarea>
+    <div class="modal-actions" style="margin-top:12px">
+      <button class="btn btn-outline btn-sm" onclick="closeModal('identityEditModal')">Abbrechen</button>
+      <button class="btn btn-primary btn-sm" id="identityEditSaveBtn" onclick="saveIdentityEdit()">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<div id="skillMarketModal" class="modal-bg">
+  <div class="modal" style="max-width:700px;max-height:85vh;display:flex;flex-direction:column">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h3>&#127757; Skill Marketplace</h3>
+      <button class="btn-icon" onclick="closeModal('skillMarketModal')">&#x2715;</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <input id="skillUrlInput" placeholder="GitHub URL einfügen..." style="flex:1">
+      <button class="btn btn-sm btn-primary" onclick="installFromUrl()">&#x2B06; Importieren</button>
+    </div>
+    <div id="skillCategoryBtns" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="btn btn-sm btn-outline" onclick="filterMarketSkills('marketing')">Marketing</button>
+      <button class="btn btn-sm btn-outline" onclick="filterMarketSkills('seo')">SEO</button>
+      <button class="btn btn-sm btn-outline" onclick="filterMarketSkills('coding')">Coding</button>
+      <button class="btn btn-sm btn-outline" onclick="filterMarketSkills('sales')">Sales</button>
+      <button class="btn btn-sm btn-outline" onclick="filterMarketSkills('finance')">Finance</button>
+      <button class="btn btn-sm btn-outline" onclick="filterMarketSkills('design')">Design</button>
+      <button class="btn btn-sm btn-outline" onclick="filterMarketSkills('')">Alle</button>
+    </div>
+    <div id="skillMarketList" style="overflow-y:auto;flex:1"></div>
+  </div>
+</div>
+</body></html>

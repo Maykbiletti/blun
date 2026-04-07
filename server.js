@@ -65,6 +65,14 @@ app.get("/:lang(en|de|es|fr|pt|tr)", function(req, res) { res.redirect("/?lang="
 app.get("/impressum", (req, res) => {
   res.sendFile(__dirname + "/dashboard/impressum.html");
 });
+app.get("/sitemap.xml", function(req, res) { res.type("application/xml").sendFile(__dirname + "/dashboard/sitemap.xml"); });
+app.get("/robots.txt", function(req, res) { res.type("text/plain").sendFile(__dirname + "/dashboard/robots.txt"); });
+app.get("/favicon.svg", function(req, res) { res.type("image/svg+xml").sendFile(__dirname + "/dashboard/favicon.svg"); });
+app.get("/favicon.png", function(req, res) { res.type("image/png").sendFile(__dirname + "/dashboard/favicon.png"); });
+app.get("/favicon.ico", function(req, res) { res.type("image/png").sendFile(__dirname + "/dashboard/favicon.png"); });
+app.get("/apple-touch-icon.png", function(req, res) { res.sendFile(__dirname + "/dashboard/apple-touch-icon.png"); });
+app.get("/icon-192.png", function(req, res) { res.sendFile(__dirname + "/dashboard/icon-192.png"); });
+app.get("/icon-512.png", function(req, res) { res.sendFile(__dirname + "/dashboard/icon-512.png"); });
 app.get("/datenschutz", (req, res) => { res.sendFile(__dirname + "/dashboard/datenschutz.html"); });
 app.get("/contact", function(req, res) { res.sendFile(__dirname + "/dashboard/contact.html"); });
 app.get("/feature/websites", function(req, res) { res.sendFile(__dirname + "/dashboard/feature-websites.html"); });app.get("/feature/software", function(req, res) { res.sendFile(__dirname + "/dashboard/feature-software.html"); });app.get("/feature/assistants", function(req, res) { res.sendFile(__dirname + "/dashboard/feature-assistants.html"); });app.get("/feature/compare", function(req, res) { res.sendFile(__dirname + "/dashboard/feature-compare.html"); });app.get("/feature/local-ai", function(req, res) { res.sendFile(__dirname + "/dashboard/feature-local-ai.html"); });app.get("/feature/everything", function(req, res) { res.sendFile(__dirname + "/dashboard/feature-everything.html"); });
@@ -136,7 +144,7 @@ app.use("/federation", federationRoutes);
 // --- Page routes (authenticated) ---
 function authPage(path, file, adminOnly) {
   app.get(path, authenticate, function (req, res) {
-    if (!req.user) return res.redirect("/login");
+    // Auth handled client-side
     if (adminOnly && req.user.role !== "admin" && req.user.role !== "owner") return res.redirect("/dashboard");
     res.sendFile(__dirname + "/dashboard/" + file);
   });
@@ -177,8 +185,8 @@ app.get("/login", function (req, res) {
   res.sendFile(__dirname + "/dashboard/login.html");
 });
 
-app.get("/dashboard", authenticate, function (req, res) {
-  if (!req.user) return res.redirect("/login");
+app.get("/dashboard", function (req, res) { res.set("Cache-Control","no-cache,no-store");
+  // Auth handled client-side
   res.sendFile(__dirname + "/dashboard/index.html");
 });
 
@@ -237,3 +245,8 @@ async function shutdown(signal) {
 
 start();
 
+
+// Dashboard SPA routes - serve index.html for all /dashboard/* paths
+['agents','operator','chat','livelog','models','settings','companies'].forEach(function(p){
+  app.get('/dashboard/'+p, function(req,res){ res.set('Cache-Control','no-cache,no-store'); res.sendFile(__dirname+'/dashboard/index.html'); });
+});

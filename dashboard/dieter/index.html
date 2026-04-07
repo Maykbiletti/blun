@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" type="image/png" href="/favicon.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta charset="UTF-8">
 <meta http-equiv="Cache-Control" content="no-cache,no-store,must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -357,7 +360,7 @@ async function loadModels() {
     models = [];
     if (providers.indexOf('anthropic') >= 0) {
       models.push({ id: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5', tag: 'Guenstig' });
-      models.push({ id: 'claude-sonnet-4-5-20250514', name: 'Claude Sonnet 4.5', tag: 'Balance' });
+      models.push({ id: 'claude-sonnet-4-6-20250514', name: 'Claude Sonnet 4.6', tag: 'Balance' });
       models.push({ id: 'claude-opus-4-6', name: 'Claude Opus 4.6', tag: 'Stark' });
     }
     if (providers.indexOf('openai') >= 0) {
@@ -556,7 +559,7 @@ function openChat(agentId) {
   wrap.innerHTML = '<div class="chat-header"><span class="chat-back" onclick="closeChat()">← Zurueck</span>'
     + '<div class="agent-av online" style="width:32px;height:32px;font-size:14px;background:' + agentColor(chatAgent.id) + '">' + chatAgent.name[0] + '</div>'
     + '<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:14px">' + esc(chatAgent.name) + '</div>'
-    + '<select id="chat-model-pick" onchange="chatModel=this.value;localStorage.setItem(\'blun_model_\'+chatAgent.id,this.value)" style="background:var(--bg3);color:var(--tx);border:1px solid var(--brd);border-radius:6px;padding:2px 6px;font-size:11px;max-width:100%;-webkit-appearance:none">'
+    + '<select id="chat-model-pick" onchange="switchModel(this.value)" style="background:var(--bg3);color:var(--tx);border:1px solid var(--brd);border-radius:6px;padding:2px 6px;font-size:11px;max-width:100%;-webkit-appearance:none">'
     + modelOpts + '</select></div></div>'
     + '<div class="chat-messages" id="chat-msgs"></div>'
     + '<div class="chat-input-wrap"><textarea class="chat-input" id="chat-in" rows="1" placeholder="Nachricht..." onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();sendChat()}"></textarea>'
@@ -590,6 +593,37 @@ async function loadChatHistory(agentId) {
     msgEl.appendChild(div);
   });
   msgEl.scrollTop = msgEl.scrollHeight;
+}
+
+async function switchModel(value) {
+  chatModel = value;
+  if (!chatAgent) return;
+  localStorage.setItem('blun_model_' + chatAgent.id, value);
+  // Save to backend
+  try {
+    await api('/api/organisator/agents/' + chatAgent.id, {
+      method: 'PUT', body: JSON.stringify({ model: value })
+    });
+  } catch(e) { console.warn('Model save failed:', e); }
+  // For local models: load on server
+  if (value.startsWith('local:')) {
+    try {
+      await api('/api/models/' + encodeURIComponent(value.replace('local:', '')) + '/load', { method: 'POST' });
+    } catch(e) { console.warn('Model load failed:', e); }
+  }
+  // Refresh model list to update status tags
+  await loadModels();
+  // Update picker options without reopening chat
+  var pick = document.getElementById('chat-model-pick');
+  if (pick) {
+    pick.innerHTML = '';
+    models.forEach(function(m) {
+      var opt = document.createElement('option');
+      opt.value = m.id; opt.textContent = m.name + ' (' + m.tag + ')';
+      if (m.id === chatModel) opt.selected = true;
+      pick.appendChild(opt);
+    });
+  }
 }
 
 function closeChat() {
@@ -682,14 +716,21 @@ async function loadLivelog() {
       var icon = l.type === 'chat' ? '💬' : l.type === 'task' ? '📋' : '💓';
       var color = l.type === 'chat' ? 'var(--b)' : l.type === 'task' ? 'var(--amber)' : 'var(--green)';
       var detail = '';
+      var preview = '';
       if (l.type === 'heartbeat') detail = l.status + (l.tokens_used > 0 ? ' · ' + l.tokens_used + ' tokens' : '');
-      if (l.type === 'chat') detail = l.status === 'user' ? 'User-Nachricht' : 'Antwort';
-      if (l.type === 'task') detail = l.status;
+      if (l.type === 'chat') {
+        detail = l.status === 'user' ? 'Aufgabe erhalten' : 'Arbeitet';
+        if (l.content) preview = l.content.replace(/[\n\r]+/g, ' ').substring(0, 150);
+      }
+      if (l.type === 'task') { detail = l.status; if (l.content) preview = l.content.substring(0, 150); }
       var time = new Date(l.created_at).toLocaleTimeString('de-DE', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
-      h += '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--brd)">'
+      h += '<div style="padding:10px 0;border-bottom:1px solid var(--brd)">'
+        + '<div style="display:flex;align-items:center;gap:10px">'
         + '<span style="font-size:16px">' + icon + '</span>'
-        + '<div style="flex:1;min-width:0"><div style="font-weight:600;color:' + color + '">' + esc(l.agent_name) + '</div><div style="color:var(--tx2);font-size:12px">' + esc(detail) + '</div></div>'
-        + '<div style="color:var(--tx2);font-size:11px;white-space:nowrap">' + time + '</div></div>';
+        + '<div style="flex:1;min-width:0"><div style="font-weight:600;color:' + color + '">' + esc(l.agent_name) + ' <span style="font-weight:400;color:var(--tx2);font-size:12px">' + esc(detail) + '</span></div></div>'
+        + '<div style="color:var(--tx2);font-size:11px;white-space:nowrap">' + time + '</div></div>'
+        + (preview ? '<div style="margin-top:4px;padding-left:30px;color:var(--tx);font-size:12px;line-height:1.4;opacity:0.8;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">' + esc(preview) + '</div>' : '')
+        + '</div>';
     });
     el.innerHTML = h;
   } catch(e) { /* silent */ }

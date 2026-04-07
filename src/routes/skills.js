@@ -50,8 +50,8 @@ router.post('/install', async function (req, res) {
   if (existing) return res.status(409).json({ error: 'Skill already installed', skill: existing });
 
   var row = await queryOne(
-    'INSERT INTO skills (name, version, description, author, source_url, category, config, system_prompt, tools) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *',
-    [b.name, b.version || '1.0.0', b.description, b.author, b.source_url, b.category, b.config || {}, b.system_prompt, b.tools || []]
+    'INSERT INTO skills (name, description, category, code) VALUES ($1,$2,$3,$4) RETURNING *',
+    [b.name, b.description || '', b.category || 'marketplace', b.system_prompt || b.prompt || b.code || '']
   );
   res.status(201).json(row);
 });
@@ -71,9 +71,10 @@ router.post('/:id/assign/:agentId', async function (req, res) {
   if (!agent) return res.status(404).json({ error: 'Agent not found' });
 
   var row = await queryOne(
-    'INSERT INTO agent_skills (agent_id, skill_id, config) VALUES ($1, $2, $3) ON CONFLICT (agent_id, skill_id) DO UPDATE SET enabled = true, config = EXCLUDED.config RETURNING *',
-    [req.params.agentId, req.params.id, req.body.config || {}]
+    'INSERT INTO agent_skills (agent_id, skill_id, installed_by) VALUES ($1, $2, $3) ON CONFLICT (agent_id, skill_id) DO NOTHING RETURNING *',
+    [req.params.agentId, req.params.id, 'marketplace']
   );
+  if(!row) row = await queryOne('SELECT * FROM agent_skills WHERE agent_id=$1 AND skill_id=$2', [req.params.agentId, req.params.id]);
   res.json(row);
 });
 

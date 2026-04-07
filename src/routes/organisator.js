@@ -134,6 +134,13 @@ router.post("/agents/:id/memory", async function(req, res) {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+router.delete("/agents/:id/memory/:key", async function(req, res) {
+  try {
+    await query("DELETE FROM agent_memory WHERE agent_id = $1 AND key = $2", [req.params.id, decodeURIComponent(req.params.key)]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 router.get("/agents/:id/conversations", async function(req, res) {
   try { res.json(await query("SELECT role, content, created_at FROM agent_conversations WHERE agent_id = $1 ORDER BY created_at ASC LIMIT 100", [req.params.id])); }
   catch(e) { res.status(500).json({ error: e.message }); }

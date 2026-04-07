@@ -149,9 +149,9 @@ h1{font-size:24px;font-weight:700;color:#fff;margin-bottom:6px}
       <p style="font-size:13px;color:#a3a3a3;line-height:1.6;margin-bottom:16px" id="oauthExplanation"></p>
       <div class="device-code-area" id="deviceCodeArea" style="display:none">
         <div class="device-code-display" id="deviceCode" onclick="copyDeviceCode()" title="Klicken zum Kopieren"></div>
-        <a href="#" target="_blank" class="device-code-link" id="deviceCodeLink"></a>
+        <a href="#" target="_blank" class="device-code-link" id="deviceCodeLink" style="display:none"></a>
         <div class="device-code-hint" id="deviceCodeHint">Kopiere den Code, oeffne den Link und fuege ihn dort ein.</div>
-        <div class="device-code-status" id="deviceCodeStatus"></div>
+        <div id="codeInputArea" style="display:none;margin:10px 0"><p style="font-size:12px;color:#888;margin-bottom:8px">Code aus dem Browser einfügen:</p><input id="authCodeInput" placeholder="Authentication Code..." style="width:100%;padding:10px;font-family:monospace;font-size:12px;background:#0a0a0a;border:1px solid #444;border-radius:8px;color:#fff;margin-bottom:8px"><button onclick="submitAuthCode()" style="width:100%;padding:10px;background:#3b82f6;color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer">Bestätigen</button></div><div class="device-code-status" id="deviceCodeStatus"></div>
       </div>
       <div id="oauthStartArea">
         <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px" onclick="startDeviceAuth()" id="oauthStartBtn">Code anzeigen</button>
@@ -182,9 +182,6 @@ h1{font-size:24px;font-weight:700;color:#fff;margin-bottom:6px}
         <input type="password" id="apikeyInput" placeholder="Key hier einfuegen" autocomplete="off" spellcheck="false">
       </div>
       <div class="field">
-        <label>Standard-Modell</label>
-        <select id="apikeyModel"></select>
-      </div>
       <div class="test-msg" id="apikeyTestMsg"></div>
       <div style="margin-top:20px;display:flex;gap:8px">
         <button class="btn btn-ghost" style="flex:1" onclick="testApiKey()">Testen</button>
@@ -431,6 +428,10 @@ async function startDeviceAuth() {
     document.getElementById("oauthStartArea").style.display = "none";
     document.getElementById("deviceCodeArea").style.display = "block";
     document.getElementById("deviceCode").textContent = data.user_code;
+    window.__authSessionId = data.session_id;
+    window.__authProvider = prov.backendKey;
+    if (data.auth_url || data.verification_uri) { window.open(data.auth_url || data.verification_uri, "_blank"); }
+    setTimeout(function(){ document.getElementById("codeInputArea").style.display="block"; }, 500);
     document.getElementById("deviceCodeLink").href = data.verification_uri;
     document.getElementById("deviceCodeLink").textContent = data.verification_uri;
     document.getElementById("deviceCodeStatus").innerHTML = '<span class="spinner spinner-blue"></span> Warte auf Bestaetigung...';
@@ -573,6 +574,15 @@ document.addEventListener("keydown", function(e) {
 });
 
 loadConnections();
+
+async function submitAuthCode() {
+  var c = document.getElementById("authCodeInput").value.trim();
+  if (!c) return;
+  var s = document.getElementById("deviceCodeStatus");
+  s.innerHTML = '<span class="spinner spinner-blue"></span> Best\u00E4tige...';
+  var r = await fetch("/api/connections/" + (window.__authProvider||"anthropic") + "/device-auth/submit-code", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ session_id: window.__authSessionId, code: c }) }).catch(function() { return null; });
+  if (r && r.ok) { document.getElementById("codeInputArea").style.display = "none"; s.innerHTML = '<span class="spinner spinner-blue"></span> Warte auf Best\u00E4tigung...'; }
+}
 </script>
 </body>
 </html>

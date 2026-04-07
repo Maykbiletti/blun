@@ -104,7 +104,7 @@ router.post("/logout", authenticate, async function (req, res) {
 
 // GET /auth/me
 router.get("/me", authenticate, requireAuth, async function (req, res) {
-  res.json({ user: req.user });
+  res.json({ user: req.user, token: req.sessionToken });
 });
 
 // OAuth placeholders

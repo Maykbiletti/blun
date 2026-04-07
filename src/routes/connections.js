@@ -1,3 +1,4 @@
+var fs = require("fs");
 // BLUN — AI Provider Connections API (OAuth + API Key)
 var express = require("express");
 var router = express.Router();
@@ -117,14 +118,111 @@ router.delete("/:provider", async function(req, res) {
   }
 });
 
-// POST /api/connections/:provider/device-auth — start device auth flow (mock)
-router.post("/:provider/device-auth", function(req, res) {
-  res.status(501).json({ error: "OAuth wird gerade eingerichtet. Bitte verwende vorerst die API Key Methode.", fallback: "api_key" });
+
+// ===== REAL CLI DEVICE AUTH =====
+var child_process = require('child_process');
+var activeSessions = {};
+
+function startCliAuth(provider) {
+  return new Promise(function(resolve, reject) {
+    var cmd, args;
+    if (provider === 'anthropic') { cmd = 'claude'; args = ['auth', 'login']; }
+    else if (provider === 'openai') { cmd = 'codex'; args = ['login', '--device-auth']; }
+    else return reject(new Error('Provider not supported'));
+    var proc = child_process.spawn(cmd, args, {
+      env: Object.assign({}, process.env, { HOME: '/root', TERM: 'dumb' }),
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+    var found = false, output = '';
+    var urlRe = new RegExp('https://\\S+');
+    function checkOutput(data) {
+      output += data.toString();
+      var m = output.match(urlRe);
+      if (m && !found) { found = true; resolve({ url: m[0], proc: proc }); }
+    }
+    proc.stdout.on('data', checkOutput);
+    proc.stderr.on('data', checkOutput);
+    // stdin stays open for code submission
+    setTimeout(function() { if (!found) { proc.kill(); reject(new Error('No auth URL')); } }, 180000);
+    proc.on('close', function(c) { if (!found) reject(new Error('CLI exit ' + c)); });
+  });
+}
+
+function checkCliCredentials(provider) {
+  try {
+    if (provider === 'anthropic') {
+      var c = JSON.parse(fs.readFileSync('/root/.claude/.credentials.json', 'utf8'));
+      return (c.claudeAiOauth && c.claudeAiOauth.accessToken) ? 'connected' : 'pending';
+    } else if (provider === 'openai') {
+      var a = JSON.parse(fs.readFileSync('/root/.codex/auth.json', 'utf8'));
+      return (a.tokens && a.tokens.access_token) ? 'connected' : 'pending';
+    }
+  } catch(e) {}
+  return 'pending';
+}
+// POST /api/connections/:provider/device-auth
+router.post('/:provider/device-auth', async function(req, res) {
+  var provider = req.params.provider;
+  if (provider !== 'anthropic' && provider !== 'openai') {
+    return res.status(400).json({ error: 'Nur Anthropic und OpenAI unterstuetzt' });
+  }
+  try {
+    var result = await startCliAuth(provider);
+    var sessionId = require('crypto').randomBytes(8).toString('hex');
+    activeSessions[sessionId] = { provider: provider, proc: result.proc, url: result.url, started: Date.now() };
+    setTimeout(function() {
+      if (activeSessions[sessionId]) { try { activeSessions[sessionId].proc.kill(); } catch(e) {} delete activeSessions[sessionId]; }
+    }, 300000);
+    res.json({ session_id: sessionId, user_code: '> Link oeffnen', verification_uri: result.url, auth_url: result.url });
+  } catch(e) {
+    res.status(500).json({ error: 'Fehler: ' + e.message, fallback: 'api_key' });
+  }
 });
 
-// GET /api/connections/:provider/device-auth/status — poll device auth status (mock)
-router.get("/:provider/device-auth/status", function(req, res) {
-  res.json({ status: "not_available" });
+
+// POST :provider/device-auth/submit-code
+router.post('/:provider/device-auth/submit-code', async function(req, res) {
+  var sid = req.body.session_id;
+  var authCode = req.body.code;
+  var sess = activeSessions[sid];
+  if (!sess || !sess.proc) return res.status(404).json({ error: 'Session not found' });
+  try {
+    sess.proc.stdin.write(authCode + '\n');
+    sess.proc.stdin.end();
+    sess.codeSubmitted = true;
+    res.json({ ok: true });
+  } catch(e) {
+    res.status(500).json({ error: 'Failed: ' + e.message });
+  }
+});
+// GET /api/connections/:provider/device-auth/status
+router.get('/:provider/device-auth/status', async function(req, res) {
+  res.setHeader('Cache-Control', 'no-store, no-cache');
+  res.setHeader('Pragma', 'no-cache');
+  var provider = req.params.provider;
+  var sessionId = req.query.session_id;
+  var status = checkCliCredentials(provider);
+  if (status === 'connected') {
+    try {
+      var tokenData;
+      if (provider === 'anthropic') {
+        tokenData = JSON.parse(fs.readFileSync('/root/.claude/.credentials.json', 'utf8')).claudeAiOauth;
+      } else {
+        tokenData = JSON.parse(fs.readFileSync('/root/.codex/auth.json', 'utf8')).tokens;
+      }
+      var enc = encrypt(JSON.stringify(Object.assign({}, tokenData, { token_type: 'oauth_cli' })));
+      var uid = req.user.id;
+      var ex = await pool.query('SELECT id FROM ai_connections WHERE user_id=$1 AND provider=$2', [uid, provider]);
+      if (ex.rows.length > 0) {
+        await pool.query('UPDATE ai_connections SET api_key_encrypted=$1,status=\'active\',auth_type=\'oauth\' WHERE id=$2', [enc, ex.rows[0].id]);
+      } else {
+        await pool.query('INSERT INTO ai_connections (user_id,provider,api_key_encrypted,status,auth_type,created_at) VALUES ($1,$2,$3,\'active\',\'oauth\',NOW())', [uid, provider, enc]);
+      }
+      if (sessionId && activeSessions[sessionId]) { try { activeSessions[sessionId].proc.kill(); } catch(e) {} delete activeSessions[sessionId]; }
+    } catch(e) { console.error('[oauth-save]', e.message); }
+    return res.json({ status: 'complete' });
+  }
+  res.json({ status: 'pending' });
 });
 
 // POST /api/connections/:provider/test — test API key (supports both stored and provided key)

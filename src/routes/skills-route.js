@@ -10,6 +10,17 @@ module.exports = function(router, query, queryOne) {
   });
 
   // === SKILLS CATALOG ===
+  router.post("/skills", async function(req, res) {
+    try {
+      var { name, description, prompt } = req.body;
+      if(!name) return res.status(400).json({error:'name required'});
+      var existing = await queryOne("SELECT id FROM skills WHERE name=$1", [name]);
+      if(existing) return res.json({id:existing.id, name:name, exists:true});
+      var r = await queryOne("INSERT INTO skills (name, description, prompt) VALUES ($1,$2,$3) RETURNING id, name", [name, description||'', prompt||'']);
+      res.json(r);
+    } catch(e) { res.status(500).json({error:e.message}); }
+  });
+
   router.get("/skills", async function(req, res) {
     try {
       var skills = await query("SELECT * FROM skills WHERE safe = true ORDER BY category, name");
@@ -87,17 +98,17 @@ module.exports = function(router, query, queryOne) {
     try {
       var limit = parseInt(req.query.limit) || 50;
       var logs = await query(
-        "SELECT 'heartbeat' as type, h.agent_id, a.name as agent_name, h.status, h.tokens_used, h.cost, h.created_at " +
+        "SELECT 'heartbeat' as type, h.agent_id, a.name as agent_name, h.status, h.tokens_used, h.cost, '' as content, h.created_at " +
         "FROM agent_heartbeats h JOIN blun_agents a ON a.id = h.agent_id " +
-        "WHERE h.created_at > NOW() - INTERVAL '1 hour' " +
+        "WHERE h.created_at > NOW() - INTERVAL '2 hours' " +
         "UNION ALL " +
-        "SELECT 'chat' as type, c.agent_id, a.name as agent_name, c.role as status, 0 as tokens_used, 0 as cost, c.created_at " +
+        "SELECT 'chat' as type, c.agent_id, a.name as agent_name, c.role as status, 0 as tokens_used, 0 as cost, substring(c.content, 1, 200) as content, c.created_at " +
         "FROM agent_conversations c JOIN blun_agents a ON a.id = c.agent_id " +
-        "WHERE c.created_at > NOW() - INTERVAL '1 hour' " +
+        "WHERE c.created_at > NOW() - INTERVAL '2 hours' " +
         "UNION ALL " +
-        "SELECT 'task' as type, t.agent_id, a.name as agent_name, t.status, 0 as tokens_used, 0 as cost, t.created_at " +
+        "SELECT 'task' as type, t.agent_id, a.name as agent_name, t.status, 0 as tokens_used, 0 as cost, substring(t.task, 1, 200) as content, t.created_at " +
         "FROM agent_tasks t JOIN blun_agents a ON a.id = t.agent_id " +
-        "WHERE t.created_at > NOW() - INTERVAL '1 hour' " +
+        "WHERE t.created_at > NOW() - INTERVAL '2 hours' " +
         "ORDER BY created_at DESC LIMIT $1",
         [limit]
       );

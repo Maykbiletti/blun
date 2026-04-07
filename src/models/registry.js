@@ -289,6 +289,20 @@ var MODELS = [
     filename: "gemma-4-26B-A4B-it-UD-Q4_K_M.gguf",
     huggingface: "https://huggingface.co/unsloth/gemma-4-26B-A4B-it-GGUF/resolve/main/gemma-4-26B-A4B-it-UD-Q4_K_M.gguf"
   },
+  
+  {
+    id: "gemma-3-27b",
+    name: "Gemma 3 Large",
+    maker: "Google",
+    description: "Largest Gemma 3. Excellent at complex tasks, multilingual, and long context.",
+    size: "L",
+    sizeGB: "16 GB",
+    ram: "20 GB",
+    category: "general",
+    tags: ["powerful", "multilingual", "quality"],
+    filename: "google_gemma-3-27b-it-Q4_K_M.gguf",
+    huggingface: "https://huggingface.co/bartowski/google_gemma-3-27b-it-GGUF/resolve/main/google_gemma-3-27b-it-Q4_K_M.gguf"
+  },
   {
     id: "gemma-2-27b",
     name: "Gemma 2 Large",

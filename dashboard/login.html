@@ -1,8 +1,12 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" type="image/png" href="/favicon.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="google-site-verification" content="rLDlUP_U15jNWjucswiqKuhWk-hj0-NdAbYKlz7ivO4" />
 <title>BLUN - Anmelden</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -124,6 +128,7 @@ async function handleSubmit(e) {
       btn.disabled = false;
       return;
     }
+    if(data.token) localStorage.setItem('blun_token', data.token);
     window.location.href = '/dashboard';
   } catch (err) {
     showError('Verbindungsfehler. Bitte erneut versuchen.');
