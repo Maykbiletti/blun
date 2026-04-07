@@ -102,6 +102,7 @@ app.use("/canvas", authenticate, canvasRoutes);
 app.use("/websites", websitesRoutes);
 app.use("/software", softwareRoutes);
 app.use("/api/website-wizard", websiteWizardRoutes);
+app.get("/api/available-providers", async function(req, res) { try { var { query } = require("./src/db"); var rows = await query("SELECT DISTINCT provider FROM ai_connections WHERE status = 'active'"); res.json({ providers: rows.map(function(r) { return r.provider; }) }); } catch(e) { res.json({ providers: [] }); } });
 app.use("/api/models", modelsRoutes);
 app.use("/api/profile", authenticate, profileRoutes);
 app.use("/api/voice", voiceRoutes);
@@ -158,6 +159,17 @@ authPage("/dashboard/blun-code", "blun-code.html");
 authPage("/dashboard/teams", "teams.html");
 authPage("/dashboard/connections", "connections.html");
 authPage("/dashboard/billing", "billing.html");
+
+// Dieter PWA — standalone, no auth required
+app.use(require('express').static(__dirname + '/dashboard/dieter', { index: false }));
+app.get('/blun', (req, res) => { res.set('Cache-Control', 'no-cache, no-store, must-revalidate'); res.set('Pragma', 'no-cache'); res.sendFile(__dirname + '/dashboard/dieter/blun-loader.html'); });
+app.get('/test-login', (req, res) => { res.set('Cache-Control', 'no-cache, no-store'); res.sendFile(__dirname + '/dashboard/dieter/login-test.html'); });
+app.get('/app', (req, res) => { res.set('Cache-Control', 'no-cache, no-store'); res.sendFile(__dirname + '/dashboard/dieter/index.html'); });
+app.get('/app/*', (req, res) => { res.set('Cache-Control', 'no-cache, no-store'); res.sendFile(__dirname + '/dashboard/dieter/index.html'); });
+app.get('/dieter', (req, res) => res.sendFile(__dirname + '/dashboard/dieter/index.html'));
+app.get('/dieter/', (req, res) => res.sendFile(__dirname + '/dashboard/dieter/index.html'));
+app.get('/dieter/manifest.json', (req, res) => res.sendFile(__dirname + '/dashboard/dieter/manifest.json'));
+app.get('/dieter/sw.js', (req, res) => { res.setHeader('Service-Worker-Allowed', '/dieter'); res.sendFile(__dirname + '/dashboard/dieter/sw.js'); });
 authPage("/monitor", "monitor.html", true);
 authPage("/admin-plans", "admin-plans.html", true);
 

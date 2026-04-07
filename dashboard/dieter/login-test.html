@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>BLUN Login Test</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0f172a;color:#f1f5f9;font-family:sans-serif;padding:40px 20px;text-align:center}
+input{display:block;width:100%;max-width:300px;margin:8px auto;padding:14px;background:#1e293b;border:1px solid #334155;border-radius:8px;color:#f1f5f9;font-size:16px}
+button{display:block;width:100%;max-width:300px;margin:12px auto;padding:14px;background:#3b82f6;color:#fff;border:none;border-radius:8px;font-size:16px;cursor:pointer}
+#log{margin-top:20px;text-align:left;max-width:300px;margin-left:auto;margin-right:auto;font-size:12px;color:#94a3b8;white-space:pre-wrap;word-break:break-all}
+</style>
+</head><body>
+<h2>BLUN Login Test</h2>
+<p style="color:#94a3b8;margin:12px 0">v2 - Debug</p>
+<input type="email" id="e" placeholder="Email" value="mayk.biletti@gmail.com">
+<input type="password" id="p" placeholder="Passwort" value="maximotion_123">
+<button onclick="go()">LOGIN</button>
+<div id="log"></div>
+<script>
+var log = document.getElementById('log');
+function L(msg) { log.textContent += msg + '\n'; }
+
+async function go() {
+  L('Button clicked');
+  var email = document.getElementById('e').value;
+  var pw = document.getElementById('p').value;
+  L('Email: ' + email);
+  L('Fetching ' + location.origin + '/auth/login ...');
+  try {
+    var resp = await fetch(location.origin + '/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, password: pw })
+    });
+    L('Status: ' + resp.status);
+    var text = await resp.text();
+    L('Response: ' + text.substring(0, 200));
+    try {
+      var d = JSON.parse(text);
+      if (d.token) {
+        L('TOKEN OK! Laenge: ' + d.token.length);
+        L('User: ' + d.user.name + ' (' + d.user.email + ')');
+        localStorage.setItem('blun_token', d.token);
+        localStorage.setItem('blun_user', JSON.stringify(d.user));
+        L('Gespeichert! Lade App...');
+        document.body.innerHTML = '<div style="text-align:center;padding:40px"><p>Lade BLUN App...</p></div>';
+        // Load the full app inline
+        fetch('/blun').then(r => r.text()).then(html => {
+          document.open();
+          document.write(html);
+          document.close();
+        });
+      } else {
+        L('FEHLER: ' + (d.error || 'kein token'));
+      }
+    } catch(e) { L('JSON Parse Fehler: ' + e.message); }
+  } catch(e) {
+    L('FETCH FEHLER: ' + e.message);
+  }
+}
+L('Page loaded. Origin: ' + location.origin);
+</script>
+</body></html>

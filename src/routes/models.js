@@ -180,7 +180,7 @@ router.post("/:id/load", function(req, res) {
     "-c", "2048",
     "-t", "2",
     "--no-mmap"
-  ], { stdio: ["ignore", "pipe", "pipe"] });
+  ], { stdio: ["ignore", "pipe", "pipe"], env: Object.assign({}, process.env, { LD_LIBRARY_PATH: "/opt/llama" }) });
 
   running[modelId] = { process: proc, port: port, ready: false };
 

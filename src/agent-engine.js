@@ -223,7 +223,175 @@ async function chatWithAgent(agentId, message) {
     await query("INSERT INTO agent_heartbeats (agent_id, status, model, tokens_used, cost) VALUES ($1, $2, $3, $4, $5)", [agentId, "chat", agent.model, result.tokens, result.cost]);
   }
 
+  // Check for tool calls in response
+  var toolResult = await executeTools(agentId, message, result.content);
+  if (toolResult) {
+    messages.push({ role: "assistant", content: result.content });
+    messages.push({ role: "user", content: "Tool-Ergebnisse:\n" + toolResult + "\n\nBitte antworte dem User basierend auf diesen Ergebnissen. Keine Tool-Tags mehr benutzen." });
+    var finalResult = await callLLM(agent.model, messages);
+    await query("INSERT INTO agent_conversations (agent_id, role, content) VALUES ($1, $2, $3)", [agentId, "assistant", finalResult.content]);
+    return { response: finalResult.content, tokens: result.tokens + finalResult.tokens, cost: result.cost + finalResult.cost };
+  }
+
   return { response: result.content, tokens: result.tokens, cost: result.cost };
 }
 
 module.exports = { startAgent, stopAgent, getActiveAgents, chatWithAgent, callLLM, loadAgentMemory, saveAgentMemory, activeAgents };
+
+// === DIETER TOOL CALLING ===
+var http = require('http');
+
+function callLocalAPI(method, path, body) {
+  return new Promise(function(resolve, reject) {
+    var port = process.env.BLUN_PORT || 3200;
+    var data = body ? JSON.stringify(body) : null;
+    var opts = {
+      hostname: '127.0.0.1', port: port, path: path, method: method,
+      headers: { 'Content-Type': 'application/json', 'x-blun-key': process.env.BLUN_API_KEY || 'blun-dev-key' }
+    };
+    if (data) opts.headers['Content-Length'] = Buffer.byteLength(data);
+    var req = http.request(opts, function(res) {
+      var chunks = [];
+      res.on('data', function(c) { chunks.push(c); });
+      res.on('end', function() {
+        try { resolve(JSON.parse(Buffer.concat(chunks).toString())); }
+        catch(e) { resolve({ raw: Buffer.concat(chunks).toString() }); }
+      });
+    });
+    req.on('error', reject);
+    if (data) req.write(data);
+    req.end();
+  });
+}
+
+
+async function resolveAgentRef(ref) {
+  if (/^d+$/.test(ref)) return ref;
+  var agent = await queryOne("SELECT id FROM blun_agents WHERE LOWER(name) = LOWER($1) LIMIT 1", [ref]);
+  return agent ? String(agent.id) : null;
+}
+
+async function executeTools(agentId, message, aiResponse) {
+  // Detect tool commands in AI response
+  var cmds = [];
+  var lines = aiResponse.split('\n');
+  for (var i = 0; i < lines.length; i++) {
+    var m;
+    if ((m = lines[i].match(/\[TOOL:LIST_MODELS\]/i))) cmds.push({ tool: 'list_models' });
+    if ((m = lines[i].match(/\[TOOL:DOWNLOAD_MODEL:([^\]]+)\]/i))) cmds.push({ tool: 'download_model', id: m[1].trim() });
+    if ((m = lines[i].match(/\[TOOL:START_MODEL:([^\]]+)\]/i))) cmds.push({ tool: 'start_model', id: m[1].trim() });
+    if ((m = lines[i].match(/\[TOOL:STOP_MODEL:([^\]]+)\]/i))) cmds.push({ tool: 'stop_model', id: m[1].trim() });
+    if ((m = lines[i].match(/\[TOOL:MODEL_STATUS:([^\]]+)\]/i))) cmds.push({ tool: 'model_status', id: m[1].trim() });
+    if ((m = lines[i].match(/\[TOOL:LIST_AGENTS\]/i))) cmds.push({ tool: 'list_agents' });
+    if ((m = lines[i].match(/\[TOOL:SERVER_STATUS\]/i))) cmds.push({ tool: 'server_status' });
+    if ((m = lines[i].match(/\[TOOL:CREATE_AGENT:([^|]+)\|([^|]+)\|([^\]]+)\]/i))) cmds.push({ tool: 'create_agent', name: m[1].trim(), role: m[2].trim(), model: m[3].trim() });
+    if ((m = lines[i].match(/\[TOOL:DELETE_AGENT:(\d+)\]/i))) cmds.push({ tool: 'delete_agent', id: m[1].trim() });
+    if ((m = lines[i].match(/\[TOOL:RESET_AGENT:(\d+)\]/i))) cmds.push({ tool: 'reset_agent', id: m[1].trim() });
+    if ((m = lines[i].match(/\[TOOL:AGENT_MEMORY:(\d+)\]/i))) cmds.push({ tool: 'agent_memory', id: m[1].trim() });
+    if ((m = lines[i].match(/\[TOOL:SET_MEMORY:(\d+)\|([^|]+)\|([^\]]+)\]/i))) cmds.push({ tool: 'set_memory', id: m[1].trim(), key: m[2].trim(), value: m[3].trim() });
+    if ((m = lines[i].match(/\[TOOL:CHAT_AGENT:(\d+)\|([^\]]+)\]/i))) cmds.push({ tool: 'chat_agent', id: m[1].trim(), message: m[2].trim() });
+    if ((m = lines[i].match(/\[TOOL:CREATE_COMPANY:([^\]]+)\]/i))) cmds.push({ tool: 'create_company', name: m[1].trim() });
+    if ((m = lines[i].match(/\[TOOL:LIST_COMPANIES\]/i))) cmds.push({ tool: 'list_companies' });
+    if ((m = lines[i].match(/\[TOOL:LIST_SKILLS\]/i))) cmds.push({ tool: 'list_skills' });
+    if ((m = lines[i].match(/\[TOOL:ASSIGN_TASK:(\d+)\|([^\]]+)\]/i))) cmds.push({ tool: 'assign_task', agent_id: m[1].trim(), description: m[2].trim() });
+    if ((m = lines[i].match(/\[TOOL:LIST_TASKS\]/i))) cmds.push({ tool: 'list_tasks' });
+    if ((m = lines[i].match(/\[TOOL:BUILD_COMPANY:([^|]+)\|([^\]]+)\]/i))) cmds.push({ tool: 'build_company', name: m[1].trim(), description: m[2].trim() });
+  }
+  if (cmds.length === 0) return null;
+
+  var results = [];
+  for (var j = 0; j < cmds.length; j++) {
+    var cmd = cmds[j];
+    try {
+      if (cmd.tool === 'list_models') {
+        var models = await callLocalAPI('GET', '/api/models');
+        var list = (models && models.models) ? models.models : (models || []);
+        var summary = list.map(function(m) {
+          return m.name + ' (' + m.id + ') — ' + (m.sizeGB || m.size_gb || '?') + ' — Status: ' + (m.status || 'available');
+        }).join('\n');
+        results.push('Verfuegbare Modelle:\n' + summary);
+      } else if (cmd.tool === 'download_model') {
+        var r = await callLocalAPI('POST', '/api/models/' + cmd.id + '/download');
+        results.push('Download ' + cmd.id + ': ' + (r.message || r.error || JSON.stringify(r)));
+      } else if (cmd.tool === 'start_model') {
+        var r = await callLocalAPI('POST', '/api/models/' + cmd.id + '/load');
+        results.push('Start ' + cmd.id + ': ' + (r.message || r.error || JSON.stringify(r)));
+      } else if (cmd.tool === 'stop_model') {
+        var r = await callLocalAPI('POST', '/api/models/' + cmd.id + '/unload');
+        results.push('Stop ' + cmd.id + ': ' + (r.message || r.error || JSON.stringify(r)));
+      } else if (cmd.tool === 'model_status') {
+        var r = await callLocalAPI('GET', '/api/models/' + cmd.id + '/status');
+        results.push('Status ' + cmd.id + ': ' + JSON.stringify(r));
+      } else if (cmd.tool === 'list_agents') {
+        var r = await callLocalAPI('GET', '/api/organisator/agents');
+        var list = (r && r.rows) ? r.rows : (Array.isArray(r) ? r : []);
+        var summary = list.map(function(a) { return a.name + ' (' + (a.role||'agent') + ') — ' + (a.status||'unknown'); }).join('\n');
+        results.push('Agents:\n' + summary);
+      } else if (cmd.tool === 'create_agent') {
+        var r = await callLocalAPI('POST', '/api/organisator/agents', {
+          name: cmd.name,
+          role: cmd.role,
+          model: cmd.model,
+          status: 'active',
+          system_prompt: 'Du bist ' + cmd.name + ', ein ' + cmd.role + '. Du sprichst Deutsch und hilfst proaktiv.'
+        });
+        results.push('Agent erstellt: ' + (r.name || r.error || JSON.stringify(r)));
+      } else if (cmd.tool === 'delete_agent') {
+        var r = await callLocalAPI('DELETE', '/api/organisator/agents/' + cmd.id);
+        results.push('Agent ' + cmd.id + ' geloescht: ' + (r.ok ? 'OK' : (r.error || JSON.stringify(r))));
+      } else if (cmd.tool === 'reset_agent') {
+        var r = await callLocalAPI('PUT', '/api/organisator/agents/' + cmd.id, { status: 'active' });
+        results.push('Agent ' + cmd.id + ' resettet: ' + (r.name || r.error || JSON.stringify(r)));
+      } else if (cmd.tool === 'agent_memory') {
+        var r = await callLocalAPI('GET', '/api/organisator/agents/' + cmd.id + '/memory');
+        var mem = r || {};
+        var entries = Object.keys(mem).map(function(k) { return k + ': ' + mem[k]; }).join('\n');
+        results.push('Memory Agent ' + cmd.id + ':\n' + (entries || 'leer'));
+      } else if (cmd.tool === 'set_memory') {
+        var r = await callLocalAPI('POST', '/api/organisator/agents/' + cmd.id + '/memory', { key: cmd.key, content: cmd.value });
+        results.push('Memory gesetzt: ' + cmd.key + ' fuer Agent ' + cmd.id);
+      } else if (cmd.tool === 'chat_agent') {
+        var chatId = await resolveAgentRef(cmd.ref);
+        if (!chatId) { results.push('Agent "' + cmd.ref + '" nicht gefunden'); continue; }
+        var r = await callLocalAPI('POST', '/api/organisator/agents/' + chatId + '/chat', { message: cmd.message });
+        results.push('Antwort von ' + cmd.ref + ': ' + (r.response || r.error || JSON.stringify(r)));
+      } else if (cmd.tool === 'create_company') {
+        var r = await callLocalAPI('POST', '/api/organisator/companies', { name: cmd.name, description: '' });
+        results.push('Firma erstellt: ' + (r.name || r.error || JSON.stringify(r)) + (r.id ? ' (ID: ' + r.id + ')' : ''));
+      } else if (cmd.tool === 'list_companies') {
+        var r = await callLocalAPI('GET', '/api/organisator/companies');
+        var list = Array.isArray(r) ? r : (r.rows || []);
+        var summary = list.map(function(c) { return c.name + ' (ID: ' + c.id + ', ' + (c.agent_count || 0) + ' Agents)'; }).join('\n');
+        results.push('Firmen:\n' + (summary || 'keine'));
+      } else if (cmd.tool === 'list_skills') {
+        var r = await callLocalAPI('GET', '/api/skills');
+        var skills = Array.isArray(r) ? r : (r.skills || []);
+        var summary = skills.map(function(s) { return (s.name || s.id) + ' — ' + (s.description || ''); }).join('\n');
+        results.push('Verfuegbare Skills:\n' + (summary || 'keine'));
+      } else if (cmd.tool === 'assign_task') {
+        var resolvedId = await resolveAgentRef(cmd.agent_ref);
+        if (!resolvedId) { results.push('Agent "' + cmd.agent_ref + '" nicht gefunden'); continue; }
+        var r = await callLocalAPI('POST', '/api/organisator/agents/' + resolvedId + '/tasks', { description: cmd.description, priority: 'normal' });
+        results.push('Aufgabe zugewiesen an ' + cmd.agent_ref + ' (ID ' + resolvedId + '): ' + cmd.description);
+      } else if (cmd.tool === 'list_tasks') {
+        var r = await callLocalAPI('GET', '/api/organisator/tasks');
+        var tasks = Array.isArray(r) ? r : (r.rows || []);
+        var summary = tasks.slice(0, 20).map(function(t) { return '#' + t.id + ' [' + t.status + '] ' + (t.description || '').substring(0, 60); }).join('\n');
+        results.push('Aufgaben:\n' + (summary || 'keine'));
+      } else if (cmd.tool === 'build_company') {
+        // Proactive company builder: creates company + suggests agents
+        var company = await callLocalAPI('POST', '/api/organisator/companies', { name: cmd.name, description: cmd.description });
+        var companyId = company.id;
+        results.push('Firma "' + cmd.name + '" erstellt (ID: ' + companyId + '). Beschreibung: ' + cmd.description);
+        results.push('Erstelle jetzt passende Agents fuer diese Firma...');
+        // The AI will then use CREATE_AGENT tools in the follow-up based on these results
+      } else if (cmd.tool === 'server_status') {
+        var r = await callLocalAPI('GET', '/api/monitor/stats');
+        results.push('Server: ' + JSON.stringify(r));
+      }
+    } catch(e) { results.push(cmd.tool + ' Fehler: ' + e.message); }
+  }
+  return results.join('\n\n');
+}
+
+module.exports.executeTools = executeTools;

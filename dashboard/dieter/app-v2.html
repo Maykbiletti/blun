@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache,no-store,must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<script>if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(function(r){r.forEach(function(sw){sw.unregister()})});caches.keys().then(function(k){k.forEach(function(n){caches.delete(n)})})}</script>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0f172a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BLUN">
+<link rel="manifest" href="/dieter/manifest.json">
+<title>BLUN</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+:root{--b:#3b82f6;--bd:#2563eb;--bg:#0f172a;--bg2:#1e293b;--bg3:#334155;--tx:#f1f5f9;--tx2:#94a3b8;--brd:#334155;--safe-top:env(safe-area-inset-top,0px);--safe-bot:env(safe-area-inset-bottom,20px);--green:#22c55e;--red:#ef4444;--amber:#f59e0b}
+html,body{height:100%;background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow:hidden}
+
+/* LOGIN */
+#login-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100dvh;padding:24px;gap:24px}
+.logo{font-size:42px;font-weight:800;letter-spacing:2px}.logo span{color:var(--b)}
+.login-box{width:100%;max-width:360px;display:flex;flex-direction:column;gap:12px}
+.login-box input{background:var(--bg2);border:1px solid var(--brd);border-radius:12px;padding:14px 16px;color:var(--tx);font-size:16px;outline:none;-webkit-appearance:none}
+input,textarea,select{-webkit-text-size-adjust:100%;-webkit-appearance:none}
+.login-box input:focus{border-color:var(--b)}
+.btn{background:var(--b);color:#fff;border:none;border-radius:12px;padding:14px;font-size:16px;font-weight:600;cursor:pointer;text-align:center}
+.btn:active{background:var(--bd)}
+.btn-outline{background:transparent;border:1px solid var(--brd);color:var(--tx2)}
+.login-err{color:var(--red);font-size:14px;text-align:center;min-height:20px}
+
+/* APP SHELL */
+#app{display:none;flex-direction:column;height:100dvh;position:fixed;top:0;left:0;right:0;bottom:0;overflow:hidden}
+.topbar{background:var(--bg2);border-bottom:1px solid var(--brd);padding:12px 16px;padding-top:max(48px,calc(var(--safe-top) + 12px));display:flex;align-items:center;gap:12px;flex-shrink:0}
+.topbar-logo{font-size:20px;font-weight:800;letter-spacing:1px}.topbar-logo span{color:var(--b)}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.topbar-user{width:32px;height:32px;border-radius:50%;background:var(--b);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;cursor:pointer}
+.content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.nav{display:flex;background:var(--bg2);border-top:1px solid var(--brd);padding-bottom:var(--safe-bot);flex-shrink:0}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;padding:8px 4px;gap:2px;color:var(--tx2);font-size:10px;cursor:pointer;transition:.2s}
+.nav-item.active{color:var(--b)}
+.nav-item svg{width:22px;height:22px}
+
+/* TABS */
+.tab{display:none;padding:16px;height:100%;overflow-y:auto}
+.tab.active{display:block}
+.tab#tab-chat{padding:0;overflow:hidden}
+.tab#tab-chat.active{display:flex;flex-direction:column}
+
+/* CARDS */
+.card{background:var(--bg2);border:1px solid var(--brd);border-radius:12px;padding:16px;margin-bottom:12px}
+.card-title{font-weight:700;font-size:16px;margin-bottom:4px}
+.card-sub{color:var(--tx2);font-size:13px}
+.badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600}
+.badge-green{background:rgba(34,197,94,.15);color:var(--green)}
+.badge-amber{background:rgba(245,158,11,.15);color:var(--amber)}
+.badge-red{background:rgba(239,68,68,.15);color:var(--red)}
+.badge-blue{background:rgba(59,130,246,.15);color:var(--b)}
+
+/* FIRMA LIST */
+.firma-card{cursor:pointer;transition:border-color .2s}
+.firma-card:active{border-color:var(--b)}
+.firma-header{display:flex;align-items:center;gap:12px}
+.firma-icon{width:44px;height:44px;border-radius:10px;background:var(--b);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.firma-stats{display:flex;gap:16px;margin-top:12px;padding-top:12px;border-top:1px solid var(--brd)}
+.firma-stat{text-align:center;flex:1}
+.firma-stat-val{font-size:18px;font-weight:700}
+.firma-stat-label{font-size:11px;color:var(--tx2)}
+
+/* AGENT LIST */
+.agent-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--brd);cursor:pointer}
+.agent-row:last-child{border:none}
+.agent-av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;position:relative}
+.agent-av.online::after{content:'';position:absolute;bottom:0;right:0;width:10px;height:10px;border-radius:50%;background:var(--green);border:2px solid var(--bg2)}
+.agent-info{flex:1;min-width:0}
+.agent-name{font-weight:600;font-size:14px}
+.agent-role{color:var(--tx2);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* CHAT */
+.chat-wrap{display:flex;flex-direction:column;flex:1;min-height:0;padding:0}
+.chat-header{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--brd);flex-shrink:0}
+.chat-back{cursor:pointer;color:var(--b);font-size:14px;font-weight:600}
+.chat-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px}
+.msg{max-width:80%;padding:10px 14px;border-radius:16px;font-size:14px;line-height:1.4;word-break:break-word}
+.msg-user{background:var(--b);color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
+.msg-ai{background:var(--bg3);color:var(--tx);align-self:flex-start;border-bottom-left-radius:4px}
+.chat-input-wrap{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--brd);flex-shrink:0;padding-bottom:max(12px,var(--safe-bot));align-items:flex-end}
+.chat-input{flex:1;min-width:0;background:var(--bg3);border:1px solid var(--brd);border-radius:20px;padding:10px 16px;color:var(--tx);font-size:16px;outline:none;resize:none;max-height:100px;line-height:1.4}
+.chat-send{background:var(--b);color:#fff;border:none;border-radius:50%;width:40px;height:40px;min-width:40px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+
+/* MODAL */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:none;align-items:flex-end;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:var(--bg2);border-radius:16px 16px 0 0;width:100%;max-width:500px;max-height:80dvh;overflow-y:auto;padding:24px 16px;padding-bottom:calc(24px + var(--safe-bot))}
+.modal h3{font-size:18px;margin-bottom:16px}
+.modal label{display:block;color:var(--tx2);font-size:13px;margin-bottom:4px;margin-top:12px}
+.modal input,.modal textarea,.modal select{width:100%;background:var(--bg);border:1px solid var(--brd);border-radius:10px;padding:12px;color:var(--tx);font-size:16px;outline:none}
+.modal textarea{min-height:80px;resize:vertical}
+
+/* EMPTY STATE */
+.empty{text-align:center;padding:40px 20px;color:var(--tx2)}
+.empty-icon{font-size:48px;margin-bottom:12px}
+.empty-text{font-size:15px;margin-bottom:16px}
+
+/* LOG */
+.log-entry{padding:8px 0;border-bottom:1px solid var(--brd);font-size:13px;font-family:monospace}
+.log-time{color:var(--tx2);font-size:11px}
+
+/* PROFILE */
+.profile-section{text-align:center;padding:20px}
+.profile-av{width:64px;height:64px;border-radius:50%;background:var(--b);display:inline-flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;margin-bottom:8px}
+.profile-name{font-size:18px;font-weight:700}
+.profile-email{color:var(--tx2);font-size:13px}
+.profile-plan{margin-top:8px}
+
+/* LOADING */
+.spinner{width:24px;height:24px;border:3px solid var(--brd);border-top-color:var(--b);border-radius:50%;animation:spin .6s linear infinite;margin:20px auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* FAB */
+.fab{position:fixed;bottom:calc(80px + var(--safe-bot));right:16px;width:52px;height:52px;border-radius:50%;background:var(--b);color:#fff;border:none;font-size:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 12px rgba(59,130,246,.4);z-index:50}
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen">
+  <div class="logo">BL<span>UN</span></div>
+  <p style="color:var(--tx2);font-size:14px;margin-top:-12px">Business Logic Unified Network</p>
+  <div class="login-box">
+    <input type="email" id="login-email" placeholder="Email" autocomplete="email">
+    <input type="password" id="login-pw" placeholder="Passwort" autocomplete="current-password">
+    <div class="login-err" id="login-err"></div>
+    <button class="btn" onclick="doLogin()">Einloggen</button>
+    <button class="btn btn-outline" onclick="showRegister()">Konto erstellen</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-logo">BL<span>UN</span></div>
+    <div class="topbar-right">
+      <div onclick="location.reload()" style="cursor:pointer;padding:4px;display:flex;align-items:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--tx2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg></div>
+      <div class="topbar-user" id="user-avatar" onclick="toggleProfile()"></div>
+    </div>
+  </div>
+  <div class="content" id="content">
+    <!-- Firmen Tab -->
+    <div class="tab active" id="tab-firmen"></div>
+    <!-- Agents Tab -->
+    <div class="tab" id="tab-agents"></div>
+    <!-- Chat Tab -->
+    <div class="tab" id="tab-chat">
+      <div id="chat-empty"><div style="padding:16px"><h2 style="margin-bottom:16px">Chat</h2><div id="chat-agent-list"></div></div></div>
+      <div class="chat-wrap" id="chat-active" style="display:none"></div>
+    </div>
+    <!-- Modelle Tab -->
+    <div class="tab" id="tab-modelle"></div>
+    <!-- Profil Tab (overlay) -->
+    <div class="tab" id="tab-profil"></div>
+  </div>
+  <nav class="nav" id="nav">
+    <div class="nav-item active" onclick="switchTab('firmen')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 7v14m6-14v14m6-14v14m6-14v14M3 7l9-4 9 4"/></svg>
+      Firmen
+    </div>
+    <div class="nav-item" onclick="switchTab('agents')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M6 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/></svg>
+      Agents
+    </div>
+    <div class="nav-item" onclick="switchTab('chat')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      Chat
+    </div>
+    <div class="nav-item" onclick="switchTab('modelle')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      Modelle
+    </div>
+  </nav>
+  <button class="fab" id="fab" onclick="fabAction()">+</button>
+</div>
+
+<!-- CREATE FIRMA MODAL -->
+<div class="modal-bg" id="modal-firma" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal">
+    <h3>Neue Firma</h3>
+    <label>Name</label>
+    <input id="firma-name" placeholder="z.B. Meine Marketing-Agentur">
+    <label>Beschreibung</label>
+    <textarea id="firma-desc" placeholder="Was macht die Firma?"></textarea>
+    <button class="btn" style="margin-top:16px;width:100%" onclick="createFirma()">Firma gruenden</button>
+  </div>
+</div>
+
+<!-- CREATE AGENT MODAL -->
+<div class="modal-bg" id="modal-agent" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal">
+    <h3>Neuer Agent</h3>
+    <label>Name</label>
+    <input id="agent-name" placeholder="z.B. Max">
+    <label>Rolle</label>
+    <input id="agent-role" placeholder="z.B. Marketing Manager">
+    <label>Firma</label>
+    <select id="agent-company"></select>
+    <label>Modell</label>
+    <select id="agent-model"></select>
+    <button class="btn" style="margin-top:16px;width:100%" onclick="createAgent()">Agent einstellen</button>
+  </div>
+</div>
+
+<!-- REGISTER MODAL -->
+<div class="modal-bg" id="modal-register" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal">
+    <h3>Konto erstellen</h3>
+    <label>Name</label>
+    <input id="reg-name" placeholder="Dein Name">
+    <label>Email</label>
+    <input id="reg-email" type="email" placeholder="Email">
+    <label>Passwort (min. 8 Zeichen)</label>
+    <input id="reg-pw" type="password" placeholder="Passwort">
+    <div class="login-err" id="reg-err"></div>
+    <button class="btn" style="margin-top:16px;width:100%" onclick="doRegister()">Registrieren</button>
+  </div>
+</div>
+
+<script>
+var BASE = location.origin;
+var token = localStorage.getItem('blun_token');
+var user = null;
+var companies = [];
+var agents = [];
+var models = [];
+var currentTab = 'firmen';
+var chatAgent = null;
+var chatMessages = [];
+var chatModel = null;
+
+function api(path, opts) {
+  opts = opts || {};
+  var h = { 'Content-Type': 'application/json' };
+  if (token) h['Authorization'] = 'Bearer ' + token;
+  h['x-blun-key'] = 'blun-dev-key';
+  opts.headers = Object.assign(h, opts.headers || {});
+  return fetch(BASE + path, opts).then(function(r) {
+    if (r.status === 401) { logout(); throw new Error('unauthorized'); }
+    return r.json();
+  });
+}
+
+// AUTH
+async function doLogin() {
+  var email = document.getElementById('login-email').value.trim();
+  var pw = document.getElementById('login-pw').value;
+  var err = document.getElementById('login-err');
+  if (!email || !pw) { err.textContent = 'Email und Passwort eingeben'; return; }
+  err.textContent = '';
+  try {
+    var d = await fetch(BASE + '/auth/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, password: pw })
+    }).then(function(r) { return r.json(); });
+    if (d.error) { err.textContent = d.error; return; }
+    token = d.token;
+    user = d.user;
+    localStorage.setItem('blun_token', token);
+    localStorage.setItem('blun_user', JSON.stringify(user));
+    showApp();
+  } catch(e) { err.textContent = 'Verbindung fehlgeschlagen'; }
+}
+
+function showRegister() { document.getElementById('modal-register').classList.add('open'); }
+
+async function doRegister() {
+  var name = document.getElementById('reg-name').value.trim();
+  var email = document.getElementById('reg-email').value.trim();
+  var pw = document.getElementById('reg-pw').value;
+  var err = document.getElementById('reg-err');
+  if (!name || !email || !pw) { err.textContent = 'Alle Felder ausfuellen'; return; }
+  err.textContent = '';
+  try {
+    var d = await fetch(BASE + '/auth/register', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name, email: email, password: pw })
+    }).then(function(r) { return r.json(); });
+    if (d.error) { err.textContent = d.error; return; }
+    token = d.token;
+    user = d.user;
+    localStorage.setItem('blun_token', token);
+    localStorage.setItem('blun_user', JSON.stringify(user));
+    document.getElementById('modal-register').classList.remove('open');
+    showApp();
+  } catch(e) { err.textContent = 'Registrierung fehlgeschlagen'; }
+}
+
+function logout() {
+  token = null; user = null;
+  localStorage.removeItem('blun_token');
+  localStorage.removeItem('blun_user');
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
+// APP INIT
+async function showApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  var av = document.getElementById('user-avatar');
+  av.textContent = user && user.name ? user.name[0].toUpperCase() : '?';
+  await Promise.all([loadCompanies(), loadAgents(), loadModels()]);
+  renderTab();
+}
+
+// DATA
+async function loadCompanies() {
+  try { companies = await api('/api/organisator/companies'); } catch(e) { companies = []; }
+}
+async function loadAgents() {
+  try { agents = await api('/api/organisator/agents'); } catch(e) { agents = []; }
+}
+async function loadModels() {
+  try {
+    var provRes = await api('/api/available-providers');
+    var providers = (provRes && provRes.providers) || [];
+    var modRes = await api('/api/models');
+    var installed = ((modRes && modRes.models) || []).filter(function(m) { return m.status === 'installed' || m.status === 'running'; });
+    models = [];
+    if (providers.indexOf('anthropic') >= 0) {
+      models.push({ id: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5', tag: 'Guenstig' });
+      models.push({ id: 'claude-sonnet-4-5-20250514', name: 'Claude Sonnet 4.5', tag: 'Balance' });
+      models.push({ id: 'claude-opus-4-6', name: 'Claude Opus 4.6', tag: 'Stark' });
+    }
+    if (providers.indexOf('openai') >= 0) {
+      models.push({ id: 'gpt-4o', name: 'GPT-4o', tag: 'OpenAI' });
+      models.push({ id: 'gpt-4o-mini', name: 'GPT-4o Mini', tag: 'Guenstig' });
+    }
+    if (providers.indexOf('google') >= 0) {
+      models.push({ id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', tag: 'Google' });
+      models.push({ id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', tag: 'Google' });
+    }
+    // Seedance (Video AI)
+    models.push({ id: 'seedance-1.0', name: 'Seedance 1.0', tag: 'Video AI' });
+    installed.forEach(function(m) {
+      models.push({ id: 'local:' + m.id, name: m.name, tag: 'Lokal' + (m.status === 'running' ? ' (aktiv)' : '') });
+    });
+  } catch(e) { models = []; }
+}
+
+// TABS
+function switchTab(name) {
+  currentTab = name;
+  document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+  document.getElementById('tab-' + name).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(function(n, i) {
+    n.classList.toggle('active', ['firmen','agents','chat','modelle'][i] === name);
+  });
+  var fab = document.getElementById('fab');
+  fab.style.display = (name === 'firmen' || name === 'agents') ? 'flex' : 'none';
+  renderTab();
+}
+
+function renderChatList() {
+  var el = document.getElementById('chat-agent-list');
+  if (!el || chatAgent) return;
+  if (!agents.length) { el.innerHTML = '<div class="empty"><div class="empty-icon">💬</div><div class="empty-text">Noch keine Agents</div></div>'; return; }
+  var orgs = agents.filter(isOrg);
+  var rest = agents.filter(function(a) { return !isOrg(a); });
+  var groups = {};
+  rest.forEach(function(a) {
+    var cat = agentCategory(a);
+    if (!groups[cat]) groups[cat] = [];
+    groups[cat].push(a);
+  });
+  var h = '';
+  if (orgs.length) {
+    orgs.forEach(function(a) { h += renderAgentRow(a, {showCompany:true}); });
+  }
+  var catOrder = ['Marketing & SEO','Design & Frontend','Backend & Coding','Infrastruktur & DevOps','KI & Modelle','QA & Testing','Business & Sales','Mobile & Desktop','Agent System','Sonstige'];
+  catOrder.forEach(function(cat) {
+    if (!groups[cat]) return;
+    h += '<div style="margin-top:16px;margin-bottom:8px;font-size:13px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:1px">' + esc(cat) + '</div><div class="card">';
+    groups[cat].forEach(function(a) { h += renderAgentRow(a, {showCompany:true}); });
+    h += '</div>';
+  });
+  el.innerHTML = h;
+}
+
+function renderTab() {
+  if (currentTab === 'firmen') renderFirmen();
+  if (currentTab === 'agents') renderAgents();
+  if (currentTab === 'chat') renderChatList();
+  if (currentTab === 'modelle') renderModelle();
+}
+
+// FIRMEN
+function renderFirmen() {
+  var el = document.getElementById('tab-firmen');
+  if (!companies.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">🏢</div><div class="empty-text">Noch keine Firma. Gruende deine erste!</div><button class="btn" onclick="fabAction()" style="display:inline-block;padding:12px 24px">Firma gruenden</button></div>';
+    return;
+  }
+  var h = '<h2 style="margin-bottom:16px">Meine Firmen</h2>';
+  companies.forEach(function(c) {
+    var cnt = c.agent_count || 0;
+    var desc = (c.config && c.config.description) ? c.config.description : '';
+    h += '<div class="card firma-card" onclick="openFirma(\'' + c.id + '\')">'
+      + '<div class="firma-header"><div class="firma-icon">🏢</div><div><div class="card-title">' + esc(c.name) + '</div><div class="card-sub">' + esc(desc) + '</div></div></div>'
+      + '<div class="firma-stats"><div class="firma-stat"><div class="firma-stat-val">' + cnt + '</div><div class="firma-stat-label">Agents</div></div>'
+      + '<div class="firma-stat"><div class="firma-stat-val badge badge-green">Aktiv</div><div class="firma-stat-label">Status</div></div></div></div>';
+  });
+  el.innerHTML = h;
+}
+
+function openFirma(id) {
+  var c = companies.find(function(x) { return x.id == id; });
+  if (!c) return;
+  var fa = agents.filter(function(a) { return a.company_id == id; });
+  var el = document.getElementById('tab-firmen');
+  var h = '<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">'
+    + '<span style="cursor:pointer;color:var(--b);font-size:14px;font-weight:600" onclick="loadCompanies().then(renderFirmen)">← Zurueck</span>'
+    + '<h2>' + esc(c.name) + '</h2></div>';
+  h += '<div class="card"><div class="card-title">Agents (' + fa.length + ')</div></div>';
+  if (!fa.length) {
+    h += '<div class="empty"><div class="empty-text">Noch keine Agents in dieser Firma</div><button class="btn" onclick="openAgentModal(\'' + id + '\')" style="display:inline-block;padding:10px 20px">Agent einstellen</button></div>';
+  } else {
+    h += '<div class="card">';
+    fa.forEach(function(a) {
+      var online = a.runtime_active;
+      h += '<div class="agent-row" onclick="openChat(' + a.id + ')">'
+        + '<div class="agent-av' + (online ? ' online' : '') + '" style="background:' + agentColor(a.id) + '">' + (a.name ? a.name[0] : '?') + '</div>'
+        + '<div class="agent-info"><div class="agent-name">' + esc(a.name) + '</div><div class="agent-role">' + esc(a.role || 'Agent') + '</div></div>'
+        + '<span class="badge ' + (online ? 'badge-green' : 'badge-amber') + '">' + (online ? 'Online' : 'Idle') + '</span></div>';
+    });
+    h += '</div>';
+  }
+  el.innerHTML = h;
+}
+
+function isOrg(a) { return a.role && a.role.toLowerCase().indexOf('organisator') !== -1; }
+
+function agentCategory(a) {
+  if (isOrg(a)) return null;
+  var r = (a.role || '').toLowerCase();
+  if (r.match(/marketing|social|content|seo|launch/)) return 'Marketing & SEO';
+  if (r.match(/frontend|ui|ux|design|avatar|wizard|animat/)) return 'Design & Frontend';
+  if (r.match(/backend|api|auth|db|billing|node|express/)) return 'Backend & Coding';
+  if (r.match(/devops|server|ci|docker|dns|nginx|infra|migration|backup|storage/)) return 'Infrastruktur & DevOps';
+  if (r.match(/ai|model|llama|fine-tun/)) return 'KI & Modelle';
+  if (r.match(/qa|test|bug|review/)) return 'QA & Testing';
+  if (r.match(/business|billing|affiliate|reseller/)) return 'Business & Sales';
+  if (r.match(/mobile|desktop|electron|ios|android/)) return 'Mobile & Desktop';
+  if (r.match(/agent|skill|marketplace/)) return 'Agent System';
+  return 'Sonstige';
+}
+
+function renderAgentRow(a, opts) {
+  var online = a.runtime_active;
+  var cname = a.company_name || 'Ohne Firma';
+  var org = isOrg(a);
+  var h = '<div class="agent-row" onclick="openChat(' + a.id + ')" style="' + (org ? 'background:rgba(59,130,246,0.1);border:1px solid var(--b);border-radius:10px;margin-bottom:8px;padding:12px' : '') + '">';
+  h += '<div class="agent-av' + (online ? ' online' : '') + '" style="background:' + (org ? 'var(--b)' : agentColor(a.id)) + ';' + (org ? 'width:44px;height:44px;font-size:18px' : '') + '">' + (a.name ? a.name[0] : '?') + '</div>';
+  var mdl = localStorage.getItem('blun_model_' + a.id) || a.model || '';
+  var mdlShort = mdl.replace('local:','').replace(/-/g,' ').replace(/\b\w/g, function(c){return c.toUpperCase()}).substring(0,20);
+  var isLocal = mdl.indexOf('local:') === 0 || mdl.indexOf('gemma') === 0 || mdl.indexOf('llama') === 0 || mdl.indexOf('tiny') === 0 || mdl.indexOf('deepseek') === 0 || mdl.indexOf('mistral') === 0 || mdl.indexOf('qwen') === 0;
+  var mdlColor = isLocal ? 'var(--green)' : (mdl ? 'var(--amber)' : 'var(--tx2)');
+  var mdlLabel = isLocal ? 'Lokal' : (mdl ? 'API' : '');
+  h += '<div class="agent-info"><div class="agent-name">' + esc(a.name) + (org ? ' <span style="color:var(--b);font-size:11px;font-weight:700">KI-ORGANISATOR</span>' : '') + (opts && opts.showCompany ? ' <span style="color:var(--tx2);font-weight:400;font-size:12px">· ' + esc(cname) + '</span>' : '') + '</div><div class="agent-role">' + esc(a.role || 'Agent') + '</div>'
+    + (mdl ? '<div style="font-size:10px;margin-top:2px"><span style="color:' + mdlColor + ';font-weight:600">' + esc(mdlLabel) + '</span> <span style="color:var(--tx2)">' + esc(mdlShort) + '</span></div>' : '')
+    + '</div>';
+  h += '<span class="badge ' + (online ? 'badge-green' : 'badge-amber') + '">' + (online ? 'Online' : 'Idle') + '</span>';
+  if (opts && opts.deletable) h += '<span style="color:var(--red);cursor:pointer;padding:4px 8px;font-size:16px" onclick="deleteAgent(' + a.id + ',event)">✕</span>';
+  h += '</div>';
+  return h;
+}
+
+// AGENTS
+function renderAgents() {
+  var el = document.getElementById('tab-agents');
+  if (!agents.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">🤖</div><div class="empty-text">Noch keine Agents</div></div>';
+    return;
+  }
+  var orgs = agents.filter(isOrg);
+  var rest = agents.filter(function(a) { return !isOrg(a); });
+  var groups = {};
+  rest.forEach(function(a) {
+    var cat = agentCategory(a);
+    if (!groups[cat]) groups[cat] = [];
+    groups[cat].push(a);
+  });
+  var h = '';
+  if (orgs.length) {
+    orgs.forEach(function(a) { h += renderAgentRow(a, {showCompany:true, deletable:true}); });
+  }
+  var catOrder = ['Marketing & SEO','Design & Frontend','Backend & Coding','Infrastruktur & DevOps','KI & Modelle','QA & Testing','Business & Sales','Mobile & Desktop','Agent System','Sonstige'];
+  catOrder.forEach(function(cat) {
+    if (!groups[cat]) return;
+    h += '<div style="margin-top:16px;margin-bottom:8px;font-size:13px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:1px">' + esc(cat) + '</div><div class="card">';
+    groups[cat].forEach(function(a) { h += renderAgentRow(a, {showCompany:true, deletable:true}); });
+    h += '</div>';
+  });
+  el.innerHTML = '<h2 style="margin-bottom:16px">Alle Agents (' + agents.length + ')</h2>' + h;
+}
+
+// CHAT
+function openChat(agentId) {
+  chatAgent = agents.find(function(a) { return a.id == agentId; });
+  if (!chatAgent) return;
+  // Load saved messages
+  var saved = localStorage.getItem('blun_chat_' + agentId);
+  chatMessages = saved ? JSON.parse(saved) : [];
+  switchTab('chat');
+  var el = document.getElementById('tab-chat');
+  document.getElementById('chat-empty').style.display = 'none';
+  var wrap = document.getElementById('chat-active');
+  wrap.style.display = 'flex';
+  // Build model picker options
+  var defModel = chatAgent.model || '';
+  chatModel = localStorage.getItem('blun_model_' + chatAgent.id) || defModel || (models.length ? models[0].id : '');
+  var modelOpts = '';
+  models.forEach(function(m) {
+    modelOpts += '<option value="' + esc(m.id) + '"' + (m.id === chatModel ? ' selected' : '') + '>' + esc(m.name) + ' (' + esc(m.tag) + ')</option>';
+  });
+  wrap.innerHTML = '<div class="chat-header"><span class="chat-back" onclick="closeChat()">← Zurueck</span>'
+    + '<div class="agent-av online" style="width:32px;height:32px;font-size:14px;background:' + agentColor(chatAgent.id) + '">' + chatAgent.name[0] + '</div>'
+    + '<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:14px">' + esc(chatAgent.name) + '</div>'
+    + '<select id="chat-model-pick" onchange="chatModel=this.value;localStorage.setItem(\'blun_model_\'+chatAgent.id,this.value)" style="background:var(--bg3);color:var(--tx);border:1px solid var(--brd);border-radius:6px;padding:2px 6px;font-size:11px;max-width:100%;-webkit-appearance:none">'
+    + modelOpts + '</select></div></div>'
+    + '<div class="chat-messages" id="chat-msgs"></div>'
+    + '<div class="chat-input-wrap"><textarea class="chat-input" id="chat-in" rows="1" placeholder="Nachricht..." onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();sendChat()}"></textarea>'
+    + '<button class="chat-send" onclick="sendChat()"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg></button></div>';
+  document.getElementById('fab').style.display = 'none';
+  // Restore saved messages
+  var msgEl = document.getElementById('chat-msgs');
+  chatMessages.forEach(function(m) {
+    var div = document.createElement('div');
+    div.className = 'msg msg-' + m.type;
+    if (m.type === 'ai') { div.innerHTML = formatMsg(m.text); } else { div.textContent = m.text; }
+    msgEl.appendChild(div);
+  });
+  if (msgEl) msgEl.scrollTop = msgEl.scrollHeight;
+}
+
+function closeChat() {
+  chatAgent = null;
+  document.getElementById('chat-active').style.display = 'none';
+  document.getElementById('chat-empty').style.display = '';
+}
+
+async function sendChat() {
+  var inp = document.getElementById('chat-in');
+  var msg = inp.value.trim();
+  if (!msg || !chatAgent) return;
+  inp.value = '';
+  addMsg('user', msg);
+  addMsg('ai', '...');
+  try {
+    var d = await api('/api/organisator/agents/' + chatAgent.id + '/chat', {
+      method: 'POST', body: JSON.stringify({ message: msg, model: chatModel || undefined })
+    });
+    removeLastMsg();
+    addMsg('ai', d.response || d.error || 'Keine Antwort');
+  } catch(e) {
+    removeLastMsg();
+    addMsg('ai', 'Fehler: ' + e.message);
+  }
+}
+
+function saveChat() {
+  if (chatAgent) localStorage.setItem('blun_chat_' + chatAgent.id, JSON.stringify(chatMessages));
+}
+
+function addMsg(type, text) {
+  chatMessages.push({ type: type, text: text });
+  saveChat();
+  var el = document.getElementById('chat-msgs');
+  if (!el) return;
+  var div = document.createElement('div');
+  div.className = 'msg msg-' + type;
+  if (type === 'ai' && text !== '...') {
+    div.innerHTML = formatMsg(text);
+  } else {
+    div.textContent = text;
+  }
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+
+function removeLastMsg() {
+  chatMessages.pop();
+  saveChat();
+  var el = document.getElementById('chat-msgs');
+  if (el && el.lastChild) el.removeChild(el.lastChild);
+}
+
+// MODELLE
+function renderModelle() {
+  var el = document.getElementById('tab-modelle');
+  if (!models.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">🧠</div><div class="empty-text">Keine Modelle verfuegbar</div></div>';
+    return;
+  }
+  var h = '<h2 style="margin-bottom:16px">Verfuegbare Modelle (' + models.length + ')</h2>';
+  models.forEach(function(m) {
+    var isLocal = m.id.indexOf('local:') === 0;
+    var badge = isLocal ? 'badge-green' : 'badge-blue';
+    h += '<div class="card"><div style="display:flex;align-items:center;gap:12px"><div style="flex:1"><div class="card-title">' + esc(m.name) + '</div><div class="card-sub">' + esc(m.id) + '</div></div>'
+      + '<span class="badge ' + badge + '">' + esc(m.tag) + '</span></div></div>';
+  });
+  el.innerHTML = h;
+}
+
+// CREATE
+function fabAction() {
+  if (currentTab === 'firmen') document.getElementById('modal-firma').classList.add('open');
+  if (currentTab === 'agents') openAgentModal();
+}
+
+async function createFirma() {
+  var name = document.getElementById('firma-name').value.trim();
+  var desc = document.getElementById('firma-desc').value.trim();
+  if (!name) return;
+  await api('/api/organisator/companies', { method: 'POST', body: JSON.stringify({ name: name, description: desc }) });
+  document.getElementById('modal-firma').classList.remove('open');
+  document.getElementById('firma-name').value = '';
+  document.getElementById('firma-desc').value = '';
+  await loadCompanies();
+  renderFirmen();
+}
+
+function openAgentModal(companyId) {
+  var sel = document.getElementById('agent-company');
+  sel.innerHTML = '<option value="">Ohne Firma</option>';
+  companies.forEach(function(c) {
+    sel.innerHTML += '<option value="' + c.id + '"' + (companyId == c.id ? ' selected' : '') + '>' + esc(c.name) + '</option>';
+  });
+  var msel = document.getElementById('agent-model');
+  msel.innerHTML = '';
+  models.forEach(function(m) {
+    msel.innerHTML += '<option value="' + esc(m.id) + '">' + esc(m.name) + ' (' + esc(m.tag) + ')</option>';
+  });
+  document.getElementById('modal-agent').classList.add('open');
+}
+
+async function createAgent() {
+  var name = document.getElementById('agent-name').value.trim();
+  var role = document.getElementById('agent-role').value.trim();
+  var company = document.getElementById('agent-company').value;
+  var model = document.getElementById('agent-model').value;
+  if (!name) return;
+  await api('/api/organisator/agents', {
+    method: 'POST',
+    body: JSON.stringify({ name: name, role: role, company_id: company || null, model: model })
+  });
+  document.getElementById('modal-agent').classList.remove('open');
+  document.getElementById('agent-name').value = '';
+  document.getElementById('agent-role').value = '';
+  await loadAgents();
+  renderTab();
+}
+
+// PROFILE
+function toggleProfile() {
+  if (currentTab === 'profil') { switchTab('firmen'); return; }
+  currentTab = 'profil';
+  document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+  document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
+  var el = document.getElementById('tab-profil');
+  el.classList.add('active');
+  document.getElementById('fab').style.display = 'none';
+  el.innerHTML = '<div class="profile-section">'
+    + '<div class="profile-av">' + (user.name ? user.name[0].toUpperCase() : '?') + '</div>'
+    + '<div class="profile-name">' + esc(user.name || '') + '</div>'
+    + '<div class="profile-email">' + esc(user.email || '') + '</div>'
+    + '<div class="profile-plan"><span class="badge badge-blue">' + esc((user.plan || 'free').toUpperCase()) + '</span></div></div>'
+    + '<div style="padding:0 16px"><div class="card" onclick="logout()" style="cursor:pointer;text-align:center;color:var(--red)">Ausloggen</div></div>';
+}
+
+// DELETE AGENT
+async function deleteAgent(id, ev) {
+  ev.stopPropagation();
+  if (!confirm('Agent wirklich loeschen?')) return;
+  try {
+    await api('/api/organisator/agents/' + id, { method: 'DELETE' });
+    await loadAgents();
+    renderTab();
+  } catch(e) { alert('Fehler: ' + e.message); }
+}
+
+// HELPERS
+function esc(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function formatMsg(s) {
+  var t = esc(s);
+  t = t.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  t = t.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  t = t.replace(/`(.+?)`/g, '<code style="background:rgba(0,0,0,.3);padding:1px 4px;border-radius:3px">$1</code>');
+  t = t.replace(/\n/g, '<br>');
+  return t;
+}
+function agentColor(id) { var colors = ['#3b82f6','#8b5cf6','#ec4899','#f59e0b','#10b981','#ef4444','#6366f1']; return colors[id % colors.length]; }
+
+// KEYBOARD HANDLING - iOS keyboard fix
+function fixViewport() {
+  if (!window.visualViewport) return;
+  var app = document.getElementById('app');
+  var vv = window.visualViewport;
+  app.style.height = vv.height + 'px';
+  app.style.position = 'fixed';
+  app.style.top = vv.offsetTop + 'px';
+  app.style.left = '0';
+  app.style.right = '0';
+  // Scroll chat to bottom when keyboard opens
+  var msgs = document.getElementById('chat-msgs');
+  if (msgs) setTimeout(function() { msgs.scrollTop = msgs.scrollHeight; }, 100);
+}
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', fixViewport);
+  window.visualViewport.addEventListener('scroll', fixViewport);
+}
+
+// BOOT
+(function() {
+  var saved = localStorage.getItem('blun_user');
+  if (token && saved) {
+    try { user = JSON.parse(saved); } catch(e) {}
+    if (user) { showApp(); return; }
+  }
+  document.getElementById('login-screen').style.display = 'flex';
+})();
+</script>
+</body>
+</html>

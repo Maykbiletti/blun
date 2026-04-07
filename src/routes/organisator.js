@@ -69,6 +69,8 @@ router.post("/agents", async function(req, res) {
   try {
     var { name, role, model, system_prompt, personality, heartbeat_interval, company_id } = req.body;
     if (!name) return res.status(400).json({ error: "name required" });
+    var dup = await queryOne("SELECT id FROM blun_agents WHERE LOWER(name) = LOWER($1) AND company_id = $2", [name, company_id || null]);
+    if (dup) return res.status(409).json({ error: "Agent mit diesem Namen existiert bereits" });
     var agent = await queryOne(
       "INSERT INTO blun_agents (name, role, model, system_prompt, personality, heartbeat_interval, company_id) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *",
       [name, role || "assistant", model || "tinyllama-1.1b", system_prompt || "", personality || "", heartbeat_interval || 60, company_id || null]
@@ -79,10 +81,10 @@ router.post("/agents", async function(req, res) {
 
 router.put("/agents/:id", async function(req, res) {
   try {
-    var { name, role, model, system_prompt, personality, heartbeat_interval, company_id } = req.body;
+    var { name, role, model, system_prompt, personality, heartbeat_interval, company_id, department } = req.body;
     var agent = await queryOne(
-      "UPDATE blun_agents SET name=COALESCE($1,name), role=COALESCE($2,role), model=COALESCE($3,model), system_prompt=COALESCE($4,system_prompt), personality=COALESCE($5,personality), heartbeat_interval=COALESCE($6,heartbeat_interval), company_id=COALESCE($7,company_id), updated_at=NOW() WHERE id=$8 RETURNING *",
-      [name, role, model, system_prompt, personality, heartbeat_interval, company_id, req.params.id]
+      "UPDATE blun_agents SET name=COALESCE($1,name), role=COALESCE($2,role), model=COALESCE($3,model), system_prompt=COALESCE($4,system_prompt), personality=COALESCE($5,personality), heartbeat_interval=COALESCE($6,heartbeat_interval), company_id=COALESCE($7,company_id), department=COALESCE($8,department), updated_at=NOW() WHERE id=$9 RETURNING *",
+      [name, role, model, system_prompt, personality, heartbeat_interval, company_id, department, req.params.id]
     );
     if (!agent) return res.status(404).json({ error: "Not found" });
     res.json(agent);
@@ -188,5 +190,8 @@ router.get("/marketplace", async function(req, res) {
   try { res.json(await query("SELECT m.*, a.name as agent_name, a.role, a.model FROM agent_marketplace m JOIN blun_agents a ON a.id = m.agent_id WHERE m.status = 'published' ORDER BY m.clone_count DESC")); }
   catch(e) { res.status(500).json({ error: e.message }); }
 });
+
+require("./upload-route")(router, query);
+require("./skills-route")(router, query, queryOne);
 
 module.exports = router;
