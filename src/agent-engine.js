@@ -1,4 +1,5 @@
 // BLUN - AI Organisator | MIT License
+var codeTools = require("./code-tools");
 /**
  * Agent Runtime Engine — heartbeat-driven agent loop with LLM integration.
  */
@@ -482,6 +483,7 @@ async function executeTools(agentId, message, aiResponse) {
     if ((m = lines[i].match(/\[TOOL:ASSIGN_TASK:([^|]+)\|([^\]]+?)(?:\|PRIORITY:\d+)?\]/i))) cmds.push({ tool: 'assign_task', agent_ref: m[1].trim(), description: m[2].trim() });
     if ((m = lines[i].match(/\[TOOL:LIST_TASKS\]/i))) cmds.push({ tool: 'list_tasks' });
     if ((m = lines[i].match(/\[TOOL:BUILD_COMPANY:([^|]+)\|([^\]]+)\]/i))) cmds.push({ tool: 'build_company', name: m[1].trim(), description: m[2].trim() });
+    codeTools.parseLine(lines[i], cmds);
   }
   if (cmds.length === 0) return null;
 
@@ -572,6 +574,8 @@ async function executeTools(agentId, message, aiResponse) {
         results.push('Firma "' + cmd.name + '" erstellt (ID: ' + companyId + '). Beschreibung: ' + cmd.description);
         results.push('Erstelle jetzt passende Agents fuer diese Firma...');
         // The AI will then use CREATE_AGENT tools in the follow-up based on these results
+      } else if (cmd.tool === "bash" || cmd.tool === "file_read" || cmd.tool === "git_commit") {
+        await codeTools.handleCmd(cmd, results);
       } else if (cmd.tool === 'server_status') {
         var r = await callLocalAPI('GET', '/api/monitor/stats');
         results.push('Server: ' + JSON.stringify(r));

@@ -201,7 +201,7 @@ textarea{resize:vertical;min-height:80px}
 .ws-head{display:flex;align-items:center;gap:12px;padding:10px 0 8px;border-bottom:1px solid var(--brd);flex-shrink:0}
 .ws-body{display:flex;flex:1;min-height:0}
 .ws-sidebar{width:360px;flex-shrink:0;display:flex;flex-direction:column;border-right:1px solid var(--brd);overflow:hidden}
-.ws-sidebar .detail-tabs{flex-shrink:0;padding:0 12px}
+.ws-sidebar .detail-tabs{flex-shrink:0;padding:0 12px;overflow-x:auto}
 .ws-sidebar .detail-section{flex:1;overflow-y:auto;padding:12px;display:none;flex-direction:column}
 .ws-sidebar .detail-section.active{display:flex}
 .ws-cp{flex:1;display:flex;flex-direction:column;overflow:hidden}
@@ -242,10 +242,6 @@ textarea{resize:vertical;min-height:80px}
 <div class="nav-item active" data-page="agents" onclick="showPage('agents')">
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M6 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/></svg>
 Agents <span class="badge-count" id="agentCount">0</span>
-</div>
-<div class="nav-item" data-page="operator" onclick="showPage('operator')">
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/></svg>
-Operator
 </div>
 <div class="nav-item" data-page="chat" onclick="showPage('chat')">
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
@@ -334,6 +330,7 @@ Profil
         <div class="detail-tab" onclick="showWsTab('tasks')">Tasks</div>
         <div class="detail-tab" onclick="showWsTab('issues')">Issues</div>
         <div class="detail-tab" onclick="showWsTab('skills')">Skills</div>
+        <div class="detail-tab" id="wsTabConn" onclick="openConnModal()" style="display:none;white-space:nowrap">Verbindungen</div>
       </div>
       <div class="detail-section active" id="wsSec-info">
         <div class="detail-field"><label>Name</label><input id="wsFieldName"></div>
@@ -368,6 +365,7 @@ Profil
         <button class="btn btn-sm btn-outline" style="margin-bottom:8px;width:100%" onclick="openSkillMarketplace()">&#127757; Skill Marketplace</button>
         <div id="wsSkillList"><div class="spinner"></div></div>
       </div>
+
     </div>
     <div class="ws-cp">
       <div class="ws-cp-head">Chat</div>
@@ -1263,6 +1261,9 @@ function openAgentWorkspace(id) {
 
   showWsTab('info');
   loadWsTasks(id); loadWsSkills(id); renderWsIssues(id); loadWsChat(id);
+  // Show connections tab only for operator
+  var connTab = document.getElementById('wsTabConn');
+  if(connTab) connTab.style.display = getOperator() && currentAgent && currentAgent.id === getOperator().id ? '' : 'none';
 }
 function closeWorkspace() {
   document.getElementById('wsPanel').classList.remove('open');
@@ -1280,6 +1281,7 @@ function showWsTab(name) {
   tabs.forEach(function(n){
     var s=document.getElementById('wsSec-'+n); if(s) s.classList.toggle('active', n===name);
   });
+  if(name==='connections') loadWsConnections();
 }
 function saveAgentWs() {
   if(!currentAgent) return;
@@ -1607,6 +1609,72 @@ function installFromUrl() {
   }).catch(function(e){ alert('URL konnte nicht geladen werden: '+e.message); });
 }
 
+
+function openConnModal() {
+  openModal('connModal');
+  loadWsConnections();
+}
+function loadWsConnections() {
+  if(!currentAgent) return;
+  api('/api/organisator/agents/'+currentAgent.id+'/memory').then(function(mem){
+    var gitConns = [];
+    var sshConns = [];
+    Object.keys(mem||{}).forEach(function(k){
+      if(k.startsWith('git_repo_')) try{ gitConns.push(Object.assign({_key:k}, JSON.parse(mem[k]))); }catch(e){}
+      if(k.startsWith('ssh_conn_')) try{ sshConns.push(Object.assign({_key:k}, JSON.parse(mem[k]))); }catch(e){}
+    });
+    renderWsGitList(gitConns);
+    renderWsSshList(sshConns);
+  });
+}
+function renderWsGitList(list) {
+  document.getElementById('modalGitList').innerHTML = list.length ? list.map(function(c){
+    return '<div class="card" style="padding:8px;margin-bottom:6px;font-size:13px">'+
+      '<div style="font-weight:600">'+esc(c.name||'Repo')+(c.company?'<span style="font-size:11px;color:var(--b);margin-left:6px">'+esc(c.company)+'</span>':'')+'</div>'+
+      '<div style="color:var(--tx2);font-size:11px">'+esc(c.url||'')+'</div>'+
+      '<button class="btn btn-sm btn-outline" style="margin-top:4px;color:var(--red)" data-key="'+c._key+'" onclick="wsDelConn(this)">Entfernen</button></div>';
+  }).join('') : '<div style="color:var(--tx2);font-size:12px;padding:4px">Noch keine Repos</div>';
+}
+function renderWsSshList(list) {
+  document.getElementById('modalSshList').innerHTML = list.length ? list.map(function(c){
+    return '<div class="card" style="padding:8px;margin-bottom:6px;font-size:13px">'+
+      '<div style="font-weight:600">'+esc(c.name||'SSH')+(c.company?'<span style="font-size:11px;color:var(--b);margin-left:6px">'+esc(c.company)+'</span>':'')+'</div>'+
+      '<div style="color:var(--tx2);font-size:11px">'+esc((c.user||'')+'@'+(c.host||''))+'</div>'+
+      '<button class="btn btn-sm btn-outline" style="margin-top:4px;color:var(--red)" data-key="'+c._key+'" onclick="wsDelConn(this)">Entfernen</button></div>';
+  }).join('') : '<div style="color:var(--tx2);font-size:12px;padding:4px">Noch keine SSH-Verbindungen</div>';
+}
+function addWsConnection(type) {
+  // Build company list first
+  api('/api/organisator/companies').then(function(cos){
+    var coList = Array.isArray(cos) ? cos : (cos.rows||[]);
+    var coNames = coList.map(function(c){ return c.name; });
+    var coSel = coNames.length ? prompt('Firma ('+coNames.join(', ')+'):') || '' : '';
+    var data, key;
+    if(type==='git'){
+      var name = prompt('Repo-Name (z.B. blun):'); if(!name) return;
+      var url = prompt('GitHub URL:'); if(!url) return;
+      var token = prompt('GitHub Token (optional):') || '';
+      data = JSON.stringify({name:name, url:url, token:token, company:coSel});
+      key = 'git_repo_'+Date.now();
+    } else {
+      var name = prompt('SSH Name (z.B. 65er):'); if(!name) return;
+      var host = prompt('Host/IP:'); if(!host) return;
+      var user = prompt('User (z.B. root):') || 'root';
+      var pw = prompt('Passwort (optional):') || '';
+      data = JSON.stringify({name:name, host:host, user:user, password:pw, company:coSel});
+      key = 'ssh_conn_'+Date.now();
+    }
+    api('/api/organisator/agents/'+currentAgent.id+'/memory', {method:'POST', body:JSON.stringify({key:key, content:data})}).then(function(){
+      loadWsConnections();
+    });
+  });
+}
+function wsDelConn(btn) {
+  var key = btn.getAttribute('data-key');
+  api('/api/organisator/agents/'+currentAgent.id+'/memory/'+key, {method:'DELETE'}).then(function(){
+    loadWsConnections();
+  });
+}
 </script>
 
 <div id="confirmModal">
@@ -1656,4 +1724,24 @@ function installFromUrl() {
     <div id="skillMarketList" style="overflow-y:auto;flex:1"></div>
   </div>
 </div>
+
+<div id="connModal" class="modal-bg">
+  <div class="modal" style="max-width:600px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3>Verbindungen</h3>
+      <button class="btn-icon" onclick="closeModal('connModal')">&#x2715;</button>
+    </div>
+    <div style="margin-bottom:16px">
+      <div style="font-weight:600;font-size:13px;margin-bottom:8px">Git Repositories</div>
+      <div id="modalGitList" style="margin-bottom:8px"></div>
+      <button class="btn btn-sm btn-outline" style="width:100%" onclick="addWsConnection('git')">+ Repo hinzufügen</button>
+    </div>
+    <div>
+      <div style="font-weight:600;font-size:13px;margin-bottom:8px">SSH Verbindungen</div>
+      <div id="modalSshList" style="margin-bottom:8px"></div>
+      <button class="btn btn-sm btn-outline" style="width:100%" onclick="addWsConnection('ssh')">+ SSH hinzufügen</button>
+    </div>
+  </div>
+</div>
+
 </body></html>
