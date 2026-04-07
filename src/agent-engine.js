@@ -383,11 +383,10 @@ async function chatWithAgent(agentId, message) {
   var nl = String.fromCharCode(10);
   var skillStr = agentSkills.length ? nl+nl+"DEINE SKILLS:"+nl + agentSkills.map(function(s){ return "- " + s.name + ": " + (s.code || s.description); }).join(nl) : "";
   var history = await query(
-    "SELECT role, content FROM agent_conversations WHERE agent_id = $1 ORDER BY created_at DESC LIMIT 3",
+    "SELECT role, content FROM agent_conversations WHERE agent_id = $1 ORDER BY created_at DESC LIMIT 20",
     [agentId]
   );
   history.reverse();
-
   var messages = [
     { role: "system", content: (identityRow ? identityRow.content + "\n\n" : "") + (agent.system_prompt || "Du bist ein hilfreicher Agent.") + skillStr + memStr }
   ].concat(history).concat([
@@ -409,15 +408,15 @@ async function chatWithAgent(agentId, message) {
     await query("INSERT INTO agent_heartbeats (agent_id, status, model, tokens_used, cost) VALUES ($1, $2, $3, $4, $5)", [agentId, "chat", agent.model, result.tokens, result.cost]);
   }
 
-  // Fire-and-forget tool execution in background (don't block HTTP response)
-  executeTools(agentId, message, result.content).then(function(toolResult) {
+  try {
+    var toolResult = await executeTools(agentId, message, result.content);
     if (toolResult) {
-      console.log("[tools] Agent " + agentId + " executed tools, results: " + toolResult.substring(0, 200));
-      // Save tool results as a system message
-      query("INSERT INTO agent_conversations (agent_id, role, content) VALUES ($1, $2, $3)", [agentId, "assistant", "Tool-Ergebnisse:\n" + toolResult]).catch(function(e) { console.error("[tools] save error:", e.message); });
+      var fuMessages = messages.concat([{role:"assistant",content:result.content},{role:"user",content:"Tool-Ergebnisse:\n"+toolResult+"\n\nAntworte auf Basis dieser Ergebnisse."}]);
+      var fu = await callLLM(agent.model, fuMessages);
+      await query("INSERT INTO agent_conversations (agent_id, role, content) VALUES ($1, $2, $3)", [agentId, "assistant", fu.content]);
+      return { response: fu.content, tokens: result.tokens, cost: result.cost };
     }
-  }).catch(function(e) { console.error("[tools] execution error:", e.message); });
-
+  } catch(te) { console.error("[tools]", te.message); }
   return { response: result.content, tokens: result.tokens, cost: result.cost };
 }
 

@@ -7,7 +7,8 @@ var router = Router();
 
 var API_KEY = process.env.BLUN_API_KEY || "blun-dev-key";
 router.use("/", function(req, res, next) {
-  var key = req.headers["x-blun-key"];
+  var key = req.headers["x-blun-key"] || req.headers["x-api-key"];
+  if (req.user) return next(); // Already authenticated by server middleware
   if (key && key === API_KEY) return next();
   authenticate(req, res, function() {
     if (!req.user) return res.status(401).json({ error: "Authentication required" });
@@ -142,7 +143,7 @@ router.delete("/agents/:id/memory/:key", async function(req, res) {
 });
 
 router.get("/agents/:id/conversations", async function(req, res) {
-  try { res.json(await query("SELECT role, content, created_at FROM agent_conversations WHERE agent_id = $1 ORDER BY created_at ASC LIMIT 100", [req.params.id])); }
+  try { res.json(await query("SELECT role, content, created_at FROM agent_conversations WHERE agent_id = $1 ORDER BY created_at DESC LIMIT 100", [req.params.id])); }
   catch(e) { res.status(500).json({ error: e.message }); }
 });
 
