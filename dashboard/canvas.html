@@ -68,6 +68,55 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);heigh
 /* Status bar */
 .statusbar{height:24px;background:var(--surface);border-top:1px solid var(--border);display:flex;align-items:center;padding:0 12px;font-size:11px;color:var(--text2);gap:16px;flex-shrink:0}
 .statusbar .spacer{flex:1}
+/* Loading overlay */
+.loading-overlay{position:absolute;inset:0;background:rgba(10,10,10,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:50;gap:12px}
+.loading-overlay.hidden{display:none}
+.loading-spinner{width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite}
+.loading-text{font-size:12px;color:var(--text2)}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* Error banner */
+.error-banner{position:fixed;top:0;left:0;right:0;background:rgba(239,68,68,.15);border-bottom:1px solid #ef4444;padding:8px 16px;display:flex;align-items:center;gap:10px;z-index:200;font-size:12px;color:#ef4444;animation:slideDown .2s}
+.error-banner.hidden{display:none}
+.error-banner .error-icon{font-size:16px;flex-shrink:0}
+.error-banner .error-msg{flex:1}
+.error-banner .error-retry{background:#ef4444;color:#fff;border:none;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:11px;font-family:inherit;font-weight:600}
+.error-banner .error-retry:hover{background:#dc2626}
+.error-banner .error-dismiss{background:none;border:none;color:#ef4444;cursor:pointer;font-size:16px;opacity:.6;padding:0 4px}
+.error-banner .error-dismiss:hover{opacity:1}
+@keyframes slideDown{from{transform:translateY(-100%)}to{transform:translateY(0)}}
+/* Connection lost overlay */
+.conn-lost-overlay{position:fixed;inset:0;background:rgba(10,10,10,.9);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:300;gap:16px}
+.conn-lost-overlay.hidden{display:none}
+.conn-lost-overlay .icon{font-size:48px;opacity:.5}
+.conn-lost-overlay .title{font-size:18px;font-weight:600;color:var(--text)}
+.conn-lost-overlay .subtitle{font-size:13px;color:var(--text2);text-align:center;max-width:320px}
+.conn-lost-overlay .retry-btn{background:var(--accent);color:#000;border:none;padding:8px 24px;border-radius:6px;cursor:pointer;font-size:13px;font-family:inherit;font-weight:600}
+.conn-lost-overlay .retry-btn:hover{opacity:.85}
+.conn-lost-overlay .retry-btn:disabled{opacity:.4;cursor:not-allowed}
+.conn-lost-overlay .retry-count{font-size:11px;color:var(--text2)}
+/* Offline indicator in statusbar */
+.status-conn{display:flex;align-items:center;gap:4px}
+.status-conn .dot{width:6px;height:6px;border-radius:50%;background:#ef4444}
+.status-conn .dot.online{background:#22c55e}
+.status-conn .dot.reconnecting{background:#fbbf24;animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+/* Loading Skeletons */
+.skeleton{background:linear-gradient(90deg,var(--surface2) 25%,var(--border) 50%,var(--surface2) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:4px}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.skeleton-file{height:24px;margin:4px 12px;border-radius:4px}
+.skeleton-line{height:14px;margin:4px 10px;border-radius:3px}
+.skeleton-line:nth-child(odd){width:75%}
+.skeleton-line:nth-child(even){width:55%}
+/* Error Boundary Crash Screen */
+.crash-screen{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:12px;padding:20px}
+.crash-screen.hidden{display:none}
+.crash-screen .crash-icon{font-size:48px;opacity:.5}
+.crash-screen .crash-title{font-size:18px;font-weight:600;color:var(--text)}
+.crash-screen .crash-detail{font-size:12px;color:var(--text2);max-width:500px;text-align:center;word-break:break-all;font-family:'JetBrains Mono',monospace;background:var(--surface);padding:10px;border-radius:6px;max-height:120px;overflow:auto}
+.crash-screen .crash-btn{background:var(--accent);color:#000;border:none;padding:8px 24px;border-radius:6px;cursor:pointer;font-size:13px;font-family:inherit;font-weight:600}
+/* Save indicator */
+.save-indicator{opacity:0;transition:opacity .2s;color:#22c55e;font-weight:600}
+.save-indicator.visible{opacity:1}
 /* Project picker modal */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:100}
 .modal{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px;width:400px;max-width:90vw}
@@ -144,8 +193,41 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);heigh
   <span id="statusLang">plaintext</span>
   <span id="statusCursor">Ln 1, Col 1</span>
   <span class="spacer"></span>
+  <span class="status-conn"><span class="dot" id="connDot"></span><span id="connLabel">Offline</span></span>
   <span id="statusUsers">1 user</span>
+  <span class="save-indicator" id="saveIndicator">Saved</span>
   <span>UTF-8</span>
+</div>
+
+<!-- Crash Screen (Error Boundary) -->
+<div class="crash-screen hidden" id="crashScreen">
+  <div class="crash-icon">&#x1F6A8;</div>
+  <div class="crash-title">Unerwarteter Fehler</div>
+  <div class="crash-detail" id="crashDetail"></div>
+  <button class="crash-btn" onclick="location.reload()">Seite neu laden</button>
+</div>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay hidden" id="loadingOverlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text" id="loadingText">Laden...</div>
+</div>
+
+<!-- Error Banner -->
+<div class="error-banner hidden" id="errorBanner">
+  <span class="error-icon">!</span>
+  <span class="error-msg" id="errorMsg"></span>
+  <button class="error-retry" id="errorRetryBtn" onclick="retryLastAction()">Retry</button>
+  <button class="error-dismiss" onclick="hideError()">x</button>
+</div>
+
+<!-- Connection Lost Overlay -->
+<div class="conn-lost-overlay hidden" id="connLostOverlay">
+  <div class="icon">&#x26A0;</div>
+  <div class="title">Verbindung verloren</div>
+  <div class="subtitle">Die Verbindung zum Server wurde unterbrochen. Deine Aenderungen sind lokal gesichert.</div>
+  <button class="retry-btn" id="reconnectBtn" onclick="manualReconnect()">Erneut verbinden</button>
+  <div class="retry-count" id="retryCount"></div>
 </div>
 
 <div class="modal-overlay" id="projectModal" style="display:none">
@@ -162,6 +244,23 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);heigh
 </div>
 
 <script>
+// --- Global Error Boundary ---
+window.onerror = function(msg, src, line, col, err) {
+  console.error('[canvas] Uncaught error:', msg, src, line);
+  showCrashScreen(msg + (src ? ' (' + src.split('/').pop() + ':' + line + ')' : ''));
+  return true;
+};
+window.addEventListener('unhandledrejection', function(e) {
+  console.error('[canvas] Unhandled rejection:', e.reason);
+  const msg = e.reason?.message || String(e.reason);
+  showError('Async-Fehler: ' + msg, false);
+  e.preventDefault();
+});
+function showCrashScreen(detail) {
+  const el = document.getElementById('crashScreen');
+  if (el) { document.getElementById('crashDetail').textContent = detail || 'Unbekannter Fehler'; el.classList.remove('hidden'); }
+}
+
 const API = '';
 let ws = null;
 let currentProject = null;
@@ -174,23 +273,192 @@ let myColor = '';
 let remoteCursors = {};
 let suppressSend = false;
 
-// --- WebSocket ---
+// --- Production Hardening State ---
+let wsReconnectAttempts = 0;
+const WS_MAX_RECONNECT = 10;
+const WS_BASE_DELAY = 1000;
+const API_TIMEOUT = 8000;
+let lastAction = null; // for retry
+let pendingEdits = []; // offline queue
+let isOnline = false;
+let isDirty = false;
+let editDebounceTimer = null;
+const EDIT_DEBOUNCE_MS = 150;
+let heartbeatInterval = null;
+const HEARTBEAT_MS = 25000;
+const HEARTBEAT_TIMEOUT_MS = 10000;
+let heartbeatTimeout = null;
+
+// --- Beforeunload: Warn on unsaved changes ---
+window.addEventListener('beforeunload', function(e) {
+  if (isDirty || pendingEdits.length > 0) {
+    e.preventDefault();
+    e.returnValue = '';
+  }
+});
+
+// --- Loading ---
+function showLoading(text) {
+  document.getElementById('loadingText').textContent = text || 'Laden...';
+  document.getElementById('loadingOverlay').classList.remove('hidden');
+}
+function hideLoading() {
+  document.getElementById('loadingOverlay').classList.add('hidden');
+}
+
+// --- Error Banner ---
+function showError(msg, retryable) {
+  document.getElementById('errorMsg').textContent = msg;
+  document.getElementById('errorRetryBtn').style.display = retryable ? 'inline-block' : 'none';
+  document.getElementById('errorBanner').classList.remove('hidden');
+}
+function hideError() {
+  document.getElementById('errorBanner').classList.add('hidden');
+}
+function retryLastAction() {
+  hideError();
+  if (lastAction) lastAction();
+}
+
+// --- Connection Status ---
+function setConnState(state) {
+  const dot = document.getElementById('connDot');
+  const label = document.getElementById('connLabel');
+  const overlay = document.getElementById('connLostOverlay');
+  const oldStatus = document.getElementById('connStatus');
+  dot.className = 'dot';
+  if (state === 'online') {
+    dot.classList.add('online');
+    label.textContent = 'Verbunden';
+    oldStatus.classList.add('connected');
+    overlay.classList.add('hidden');
+    isOnline = true;
+    flushPendingEdits();
+  } else if (state === 'reconnecting') {
+    dot.classList.add('reconnecting');
+    label.textContent = 'Verbinde...';
+    oldStatus.classList.remove('connected');
+    isOnline = false;
+  } else {
+    label.textContent = 'Offline';
+    oldStatus.classList.remove('connected');
+    isOnline = false;
+  }
+}
+
+// --- Fetch with Timeout + Error Handling ---
+async function apiFetch(url, options) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), API_TIMEOUT);
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal, credentials: 'include' });
+    clearTimeout(timeout);
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || 'Server-Fehler (' + res.status + ')');
+    }
+    return await res.json();
+  } catch (e) {
+    clearTimeout(timeout);
+    if (e.name === 'AbortError') throw new Error('Timeout — Server antwortet nicht');
+    throw e;
+  }
+}
+
+// --- WebSocket with Exponential Backoff ---
 function connectWS() {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  ws = new WebSocket(proto + '://' + location.host + '?role=canvas');
-  ws.onopen = () => { document.getElementById('connStatus').classList.add('connected'); };
+  setConnState('reconnecting');
+  try {
+    ws = new WebSocket(proto + '://' + location.host + '?role=canvas');
+  } catch (e) {
+    handleWSFailure();
+    return;
+  }
+  ws.onopen = () => {
+    wsReconnectAttempts = 0;
+    setConnState('online');
+    document.getElementById('retryCount').textContent = '';
+    // Re-open current file on reconnect
+    if (currentFile) sendWS({ type: 'file.open', fileId: currentFile.id });
+    startHeartbeat();
+  };
   ws.onclose = () => {
-    document.getElementById('connStatus').classList.remove('connected');
-    setTimeout(connectWS, 2000);
+    stopHeartbeat();
+    handleWSFailure();
+  };
+  ws.onerror = () => {
+    // onclose will fire after this
   };
   ws.onmessage = (e) => {
-    const msg = JSON.parse(e.data);
-    handleWSMessage(msg);
+    try {
+      const msg = JSON.parse(e.data);
+      handleWSMessage(msg);
+    } catch (err) {
+      console.error('WS parse error:', err);
+    }
   };
+}
+
+function handleWSFailure() {
+  setConnState('offline');
+  wsReconnectAttempts++;
+  if (wsReconnectAttempts <= WS_MAX_RECONNECT) {
+    const delay = Math.min(WS_BASE_DELAY * Math.pow(2, wsReconnectAttempts - 1), 30000);
+    document.getElementById('retryCount').textContent = 'Versuch ' + wsReconnectAttempts + '/' + WS_MAX_RECONNECT + ' — naechster in ' + Math.round(delay/1000) + 's';
+    setConnState('reconnecting');
+    setTimeout(connectWS, delay);
+  } else {
+    setConnState('offline');
+    document.getElementById('connLostOverlay').classList.remove('hidden');
+    document.getElementById('retryCount').textContent = 'Automatische Verbindung fehlgeschlagen.';
+  }
+}
+
+function manualReconnect() {
+  const btn = document.getElementById('reconnectBtn');
+  btn.disabled = true;
+  btn.textContent = 'Verbinde...';
+  wsReconnectAttempts = 0;
+  connectWS();
+  setTimeout(() => { btn.disabled = false; btn.textContent = 'Erneut verbinden'; }, 3000);
+}
+
+// --- Heartbeat / Zombie Detection ---
+function startHeartbeat() {
+  stopHeartbeat();
+  heartbeatInterval = setInterval(() => {
+    if (ws && ws.readyState === 1) {
+      ws.send(JSON.stringify({ type: 'ping' }));
+      heartbeatTimeout = setTimeout(() => {
+        // No pong received — connection is zombie
+        console.warn('[canvas] Heartbeat timeout — forcing reconnect');
+        if (ws) ws.close();
+      }, HEARTBEAT_TIMEOUT_MS);
+    }
+  }, HEARTBEAT_MS);
+}
+function stopHeartbeat() {
+  clearInterval(heartbeatInterval);
+  clearTimeout(heartbeatTimeout);
+  heartbeatInterval = null;
+  heartbeatTimeout = null;
+}
+
+// --- Offline Edit Queue ---
+function flushPendingEdits() {
+  while (pendingEdits.length) {
+    const edit = pendingEdits.shift();
+    sendWS(edit);
+  }
 }
 
 function handleWSMessage(msg) {
   switch (msg.type) {
+    case 'pong':
+      clearTimeout(heartbeatTimeout);
+      heartbeatTimeout = null;
+      break;
     case 'canvas.ready':
       myUserId = msg.userId;
       myUserName = msg.userName;
@@ -229,17 +497,28 @@ function handleWSMessage(msg) {
 }
 
 function sendWS(msg) {
-  if (ws && ws.readyState === 1) ws.send(JSON.stringify(msg));
+  if (ws && ws.readyState === 1) {
+    ws.send(JSON.stringify(msg));
+  } else if (msg.type === 'file.edit' || msg.type === 'file.save') {
+    pendingEdits.push(msg);
+  }
 }
 
 // --- Projects ---
 async function loadProjects() {
-  const res = await fetch(API + '/canvas/projects', { credentials: 'include' });
-  return res.json();
+  try {
+    return await apiFetch(API + '/canvas/projects');
+  } catch (e) {
+    showError('Projekte laden fehlgeschlagen: ' + e.message, true);
+    lastAction = () => showProjectPicker();
+    return [];
+  }
 }
 
 async function showProjectPicker() {
+  showLoading('Projekte laden...');
   const projects = await loadProjects();
+  hideLoading();
   const list = document.getElementById('projectList');
   list.innerHTML = projects.map(p =>
     '<div class="project-item" onclick="openProject(\'' + p.id + '\',\'' + esc(p.name) + '\')">' + esc(p.name) + '</div>'
@@ -252,15 +531,22 @@ function closeProjectModal() { document.getElementById('projectModal').style.dis
 async function createProject() {
   const name = document.getElementById('newProjectName').value.trim();
   if (!name) return;
-  const res = await fetch(API + '/canvas/projects', {
-    method: 'POST', credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name })
-  });
-  const p = await res.json();
-  document.getElementById('newProjectName').value = '';
-  openProject(p.id, p.name);
-  closeProjectModal();
+  showLoading('Projekt erstellen...');
+  try {
+    const p = await apiFetch(API + '/canvas/projects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name })
+    });
+    document.getElementById('newProjectName').value = '';
+    hideLoading();
+    openProject(p.id, p.name);
+    closeProjectModal();
+  } catch (e) {
+    hideLoading();
+    showError('Projekt erstellen fehlgeschlagen: ' + e.message, true);
+    lastAction = () => createProject();
+  }
 }
 
 async function openProject(id, name) {
@@ -279,9 +565,20 @@ async function openProject(id, name) {
 // --- Files ---
 async function loadFiles() {
   if (!currentProject) return;
-  const res = await fetch(API + '/canvas/projects/' + currentProject.id + '/files', { credentials: 'include' });
-  files = await res.json();
-  renderFileTree();
+  showFileTreeSkeleton();
+  try {
+    files = await apiFetch(API + '/canvas/projects/' + currentProject.id + '/files');
+    renderFileTree();
+  } catch (e) {
+    renderFileTree();
+    showError('Dateien laden fehlgeschlagen: ' + e.message, true);
+    lastAction = () => loadFiles();
+  }
+}
+
+function showFileTreeSkeleton() {
+  const tree = document.getElementById('fileTree');
+  tree.innerHTML = Array.from({length: 5}, () => '<div class="skeleton skeleton-file"></div>').join('');
 }
 
 function renderFileTree() {

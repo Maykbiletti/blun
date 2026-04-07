@@ -61,8 +61,15 @@ var child_process = require("child_process");
 
 async function callCLI(cliPath, args, env, input, timeoutMs) {
   return new Promise(function(resolve, reject) {
+    // Sandbox: only pass safe env vars to CLI subprocesses — no DB creds, encryption keys, etc.
+    var safeBaseEnv = {
+      PATH: process.env.PATH,
+      HOME: process.env.HOME || "/tmp",
+      LANG: process.env.LANG || "en_US.UTF-8",
+      NODE_ENV: process.env.NODE_ENV || "production",
+    };
     var proc = child_process.spawn(cliPath, args, {
-      env: Object.assign({}, process.env, env),
+      env: Object.assign({}, safeBaseEnv, env),
       cwd: "/tmp",
       stdio: ["pipe", "pipe", "pipe"]
     });
@@ -385,7 +392,7 @@ async function chatWithAgent(agentId, message) {
   var nl = String.fromCharCode(10);
   var skillStr = agentSkills.length ? nl+nl+"DEINE SKILLS:"+nl + agentSkills.map(function(s){ return "- " + s.name + ": " + (s.code || s.description); }).join(nl) : "";
   var history = await query(
-    "SELECT role, content FROM agent_conversations WHERE agent_id = $1 ORDER BY created_at DESC LIMIT 20",
+    "SELECT role, content FROM agent_conversations WHERE agent_id = $1 ORDER BY created_at DESC LIMIT 10",
     [agentId]
   );
   history.reverse();

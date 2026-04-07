@@ -57,13 +57,18 @@ async function startAgent(agentId) {
   await query("INSERT INTO heartbeats (id, agent_id, status) VALUES ($1, $2, $3)", [heartbeatId, agentId, "starting"]);
 
   try {
+    // Sandbox: only pass safe env vars to agent subprocess — no API keys, DB creds, or encryption keys
+    const safeEnv = {
+      PATH: process.env.PATH,
+      HOME: workspace,
+      LANG: process.env.LANG || "en_US.UTF-8",
+      NODE_ENV: process.env.NODE_ENV || "production",
+      BLUN_AGENT_ID: agentId,
+      BLUN_WS_URL: "ws://127.0.0.1:" + (process.env.BLUN_PORT || 3200) + "?role=agent&agentId=" + agentId,
+    };
     const child = spawn(adapter.command, adapter.buildArgs(agent), {
       cwd: workspace,
-      env: {
-        ...process.env,
-        BLUN_AGENT_ID: agentId,
-        BLUN_WS_URL: "ws://127.0.0.1:" + (process.env.BLUN_PORT || 3200) + "?role=agent&agentId=" + agentId,
-      },
+      env: safeEnv,
       stdio: ["pipe", "pipe", "pipe"],
     });
 
