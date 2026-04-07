@@ -1,8 +1,21 @@
 "use strict";
 var cp = require("child_process");
 var fss = require("fs");
+var path = require("path");
+
+// Sandbox: Only allow safe, read-only commands
+var ALLOWED_BASH = /^(ls|cat|head|tail|grep|find|wc|echo|node\s|npm\s+test|git\s+(status|log|diff|branch))\b/;
+var BLOCKED_BASH = /[;&|`$]|\.\./;  // block chaining, subshells, path traversal
+
+// Sandbox: Restrict file access to project + tmp
+var ALLOWED_READ_PATHS = ["/root/blun/", "/tmp/"];
 
 function runBash(cmd) {
+  // Sandbox enforcement
+  var trimmed = cmd.trim();
+  if (!ALLOWED_BASH.test(trimmed) || BLOCKED_BASH.test(trimmed)) {
+    return Promise.resolve("BLOCKED: Command not in sandbox allowlist");
+  }
   return new Promise(function(res) {
     cp.exec(cmd, {cwd:"/root/blun",timeout:30000,maxBuffer:200000}, function(e,o,er){
       res((o||"")+(er||"")+(e?" [exit "+e.code+"]":""));
@@ -28,10 +41,18 @@ module.exports = {
       var out = await runBash(cmd.cmd);
       results.push("BASH: " + out.substring(0,2000));
     } else if (cmd.tool === "file_read") {
-      try { results.push("FILE: " + fss.readFileSync(cmd.path,"utf8").substring(0,3000)); }
-      catch(e) { results.push("FILE_ERR: "+e.message); }
+      // Sandbox: restrict file reads to allowed paths
+      var resolved = path.resolve(cmd.path);
+      if (!ALLOWED_READ_PATHS.some(function(p) { return resolved.startsWith(p); })) {
+        results.push("FILE_ERR: Access denied — path outside sandbox: " + cmd.path);
+      } else {
+        try { results.push("FILE: " + fss.readFileSync(resolved,"utf8").substring(0,3000)); }
+        catch(e) { results.push("FILE_ERR: "+e.message); }
+      }
     } else if (cmd.tool === "git_commit") {
-      var gm = cmd.msg.replace(/"/g, "");
+      // Sandbox: sanitize commit message — only safe chars
+      var gm = cmd.msg.replace(/[^a-zA-Z0-9äöüÄÖÜß\s\-_.,:!()#\/]/g, "");
+      if (!gm) { results.push("GIT_ERR: Commit message empty after sanitizing"); return; }
       var go = await runBash('git add -A && git commit -m "' + gm + '" && git push origin main 2>&1');
       results.push("GIT: " + go.substring(0,1000));
     }

@@ -629,6 +629,7 @@ function showApp() {
   if(window.innerWidth<=768) document.getElementById('menuBtn').style.display='block';
   loadAll();
   if(!logInterval) logInterval = setInterval(loadLivelog, 5000);
+  initBlunWS();
 }
 
 // ===== NAVIGATION =====
@@ -1778,33 +1779,33 @@ function toggleCanvas() {
     if(rh) rh.style.display = '';
     if(btn) btn.textContent = 'Canvas schliessen';
     localStorage.setItem('blun_canvas_open', '1');
+    document.getElementById('wsCanvasLog').innerHTML = '';
     loadCanvasLog();
-    _canvasInterval = setInterval(loadCanvasLog, 3000);
+    _canvasInterval = setInterval(loadCanvasLog, 5000);
+    if(!_blunWS || _blunWS.readyState > 1) initBlunWS();
   }
 }
 function loadCanvasLog() {
   if(!currentAgent) return;
-  var p1 = api('/api/organisator/agents/'+currentAgent.id+'/heartbeats?limit=10').catch(function(){return [];});
-  var p2 = api('/api/organisator/agents/'+currentAgent.id+'/conversations').catch(function(){return [];});
-  Promise.all([p1, p2]).then(function(res){
-    var hbs = res[0] || [];
-    var convs = (res[1] || []).slice(0,10);
-    var lines = [];
-    hbs.forEach(function(h){
-      var t = new Date(h.created_at);
-      var ts = pad(t.getHours())+':'+pad(t.getMinutes())+':'+pad(t.getSeconds());
-      lines.push({ts:t, cls:'tool', text:'['+ts+'] '+h.status+' | tokens:'+h.tokens_used+' $'+(parseFloat(h.cost||0)).toFixed(4)});
-    });
-    convs.forEach(function(c){
-      var t = new Date(c.created_at);
-      var ts = pad(t.getHours())+':'+pad(t.getMinutes())+':'+pad(t.getSeconds());
-      var cls = c.role === 'user' ? 'chat' : 'tool';
-      lines.push({ts:t, cls:cls, text:'['+ts+'] '+c.role.toUpperCase()+': '+c.content.substring(0,80)});
-    });
-    lines.sort(function(a,b){return b.ts-a.ts;});
+  api('/api/organisator/agents/'+currentAgent.id+'/conversations').catch(function(){return [];}).then(function(convs){
+    convs = convs || [];
     var el = document.getElementById('wsCanvasLog');
-    el.innerHTML = lines.slice(0,50).map(function(l){
-      return '<div class="canvas-line '+l.cls+'">'+esc(l.text)+'</div>';
+    if(!convs.length){el.innerHTML='<div class="canvas-line" style="color:var(--tx2);padding:8px">Noch keine Aktivität</div>';return;}
+    el.innerHTML = convs.slice(0,20).map(function(c){
+      var t = new Date(c.created_at);
+      var ts = pad(t.getHours())+':'+pad(t.getMinutes());
+      var isUser = c.role === 'user';
+      var isAgent = c.role === 'assistant';
+      var cls = isUser ? 'chat' : 'tool';
+      var content = c.content;
+      // Highlight code blocks
+      var hasCode = content.indexOf('```') !== -1 || content.indexOf('[TOOL:') !== -1;
+      if(hasCode) cls += ' tool';
+      var preview = content.length > 300 ? content.substring(0,300)+'...' : content;
+      return '<div class="canvas-line '+cls+'" style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.05)">'+
+        '<div style="font-size:10px;color:var(--tx2);margin-bottom:2px">'+ts+' <span style="color:'+(isUser?'var(--b)':'#22c55e')+'">'+c.role.toUpperCase()+'</span></div>'+
+        '<div style="white-space:pre-wrap;word-break:break-word">'+esc(preview)+'</div>'+
+        '</div>';
     }).join('');
   });
 }
@@ -1840,6 +1841,40 @@ function toggleWsSidebar() {
   });
   document.addEventListener('mouseup', function(){ if(dragging){ var canvas=document.getElementById('wsCanvas'); if(canvas) localStorage.setItem('blun_canvas_w', canvas.offsetWidth); } dragging = false; });
 })();
+
+// WebSocket for real-time streaming
+var _blunWS = null;
+function initBlunWS() {
+  var proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  _blunWS = new WebSocket(proto + '//' + location.host + '/ws?role=dashboard');
+  _blunWS.onmessage = function(e) {
+    try {
+      var msg = JSON.parse(e.data);
+      if (msg.type === 'agent:stream' && msg.payload) {
+        var el = document.getElementById('wsCanvasLog');
+        if (el && document.getElementById('wsCanvas').classList.contains('open')) {
+          // Append streaming token to canvas
+          var last = el.lastElementChild;
+          if (!last || last.classList.contains('stream-done')) {
+            var line = document.createElement('div');
+            line.className = 'canvas-line tool stream-active';
+            line.style.cssText = 'padding:6px 8px;white-space:pre-wrap;word-break:break-word;border-bottom:1px solid rgba(255,255,255,.05)';
+            var t = new Date(); var ts = pad(t.getHours())+':'+pad(t.getMinutes());
+            line.setAttribute('data-ts', ts);
+            el.appendChild(line);
+            last = line;
+          }
+          last.textContent = (last.getAttribute('data-ts')||'') + ' ' + (last.textContent.replace(/^\d+:\d+\s/,'') + msg.payload.tok);
+          el.scrollTop = el.scrollHeight;
+        }
+      } else if (msg.type === 'agent:stream:end') {
+        var el = document.getElementById('wsCanvasLog');
+        if (el) { var last = el.lastElementChild; if(last&&last.classList.contains('stream-active')){last.classList.remove('stream-active');last.classList.add('stream-done');} }
+      }
+    } catch(e) {}
+  };
+  _blunWS.onclose = function(){ setTimeout(initBlunWS, 3000); };
+}
 </script>
 
 <div id="confirmModal">

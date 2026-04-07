@@ -1,5 +1,6 @@
 // BLUN - AI Organisator | MIT License
 var codeTools = require("./code-tools");
+var { callClaudeCLIStream } = require("./claude-stream");
 /**
  * Agent Runtime Engine — heartbeat-driven agent loop with LLM integration.
  */
@@ -77,6 +78,7 @@ async function callCLI(cliPath, args, env, input, timeoutMs) {
     if (input) { proc.stdin.write(input); } proc.stdin.end();
   });
 }
+
 
 async function callCodexCLI(messages, model) {
   // Build prompt from messages - pass via stdin for long content
