@@ -4,3 +4,5 @@ node_modules/
 models/
 electron/
 *.bak
+_tmp_*
+get-dieter.js
