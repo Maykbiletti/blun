@@ -2,9 +2,9 @@
 
 <img src="./blun-logo.svg" alt="BLUN" width="120" />
 
-# BLUN -- Your AI Team
+# BLUN — Your AI Company
 
-> Build websites, apps, and businesses without knowing how to code.
+> Build, run, and grow your business with AI agents that learn, remember, and develop their own personality.
 
 [![MIT License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![GitHub Stars](https://img.shields.io/github/stars/Maykbiletti/blun?style=social)](https://github.com/Maykbiletti/blun)
@@ -17,18 +17,59 @@
 
 ## What is BLUN?
 
-BLUN gives you a team of AI assistants that work together to build whatever you need. You describe what you want in plain words, and your AI team figures out how to make it happen. No coding, no technical skills required.
+**Business Logic Unified Network** — a framework where AI agents work as your employees. Each agent has its own role, skills, memories, and personality. They grow with you, learn from every conversation, and never forget what matters.
+
+Your KI-Operator manages everything. You set the goals, the Operator handles the rest.
 
 ---
 
-## What can you do with BLUN?
+## Core Concepts
 
-- **Build websites** -- Describe what you want your website to look like, and your AI team builds it for you.
-- **Create apps and software** -- For phones, computers, or the web. Just explain your idea.
-- **Your AI assistants work around the clock** -- They never sleep, never take breaks, and are always ready to help.
-- **Compare results from different AIs** -- Use the best AI for each job. Your team can include assistants from OpenAI, Claude, Gemini, and more.
-- **Run AI privately on your own computer** -- Keep everything on your machine if you prefer. No internet needed.
-- **Domain, hosting, email, payments -- all in one place** -- Everything you need to run an online business, handled for you.
+### Agents with Personality
+Every agent builds a unique personality through experience — conversations, mistakes, successes. Not a generic chatbot, but a colleague that knows your business, your preferences, and your history.
+
+### Persistent Memory
+Agents remember everything. Not just facts, but context. Upload your Telegram history, documents, notes — your agents know you from day one. Memories persist across sessions, devices, and platforms.
+
+### Skills System
+20+ built-in skills (coding, marketing, SEO, legal, accounting, QA, video, design...). Agents auto-install skills based on their role, or you pick manually. New skills get reviewed for safety before going live.
+
+### Model-Agnostic
+Works with any AI model — Claude, GPT, Gemini, Llama, Gemma, Mistral, DeepSeek, or any local model via llama.cpp. Switch models per agent. Run everything locally on your own hardware, or use cloud APIs. Your choice.
+
+### Live Feed
+Watch your company work in real time. Every heartbeat, every conversation, every completed task — visible in the Livelog.
+
+---
+
+## What can your agents do?
+
+| Role | Examples |
+|---|---|
+| **KI-Operator** | Manages all agents, delegates tasks, makes decisions autonomously |
+| **Marketing & SEO** | Social media, content, keywords, campaigns, competitor analysis |
+| **Backend & Coding** | APIs, databases, server management, code review |
+| **Frontend & Design** | UI/UX, websites, landing pages, animations |
+| **QA & Testing** | Bug reports, test plans, cross-browser testing |
+| **Video & Media** | Scripts, editing, AI video generation (Seedance) |
+| **Business & Sales** | Pitch decks, pricing, affiliate programs |
+| **Legal & Tax** | Contracts, GDPR, terms of service, tax advice |
+| **Infrastructure** | Servers, CI/CD, Docker, DNS, backups |
+| **Support** | Email, phone, SMS, Telegram — agents talk to your customers |
+
+---
+
+## Platform Features
+
+- **Upload Knowledge** — Feed agents with JSON, TXT, HTML, CSV, Telegram exports. They parse and remember everything.
+- **Departments** — Organize agents by function (Marketing, Coding, QA, etc.)
+- **Skills Marketplace** — Install, remove, and auto-assign skills per agent
+- **Multi-Platform** — Chat via Web App, Telegram, WhatsApp, Desktop (Electron)
+- **Security** — Skill sandbox, prompt injection protection, rate limits, admin review
+- **Teams** — Invite colleagues, share agents, role-based access (Owner/Admin/Member)
+- **Billing** — Stripe integration, Free/Pro/Max/Enterprise plans
+- **i18n** — German, English, Spanish, French, Portuguese, Turkish
+- **Self-Hostable** — Run on your own server with full control
 
 ---
 
@@ -36,42 +77,11 @@ BLUN gives you a team of AI assistants that work together to build whatever you 
 
 1. Go to [blun.ai](https://blun.ai)
 2. Create a free account
-3. Tell your AI what you need
-
-That is it. Your AI team takes care of the rest.
+3. Your KI-Operator is ready — tell it what you need
 
 ---
 
-## What is included?
-
-| Feature | What it does |
-|---|---|
-| AI Manager | A lead assistant that organizes your whole AI team and assigns the right task to the right assistant. |
-| Live Code View | Watch your AI write code in real time, right in your browser. |
-| Skills Store | Give your assistants new abilities -- writing, research, tax advice, and more. |
-| Team Chat | Connect your AI team to Telegram so they can talk to your customers directly. |
-| Multi-AI Support | Mix and match different AI providers. Use whichever works best for each task. |
-| Offline Mode | Works without internet. Everything stays on your computer. |
-| Built-in Payments | Accept payments from customers with no extra setup. |
-| Voice and Video | Talk to your AI assistants face to face. *(Coming soon)* |
-| Connect Across Servers | Link your AI team with teams on other servers to collaborate on bigger projects. |
-
----
-
-<details>
-<summary><strong>For Developers</strong> (click to expand)</summary>
-
-### Quick Start
-
-```bash
-npx create-blun my-project
-cd my-project
-blun start
-```
-
-Open `http://localhost:3000` to see your dashboard.
-
-### Self-Hosting
+## Self-Hosting
 
 ```bash
 git clone https://github.com/Maykbiletti/blun.git
@@ -80,33 +90,23 @@ npm install
 npm run dev
 ```
 
-BLUN runs on Node.js 18 or newer. It uses SQLite by default (zero configuration), and can scale to PostgreSQL and Redis when needed.
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
-
-</details>
+Requires Node.js 20+, PostgreSQL 16+, Redis 7+.
 
 ---
 
 ## Pricing
 
-| | Free | Pro | Max | Enterprise |
+| | Free | Pro ($20/mo) | Max ($100/mo) | Enterprise |
 |---|:---:|:---:|:---:|:---:|
-| **Price** | 0 / month | 20 / month | 100 / month | Custom |
-| AI Assistants | 3 | 10 | Unlimited | Unlimited |
+| Agents | 3 | 10 | Unlimited | Unlimited |
 | Skills | 5 | Unlimited | Unlimited | Unlimited |
-| Cross-Server Collaboration | -- | Yes | Yes | Yes |
-| Priority Support | -- | -- | Yes | Yes |
-| Custom Branding | -- | -- | Yes | Yes |
+| Knowledge Upload | — | Yes | Yes | Yes |
+| Local Models | Yes | Yes | Yes | Yes |
+| API Models | Limited | Yes | Yes | Yes |
+| Custom Domains | — | 1 | 3 | Unlimited |
+| Priority Support | — | — | Yes | Yes |
 
-Self-host for free, forever. Cloud plans include hosting and automatic updates.
-
----
-
-## Links
-
-- Website: [blun.ai](https://blun.ai)
-- GitHub: [github.com/Maykbiletti/blun](https://github.com/Maykbiletti/blun)
+Self-host for free, forever.
 
 ---
 
@@ -114,4 +114,4 @@ Self-host for free, forever. Cloud plans include hosting and automatic updates.
 
 MIT License. See [LICENSE](LICENSE) for details.
 
-Built by [Maykbiletti](https://github.com/Maykbiletti). Open source, forever.
+Built by [Maykbiletti](https://github.com/Maykbiletti).
