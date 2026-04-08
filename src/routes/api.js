@@ -120,7 +120,7 @@ router.post('/agent/:id/task', requireAuth, async function (req, res) {
   res.status(201).json(row);
 });
 
-router.patch('/task/:id', async function (req, res) {
+router.patch('/task/:id', requireAuth, async function (req, res) {
   var b = req.body;
   var updates = [], values = [], idx = 1;
   ['status', 'title', 'description', 'priority'].forEach(function (k) {
@@ -133,23 +133,23 @@ router.patch('/task/:id', async function (req, res) {
   res.json(row);
 });
 
-router.get('/agent/:id/memory', async function (req, res) {
+router.get('/agent/:id/memory', requireAuth, async function (req, res) {
   res.json(await query('SELECT * FROM agent_memory WHERE agent_id = $1 ORDER BY updated_at DESC', [req.params.id]));
 });
 
-router.post('/agent/:id/memory', async function (req, res) {
+router.post('/agent/:id/memory', requireAuth, async function (req, res) {
   var b = req.body;
   if (!b.key || !b.content) return res.status(400).json({ error: 'key and content are required' });
   await query('INSERT INTO agent_memory (agent_id, key, content) VALUES ($1, $2, $3) ON CONFLICT (agent_id, key) DO UPDATE SET content = EXCLUDED.content, updated_at = NOW()', [req.params.id, b.key, b.content]);
   res.json({ stored: true });
 });
 
-router.get('/costs', async function (req, res) {
+router.get('/costs', requireAuth, async function (req, res) {
   var days = parseInt(req.query.days || '30');
   res.json(await query("SELECT agent_id, a.name AS agent_name, provider, model, SUM(input_tokens) AS total_input_tokens, SUM(output_tokens) AS total_output_tokens, SUM(cost_cents)::numeric AS total_cost_cents, COUNT(*)::int AS request_count FROM cost_events ce LEFT JOIN agents a ON a.id = ce.agent_id WHERE ce.created_at > NOW() - INTERVAL '1 day' * $1 GROUP BY agent_id, a.name, provider, model ORDER BY total_cost_cents DESC", [days]));
 });
 
-router.get('/dashboard', async function (req, res) {
+router.get('/dashboard', requireAuth, async function (req, res) {
   var results = await Promise.all([
     query('SELECT * FROM companies ORDER BY created_at'),
     query('SELECT a.*, c.name AS company_name FROM agents a LEFT JOIN companies c ON c.id = a.company_id ORDER BY c.name, a.name'),
@@ -164,7 +164,7 @@ router.get('/tools', function (req, res) {
   res.json(tools.listTools());
 });
 
-router.get('/agent/:id/heartbeats', async function (req, res) {
+router.get('/agent/:id/heartbeats', requireAuth, async function (req, res) {
   res.json(await query('SELECT * FROM heartbeats WHERE agent_id = $1 ORDER BY started_at DESC LIMIT 50', [req.params.id]));
 });
 
