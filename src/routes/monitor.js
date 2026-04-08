@@ -88,6 +88,16 @@ router.get("/", async function(req, res) {
   }
 });
 
+// GET /stats — lightweight system stats
+router.get("/stats", function(req, res) {
+  res.json({
+    uptime: os.uptime(),
+    freemem: os.freemem(),
+    totalmem: os.totalmem(),
+    loadavg: os.loadavg()
+  });
+});
+
 // POST /reset-counter
 router.post("/reset-counter", function(req, res) {
   resetRequestCounter();

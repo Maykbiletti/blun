@@ -10,6 +10,8 @@ const BLUN_PORT = process.env.BLUN_PORT || 3200;
 const API_KEY = process.env.BLUN_API_KEY || 'blun-dev-key';
 const AGENT_ID = 1; // Dieter
 const CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
+const DEPLOY_INTERVAL = 150 * 60 * 1000; // 2.5 hours between deploys
+var lastDeployTime = 0;
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '1605241602';
 
@@ -251,6 +253,50 @@ async function autoDistributeFromList(db) {
   log('Auto-distribute: ' + (result.response || '').substring(0, 200));
 }
 
+
+// ========== AGENT PULL-LOOP ==========
+
+async function agentPullLoop(db) {
+  var agents = await db.query(
+    "SELECT id, name, role, department, status FROM blun_agents WHERE id != 1 AND status = 'active'"
+  );
+  if (!agents.rows.length) return { msg: "Keine aktiven Agents", pinged: 0 };
+
+  var busy = await db.query(
+    "SELECT DISTINCT agent_id FROM tasks WHERE status = 'in_progress'"
+  );
+  var busyIds = busy.rows.map(function(r) { return r.agent_id; });
+
+  var idle = agents.rows.filter(function(a) { return busyIds.indexOf(a.id) === -1; });
+  if (!idle.length) return { msg: agents.rows.length + " Agents alle beschaeftigt", pinged: 0 };
+
+  log("Idle agents: " + idle.map(function(a) { return a.name; }).join(", "));
+
+  var pending = await db.query(
+    "SELECT * FROM tasks WHERE status = 'pending' ORDER BY priority DESC, created_at ASC LIMIT " + idle.length
+  );
+
+  var pinged = 0;
+  for (var i = 0; i < idle.length && i < pending.rows.length; i++) {
+    var agent = idle[i];
+    var task = pending.rows[i];
+
+    await db.query("UPDATE tasks SET agent_id = $1, status = 'in_progress' WHERE id = $2", [agent.id, task.id]);
+
+    try {
+      await callAPI("POST", "/api/organisator/agents/" + agent.id + "/chat", {
+        message: "NEUER TASK #" + task.id + ": " + task.title + "\nDetails: " + (task.description || "Keine Details") + "\nBitte erledige das und melde dich wenn fertig."
+      });
+      log("Task #" + task.id + " an " + agent.name + " zugewiesen");
+      pinged++;
+    } catch(e) {
+      log("Fehler bei Task-Zuweisung an " + agent.name + ": " + e.message);
+    }
+  }
+
+  return { msg: pinged + "/" + idle.length + " idle Agents bekamen Tasks", pinged: pinged };
+}
+
 // ========== MAIN LOOP ==========
 
 async function runCheck() {
@@ -281,18 +327,44 @@ async function runCheck() {
     if (!pm2.ok) problems.push('⚠️ PM2: ' + pm2.msg);
     if (!ram.ok) problems.push('⚠️ ' + ram.msg);
 
-    // Distribute tasks
+    // Distribute tasks + Deploy cycle (every 2.5h)
+    var now = Date.now();
+    var isDeployCycle = (now - lastDeployTime >= DEPLOY_INTERVAL);
+
     try {
       var taskResult = await distributeTasks(db);
       report.push(taskResult.msg);
-      // Auto-distribute from master list every 15 minutes
-      var mins = new Date().getMinutes();
-      await autoDistributeFromList(db);
+
+      if (isDeployCycle) {
+        lastDeployTime = now;
+        log("=== DEPLOY CYCLE (every 2.5h) ===");
+
+        try {
+          var pullResult = await agentPullLoop(db);
+          report.push(pullResult.msg);
+        } catch(e) { log('Pull-loop error: ' + e.message); }
+
+        await autoDistributeFromList(db);
+      } else {
+        var minsLeft = Math.round((DEPLOY_INTERVAL - (now - lastDeployTime)) / 60000);
+        report.push("Naechster Deploy in " + minsLeft + " Min");
+      }
     } catch(e) { log('Task distribution error: ' + e.message); }
 
     // Save heartbeat
     var status = problems.length > 0 ? 'warning' : 'healthy';
     await saveHeartbeat(db, status, report.join(' | '));
+
+    // Record heartbeat for all active agents
+    try {
+      var allAgents = await callAPI('GET', '/api/organisator/agents');
+      if (Array.isArray(allAgents)) {
+        for (var i = 0; i < allAgents.length; i++) {
+          var ag = allAgents[i];
+          await db.query('INSERT INTO agent_heartbeats (agent_id, status, model, tokens_used, cost) VALUES ($1,$2,$3,0,0)', [ag.id, ag.status || 'active', ag.model || 'haiku']);
+        }
+      }
+    } catch(e) { log('Heartbeat error: ' + e.message); }
 
     // Save last check to memory
     await saveMemory(db, 'last_health_check', new Date().toISOString() + '\n' + report.join('\n'));

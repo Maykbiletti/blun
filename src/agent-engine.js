@@ -53,6 +53,141 @@ function decryptKey(data) {
   return decipher.update(encrypted, "hex", "utf8") + decipher.final("utf8");
 }
 
+
+// ===== RATE LIMIT WATCHER (Proactive) =====
+// Tracks remaining quota per provider, pauses BEFORE hitting 429
+const rateLimitState = {
+  anthropic: { blocked: false, retryAfter: 0, remaining: null, limit: null, resetAt: 0, usage: 0, windowStart: Date.now() },
+  openai: { blocked: false, retryAfter: 0, remaining: null, limit: null, resetAt: 0, usage: 0, windowStart: Date.now() },
+  google: { blocked: false, retryAfter: 0, remaining: null, limit: null, resetAt: 0, usage: 0, windowStart: Date.now() },
+  local: { blocked: false, retryAfter: 0, remaining: null, limit: null, resetAt: 0, usage: 0, windowStart: Date.now() }
+};
+const PAUSE_THRESHOLD = 0.2; // Pause when only 20% of quota remaining
+
+function getProvider(model) {
+  if (model.startsWith("claude")) return "anthropic";
+  if (model.startsWith("gpt") || model.startsWith("o1") || model.startsWith("o3") || model.startsWith("o4")) return "openai";
+  if (model.includes("gemini") || model.includes("gemma")) return "google";
+  return "local";
+}
+
+function isRateLimited(provider) {
+  var state = rateLimitState[provider];
+  if (!state) return false;
+
+  // Hard block (from 429)
+  if (state.blocked) {
+    if (Date.now() > state.retryAfter) {
+      state.blocked = false;
+      console.log("[rate-limit] " + provider + " cooldown ended, resuming requests");
+      return false;
+    }
+    return true;
+  }
+
+  // Proactive pause: if we know the quota and it's low
+  if (state.remaining !== null && state.limit !== null && state.limit > 0) {
+    var pct = state.remaining / state.limit;
+    if (pct <= PAUSE_THRESHOLD && state.remaining < 5) {
+      var resetIn = Math.max(0, state.resetAt - Date.now());
+      if (resetIn > 0) {
+        console.log("[rate-limit] " + provider + " Mittagspause! Nur noch " + state.remaining + "/" + state.limit + " Requests (" + Math.round(pct*100) + "%). Pause " + Math.round(resetIn/1000) + "s bis Reset.");
+        state.blocked = true;
+        state.retryAfter = state.resetAt;
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+// Get rate limit status for dashboard API
+function getRateLimitStatus() {
+  var status = {};
+  var providers = ["anthropic", "openai", "google", "local"];
+  for (var i = 0; i < providers.length; i++) {
+    var p = providers[i];
+    var s = rateLimitState[p];
+    var pct = (s.remaining !== null && s.limit) ? Math.round((s.remaining / s.limit) * 100) : null;
+    var signal = "green";
+    if (s.blocked) signal = "red";
+    else if (pct !== null && pct <= 40) signal = "yellow";
+    else if (pct !== null && pct <= 20) signal = "red";
+    status[p] = {
+      signal: signal,
+      remaining: s.remaining,
+      limit: s.limit,
+      blocked: s.blocked,
+      retryAfter: s.blocked ? Math.max(0, Math.round((s.retryAfter - Date.now()) / 1000)) : 0,
+      percent: pct
+    };
+  }
+  return status;
+}
+
+function setRateLimited(provider, retryAfterSec) {
+  var waitMs = (retryAfterSec || 60) * 1000;
+  rateLimitState[provider] = { blocked: true, retryAfter: Date.now() + waitMs };
+  console.log("[rate-limit] " + provider + " hit 429 — pausing for " + (retryAfterSec || 60) + "s");
+}
+
+async function fetchWithRateLimit(url, options, provider) {
+  // Check if provider is currently blocked
+  if (isRateLimited(provider)) {
+    var waitSec = Math.ceil((rateLimitState[provider].retryAfter - Date.now()) / 1000);
+    console.log("[rate-limit] " + provider + " Mittagspause laeuft noch " + waitSec + "s...");
+    await new Promise(function(r) { setTimeout(r, waitSec * 1000 + 500); });
+    // Reset after waiting
+    rateLimitState[provider].blocked = false;
+  }
+
+  var resp = await fetch(url, options);
+
+  // Read rate limit headers from response
+  var state = rateLimitState[provider];
+  var rlRemaining = resp.headers.get("x-ratelimit-remaining") || resp.headers.get("x-ratelimit-limit-requests-remaining");
+  var rlLimit = resp.headers.get("x-ratelimit-limit") || resp.headers.get("x-ratelimit-limit-requests");
+  var rlReset = resp.headers.get("x-ratelimit-reset") || resp.headers.get("x-ratelimit-reset-requests");
+  // Anthropic specific
+  if (!rlRemaining) rlRemaining = resp.headers.get("anthropic-ratelimit-requests-remaining");
+  if (!rlLimit) rlLimit = resp.headers.get("anthropic-ratelimit-requests-limit");
+  if (!rlReset) rlReset = resp.headers.get("anthropic-ratelimit-requests-reset");
+
+  if (rlRemaining !== null) state.remaining = parseInt(rlRemaining);
+  if (rlLimit !== null) state.limit = parseInt(rlLimit);
+  if (rlReset) {
+    var resetDate = new Date(rlReset);
+    if (!isNaN(resetDate.getTime())) state.resetAt = resetDate.getTime();
+    else {
+      // Could be seconds
+      var secs = parseInt(rlReset);
+      if (!isNaN(secs)) state.resetAt = Date.now() + secs * 1000;
+    }
+  }
+  state.usage++;
+
+  if (resp.status === 429) {
+    var retryHeader = resp.headers.get("retry-after");
+    var waitTime = retryHeader ? parseInt(retryHeader) : 60;
+    if (isNaN(waitTime) || waitTime < 5) waitTime = 60;
+    setRateLimited(provider, waitTime);
+
+    console.log("[rate-limit] " + provider + " 429! Mittagspause " + waitTime + "s...");
+    await new Promise(function(r) { setTimeout(r, waitTime * 1000); });
+    resp = await fetch(url, options);
+
+    if (resp.status === 429) {
+      setRateLimited(provider, waitTime * 2);
+      throw new Error("Rate limited by " + provider + " — Mittagspause " + (waitTime * 2) + "s.");
+    }
+  }
+
+  return resp;
+}
+
+// ===== END RATE LIMIT WATCHER =====
+
 // Active agent loops: agentId -> { timer, running }
 const activeAgents = new Map();
 
@@ -112,14 +247,14 @@ async function callCodexCLI(messages, model) {
   return { content: response, tokens: 5000, cost: 0 }; // Codex uses ChatGPT Pro subscription
 }
 
-async function callClaudeCLI(messages, apiKey) {
+async function callClaudeCLI(messages, apiKey, model) {
   var systemMsg = messages.find(function(m){return m.role==="system";});
   var userMsg = messages.filter(function(m){return m.role!=="system";}).map(function(m){return m.role+": "+m.content;}).join("\n\n");
   var prompt = (systemMsg ? "Context: " + systemMsg.content + "\n\n" : "") + userMsg;
-  // Use OAuth credentials from ~/.claude/.credentials.json (no API key needed)
-  // API key only as fallback
   var env = apiKey ? { ANTHROPIC_API_KEY: apiKey } : {};
-  var result = await callCLI("claude", ["--print"], env, prompt, 90000);
+  var args = ["--print"];
+  if (model) args.push("--model", model);
+  var result = await callCLI("claude", args, env, prompt, 120000);
   return { content: result.trim(), tokens: 3000, cost: 0 };
 }
 
@@ -132,7 +267,7 @@ async function callLLM(model, messages) {
 
   // Route CLI-based models: gpt-* via Codex CLI, claude-* via Claude CLI
   if (model.startsWith("claude") && !model.includes("api:")) {
-    try { return await callClaudeCLI(messages, null); } catch(e) {
+    try { return await callClaudeCLI(messages, null, model); } catch(e) {
       // Fallback to API if CLI fails (e.g. usage limit)
       console.error("[claude-cli] " + e.message + " — falling back to API");
     }
@@ -186,7 +321,7 @@ async function callLLM(model, messages) {
     }
   }
 
-  var _ctrl = new AbortController(); var _fetchTimeout = setTimeout(function(){ _ctrl.abort(); }, 60000); var resp; try { resp = await fetch(url, { method: "POST", headers: headers, body: JSON.stringify(body), signal: _ctrl.signal }); } finally { clearTimeout(_fetchTimeout); }
+  var _provider = isLocal ? "local" : getProvider(model); var _ctrl = new AbortController(); var _fetchTimeout = setTimeout(function(){ _ctrl.abort(); }, 120000); var resp; try { resp = await fetchWithRateLimit(url, { method: "POST", headers: headers, body: JSON.stringify(body), signal: _ctrl.signal }, _provider); } finally { clearTimeout(_fetchTimeout); }
   var data = await resp.json();
   if (typeof _releasePool === "function") _releasePool();
 
@@ -429,7 +564,7 @@ async function chatWithAgent(agentId, message) {
   return { response: result.content, tokens: result.tokens, cost: result.cost };
 }
 
-module.exports = { startAgent, stopAgent, getActiveAgents, chatWithAgent, callLLM, loadAgentMemory, saveAgentMemory, activeAgents };
+module.exports = { startAgent, stopAgent, getActiveAgents, chatWithAgent, callLLM, loadAgentMemory, saveAgentMemory, activeAgents, getRateLimitStatus };
 
 // === DIETER TOOL CALLING ===
 var http = require('http');

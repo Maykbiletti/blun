@@ -7,7 +7,7 @@ set -euo pipefail
 BACKUP_DIR="/root/backups"
 DB_NAME="blun"
 DB_USER="blun"
-DATE=$(date +%Y%m%d)
+DATE=$(date +%Y%m%d_%H%M)
 BACKUP_FILE="${BACKUP_DIR}/blun_${DATE}.sql.gz"
 
 mkdir -p "$BACKUP_DIR"

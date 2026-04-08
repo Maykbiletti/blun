@@ -143,7 +143,7 @@ router.delete("/agents/:id/memory/:key", async function(req, res) {
 });
 
 router.get("/agents/:id/conversations", async function(req, res) {
-  try { res.json(await query("SELECT role, content, created_at FROM agent_conversations WHERE agent_id = $1 ORDER BY created_at DESC LIMIT 100", [req.params.id])); }
+  try { res.json(await query("SELECT * FROM (SELECT role, content, created_at FROM agent_conversations WHERE agent_id = $1 ORDER BY created_at DESC LIMIT 100) sub ORDER BY created_at ASC", [req.params.id])); }
   catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -201,5 +201,35 @@ router.get("/marketplace", async function(req, res) {
 
 require("./upload-route")(router, query);
 require("./skills-route")(router, query, queryOne);
+
+
+// Livefeed: combined activity stream
+router.get('/livefeed', async function(req, res) {
+  try {
+    var chats = await query(
+      "SELECT c.id, c.agent_id, a.name as agent_name, c.role, LEFT(c.content, 120) as content, c.created_at, 'chat' as type FROM agent_conversations c LEFT JOIN blun_agents a ON a.id = c.agent_id ORDER BY c.created_at DESC LIMIT 30"
+    );
+    var tasks = await query(
+      "SELECT t.id, t.agent_id, a.name as agent_name, LEFT(t.task, 120) as content, t.status, t.created_at, t.completed_at, 'task' as type FROM agent_tasks t LEFT JOIN blun_agents a ON a.id = t.agent_id ORDER BY t.created_at DESC LIMIT 20"
+    );
+    var beats = await query(
+      "SELECT h.id, h.agent_id, a.name as agent_name, h.status, h.tokens_used, h.cost, h.created_at, 'heartbeat' as type FROM agent_heartbeats h LEFT JOIN blun_agents a ON a.id = h.agent_id ORDER BY h.created_at DESC LIMIT 20"
+    );
+    var activity = await query(
+      "SELECT id, user_id, action, details, created_at, ip_address, 'activity' as type FROM activity_log ORDER BY created_at DESC LIMIT 10"
+    );
+    var all = [].concat(
+      chats.map(function(r){ return {type:'chat', agent:r.agent_name||'?', role:r.role, content:r.content, ts:r.created_at}; }),
+      tasks.map(function(r){ return {type:'task', agent:r.agent_name||'?', status:r.status, content:r.content, ts:r.completed_at||r.created_at}; }),
+      beats.map(function(r){ return {type:'heartbeat', agent:r.agent_name||'?', status:r.status, tokens:r.tokens_used, cost:r.cost, ts:r.created_at}; }),
+      activity.map(function(r){ var d=typeof r.details==='string'?JSON.parse(r.details||'{}'):r.details||{}; return {type:'activity', action:r.action, detail:d.email||JSON.stringify(d).substring(0,60), ip:r.ip_address, ts:r.created_at}; })
+    );
+    all.sort(function(a,b){ return new Date(b.ts)-new Date(a.ts); });
+    res.json(all.slice(0, 80));
+  } catch(e) {
+    console.error('livefeed error:', e.message);
+    res.status(500).json({error: e.message});
+  }
+});
 
 module.exports = router;
