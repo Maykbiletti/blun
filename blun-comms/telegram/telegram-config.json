@@ -1,0 +1,11 @@
+{
+  "token": "DEIN_TELEGRAM_BOT_TOKEN",
+  "mode": "polling",
+  "webhookUrl": "",
+  "port": 8443,
+  "flushIntervalMs": 30000,
+  "memoryDir": "/tmp/blun-comms/memory",
+  "allowedChatIds": [],
+  "botName": "DieterMemorySyncBot",
+  "description": "BLUN.ai Agent Memory Sync via Telegram"
+}

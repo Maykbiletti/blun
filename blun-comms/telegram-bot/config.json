@@ -1,0 +1,19 @@
+{
+  "telegram": {
+    "botToken": "${TELEGRAM_BOT_TOKEN}",
+    "botUsername": "blun_dieter_bot",
+    "allowedChatIds": [],
+    "webhookUrl": "${WEBHOOK_BASE_URL}/telegram/webhook",
+    "polling": true
+  },
+  "dieter": {
+    "memoryPath": "/tmp/blun-comms/telegram-bot/memories",
+    "syncInterval": 30000,
+    "maxMemories": 1000,
+    "autoSync": true
+  },
+  "logging": {
+    "level": "info",
+    "file": "/tmp/blun-comms/telegram-bot/bot.log"
+  }
+}

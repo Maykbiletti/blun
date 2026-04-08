@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1a1a2e">
+  <title>BLUN.ai — Offline</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0f0f23;
+      color: #e2e8f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      min-height: 100dvh;
+      padding: 24px;
+      text-align: center;
+    }
+    .icon { font-size: 64px; margin-bottom: 24px; }
+    h1 { font-size: 24px; margin-bottom: 12px; color: #fff; }
+    p { font-size: 16px; color: #94a3b8; max-width: 320px; line-height: 1.5; margin-bottom: 24px; }
+    button {
+      background: #6366f1;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 32px;
+      font-size: 16px;
+      cursor: pointer;
+      min-height: 44px;
+      min-width: 44px;
+      transition: background 0.2s;
+    }
+    button:active { background: #4f46e5; }
+  </style>
+</head>
+<body>
+  <div class="icon">&#128268;</div>
+  <h1>Keine Verbindung</h1>
+  <p>Du bist offline. Deine letzten 50 Nachrichten sind lokal gespeichert und werden synchronisiert sobald du wieder online bist.</p>
+  <button onclick="window.location.reload()">Erneut versuchen</button>
+  <script>
+    window.addEventListener('online', () => window.location.reload());
+  </script>
+</body>
+</html>

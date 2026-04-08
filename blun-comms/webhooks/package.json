@@ -1,0 +1,13 @@
+{
+  "name": "blun-notification-webhooks",
+  "version": "1.0.0",
+  "description": "Event-driven Notification Webhooks — Agent Task Done → Telegram",
+  "main": "notification-webhook.js",
+  "scripts": {
+    "start": "node notification-webhook.js",
+    "test": "node test.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

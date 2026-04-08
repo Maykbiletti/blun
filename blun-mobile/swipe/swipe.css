@@ -1,0 +1,142 @@
+/* BLUN Mobile Swipe — 60fps GPU-accelerated */
+
+.swipe-viewport {
+  position: relative;
+  width: 100%;
+  height: 100dvh; /* dynamic viewport height (mobile safe) */
+  overflow: hidden;
+  touch-action: pan-y; /* erlaubt vertikales Scrollen, horizontales handled JS */
+  -webkit-overflow-scrolling: touch;
+}
+
+.swipe-track {
+  display: flex;
+  width: 200%; /* 2 Panels nebeneinander */
+  height: 100%;
+  will-change: transform;
+  /* Kein transition default — wird per JS gesetzt beim Snap */
+}
+
+.swipe-panel {
+  width: 50%; /* = 100% vom Viewport */
+  height: 100%;
+  flex-shrink: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: none; /* kein Browser-Swipe-Back */
+}
+
+/* --- Dot Indicator --- */
+.swipe-dots {
+  position: fixed;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 100;
+  padding: 6px 12px;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 20px;
+}
+
+.swipe-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.4);
+  transition: all 200ms ease;
+  cursor: pointer;
+  /* 44px Touch-Target (a11y) */
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Sichtbarer Dot innerhalb des Touch-Targets */
+.swipe-dot::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4);
+  transition: all 200ms ease;
+}
+
+.swipe-dot.active::after {
+  background: #fff;
+  width: 24px;
+  border-radius: 4px;
+}
+
+.swipe-dot {
+  background: transparent;
+}
+
+/* --- Responsive Breakpoints --- */
+
+/* 320px — kleine Phones */
+@media (max-width: 479px) {
+  .swipe-panel {
+    font-size: 14px;
+    padding: 8px;
+  }
+  .swipe-dots {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+  }
+}
+
+/* 480px — grosse Phones */
+@media (min-width: 480px) and (max-width: 767px) {
+  .swipe-panel {
+    font-size: 15px;
+    padding: 12px;
+  }
+}
+
+/* 768px+ — Tablet: Side-by-Side, kein Swipe noetig */
+@media (min-width: 768px) {
+  .swipe-viewport {
+    touch-action: auto;
+  }
+  .swipe-track {
+    width: 100%;
+    will-change: auto;
+    transform: none !important;
+    transition: none !important;
+  }
+  .swipe-panel {
+    width: 50%;
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .swipe-panel:last-child {
+    border-right: none;
+  }
+  .swipe-dots {
+    display: none;
+  }
+}
+
+/* --- Performance --- */
+
+/* Reduce motion fuer Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .swipe-track {
+    transition-duration: 0ms !important;
+  }
+  .swipe-dot::after {
+    transition-duration: 0ms;
+  }
+}
+
+/* GPU Layer Promotion fuer Panels */
+.swipe-panel > * {
+  transform: translateZ(0);
+}

@@ -1,0 +1,16 @@
+{
+  "name": "blun-telegram-bot",
+  "version": "1.0.0",
+  "description": "BLUN.ai Telegram Bot - Agent Health & Tasks",
+  "main": "telegram-bot.js",
+  "scripts": {
+    "start": "node telegram-bot.js",
+    "pm2:start": "pm2 start ecosystem.config.js",
+    "pm2:stop": "pm2 stop blun-telegram",
+    "pm2:restart": "pm2 restart blun-telegram",
+    "pm2:logs": "pm2 logs blun-telegram"
+  },
+  "dependencies": {
+    "node-telegram-bot-api": "^0.66.0"
+  }
+}

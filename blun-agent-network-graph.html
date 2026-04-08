@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BLUN.ai — Agent Network Graph</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0e1a; font-family: 'Segoe UI', system-ui, sans-serif; overflow: hidden; }
+
+  /* Container — dashboard-einbettbar via iframe */
+  #graph-container {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+  }
+
+  svg { display: block; }
+
+  /* Pulse-Animation auf Kanten */
+  @keyframes pulse-flow {
+    0%   { stroke-dashoffset: 24; }
+    100% { stroke-dashoffset: 0; }
+  }
+
+  /* Glow auf aktive Knoten */
+  @keyframes node-glow {
+    0%, 100% { filter: drop-shadow(0 0 4px var(--glow)); }
+    50%      { filter: drop-shadow(0 0 12px var(--glow)); }
+  }
+
+  /* Legende */
+  #legend {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    background: rgba(10, 14, 26, 0.85);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    padding: 14px 18px;
+    color: #ccc;
+    font-size: 12px;
+    backdrop-filter: blur(6px);
+  }
+  #legend h4 { color: #fff; margin-bottom: 8px; font-size: 13px; }
+  .legend-item { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+  /* Tooltip */
+  #tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: rgba(10, 14, 26, 0.92);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 6px;
+    padding: 10px 14px;
+    color: #fff;
+    font-size: 12px;
+    line-height: 1.5;
+    display: none;
+    backdrop-filter: blur(8px);
+    max-width: 220px;
+  }
+  #tooltip .tt-name { font-weight: 700; font-size: 14px; margin-bottom: 2px; }
+  #tooltip .tt-dept { opacity: 0.6; font-size: 11px; }
+  #tooltip .tt-role { margin-top: 4px; }
+</style>
+</head>
+<body>
+<div id="graph-container">
+  <div id="tooltip">
+    <div class="tt-name"></div>
+    <div class="tt-dept"></div>
+    <div class="tt-role"></div>
+  </div>
+  <div id="legend">
+    <h4>Abteilungen</h4>
+  </div>
+</div>
+
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+// ─── DATEN ───────────────────────────────────────────────
+const departments = {
+  operator:  { label: 'Operator / Zentrale', color: '#ffffff' },
+  infra:     { label: 'Infrastruktur',       color: '#3b82f6' },
+  dev:       { label: 'Entwicklung',         color: '#8b5cf6' },
+  security:  { label: 'Security & DevOps',   color: '#ef4444' },
+  media:     { label: 'Video & Medien',      color: '#f59e0b' },
+  agent:     { label: 'Agent-Architektur',   color: '#10b981' },
+  data:      { label: 'Daten & Analytics',   color: '#06b6d4' },
+  community: { label: 'Community & Growth',  color: '#ec4899' }
+};
+
+const nodes = [
+  // Operator — zentraler Knoten
+  { id: 'operator',  name: 'BLUN Operator',   dept: 'operator',  role: 'Zentrale Steuerung & Delegation', r: 28, fx: null, fy: null, isCenter: true },
+
+  // Infra
+  { id: 'guenter',   name: 'Günter',          dept: 'infra',     role: 'Server, PM2, lokale AI-Modelle',  r: 18 },
+  { id: 'monitoring',name: 'Monitor-Agent',   dept: 'infra',     role: 'Health Checks & Alerts',          r: 14 },
+
+  // Dev
+  { id: 'felix',     name: 'Felix',           dept: 'dev',       role: 'Frontend & UI Components',        r: 16 },
+  { id: 'backend',   name: 'Backend-Agent',   dept: 'dev',       role: 'API & Services',                  r: 16 },
+
+  // Security
+  { id: 'klaus',     name: 'Klaus',           dept: 'security',  role: 'DevOps, Docker, CI/CD, Nginx',    r: 18 },
+  { id: 'scanner',   name: 'Security-Scanner',dept: 'security',  role: 'Endpoint-Review & Audits',        r: 14 },
+
+  // Media
+  { id: 'marlene',   name: 'Marlene',         dept: 'media',     role: 'Video & Medien Producer',         r: 18 },
+  { id: 'assets',    name: 'Asset-Agent',     dept: 'media',     role: 'Grafik & Rendering Pipeline',     r: 14 },
+
+  // Agent-Architektur
+  { id: 'greta',     name: 'Greta',           dept: 'agent',     role: 'Agent System, Skills, Marketplace',r: 18 },
+  { id: 'skills',    name: 'Skill-Registry',  dept: 'agent',     role: 'Skill-Verwaltung & Deployment',   r: 14 },
+
+  // Data
+  { id: 'analyst',   name: 'Data-Agent',      dept: 'data',      role: 'Analytics & Reporting',           r: 16 },
+
+  // Community
+  { id: 'affiliate', name: 'Affiliate-Agent', dept: 'community', role: 'Referral Tracking & Payouts',     r: 14 },
+];
+
+const links = [
+  // Operator ↔ Abteilungsleiter
+  { source: 'operator', target: 'guenter',   strength: 0.9 },
+  { source: 'operator', target: 'klaus',     strength: 0.9 },
+  { source: 'operator', target: 'marlene',   strength: 0.9 },
+  { source: 'operator', target: 'greta',     strength: 0.9 },
+  { source: 'operator', target: 'felix',     strength: 0.7 },
+  { source: 'operator', target: 'analyst',   strength: 0.7 },
+  { source: 'operator', target: 'affiliate', strength: 0.5 },
+
+  // Innerhalb Abteilungen
+  { source: 'guenter',  target: 'monitoring', strength: 0.8 },
+  { source: 'felix',    target: 'backend',    strength: 0.8 },
+  { source: 'klaus',    target: 'scanner',    strength: 0.8 },
+  { source: 'marlene',  target: 'assets',     strength: 0.8 },
+  { source: 'greta',    target: 'skills',     strength: 0.8 },
+
+  // Cross-Team
+  { source: 'guenter',  target: 'klaus',      strength: 0.5 },
+  { source: 'greta',    target: 'felix',      strength: 0.5 },
+  { source: 'marlene',  target: 'greta',      strength: 0.4 },
+  { source: 'analyst',  target: 'affiliate',  strength: 0.5 },
+  { source: 'klaus',    target: 'backend',    strength: 0.4 },
+  { source: 'monitoring',target:'scanner',    strength: 0.3 },
+];
+
+// ─── SVG SETUP ──────────────────────────────────────────
+const container = document.getElementById('graph-container');
+const width  = container.clientWidth;
+const height = container.clientHeight;
+
+const svg = d3.select('#graph-container')
+  .insert('svg', ':first-child')
+  .attr('width', width)
+  .attr('height', height)
+  .attr('viewBox', `0 0 ${width} ${height}`);
+
+// Defs — Glow-Filter + Pfeilspitzen
+const defs = svg.append('defs');
+
+// Glow filter
+const glow = defs.append('filter').attr('id', 'glow');
+glow.append('feGaussianBlur').attr('stdDeviation', 3).attr('result', 'blur');
+glow.append('feMerge').selectAll('feMergeNode')
+  .data(['blur', 'SourceGraphic']).enter()
+  .append('feMergeNode').attr('in', d => d);
+
+// Radial gradient für Operator
+const opGrad = defs.append('radialGradient').attr('id', 'op-grad');
+opGrad.append('stop').attr('offset', '0%').attr('stop-color', '#fff');
+opGrad.append('stop').attr('offset', '100%').attr('stop-color', '#94a3b8');
+
+// ─── SIMULATION ─────────────────────────────────────────
+// Operator in Mitte fixieren
+const opNode = nodes.find(n => n.isCenter);
+opNode.fx = width / 2;
+opNode.fy = height / 2;
+
+const simulation = d3.forceSimulation(nodes)
+  .force('link', d3.forceLink(links).id(d => d.id).distance(d => 120 / d.strength).strength(d => d.strength * 0.4))
+  .force('charge', d3.forceManyBody().strength(-400))
+  .force('center', d3.forceCenter(width / 2, height / 2))
+  .force('collision', d3.forceCollide().radius(d => d.r + 12))
+  .alphaDecay(0.015);
+
+// ─── KANTEN ─────────────────────────────────────────────
+const linkGroup = svg.append('g').attr('class', 'links');
+
+// Basis-Linie (statisch, dezent)
+const linkBase = linkGroup.selectAll('.link-base')
+  .data(links).enter()
+  .append('line')
+  .attr('class', 'link-base')
+  .attr('stroke', 'rgba(255,255,255,0.06)')
+  .attr('stroke-width', d => 1 + d.strength * 2);
+
+// Pulsierende Overlay-Linie
+const linkPulse = linkGroup.selectAll('.link-pulse')
+  .data(links).enter()
+  .append('line')
+  .attr('class', 'link-pulse')
+  .attr('stroke', d => departments[nodes.find(n => n.id === (d.source.id || d.source)).dept]?.color || '#fff')
+  .attr('stroke-width', d => 1 + d.strength * 1.5)
+  .attr('stroke-opacity', 0.4)
+  .attr('stroke-dasharray', '4 20')
+  .style('animation', d => `pulse-flow ${1.5 + Math.random()}s linear infinite`);
+
+// ─── KNOTEN ─────────────────────────────────────────────
+const nodeGroup = svg.append('g').attr('class', 'nodes');
+
+const nodeG = nodeGroup.selectAll('.node')
+  .data(nodes).enter()
+  .append('g')
+  .attr('class', 'node')
+  .call(d3.drag()
+    .on('start', dragStart)
+    .on('drag',  dragging)
+    .on('end',   dragEnd));
+
+// Äusserer Glow-Ring
+nodeG.append('circle')
+  .attr('r', d => d.r + 6)
+  .attr('fill', 'none')
+  .attr('stroke', d => departments[d.dept].color)
+  .attr('stroke-width', 2)
+  .attr('stroke-opacity', 0.15)
+  .attr('filter', 'url(#glow)');
+
+// Haupt-Kreis
+nodeG.append('circle')
+  .attr('r', d => d.r)
+  .attr('fill', d => d.isCenter ? 'url(#op-grad)' : departments[d.dept].color)
+  .attr('fill-opacity', d => d.isCenter ? 1 : 0.85)
+  .attr('stroke', d => departments[d.dept].color)
+  .attr('stroke-width', 2)
+  .attr('filter', 'url(#glow)');
+
+// Label
+nodeG.append('text')
+  .text(d => d.name)
+  .attr('text-anchor', 'middle')
+  .attr('dy', d => d.r + 16)
+  .attr('fill', '#ccc')
+  .attr('font-size', d => d.isCenter ? 13 : 11)
+  .attr('font-weight', d => d.isCenter ? 700 : 400)
+  .style('pointer-events', 'none');
+
+// Initiale innerhalb Kreis (für grosse Knoten)
+nodeG.append('text')
+  .text(d => d.r >= 16 ? d.name.charAt(0).toUpperCase() : '')
+  .attr('text-anchor', 'middle')
+  .attr('dy', 5)
+  .attr('fill', d => d.isCenter ? '#0a0e1a' : '#fff')
+  .attr('font-size', d => d.isCenter ? 18 : 14)
+  .attr('font-weight', 700)
+  .style('pointer-events', 'none');
+
+// ─── TOOLTIP ────────────────────────────────────────────
+const tooltip = document.getElementById('tooltip');
+
+nodeG.on('mouseenter', (event, d) => {
+  tooltip.style.display = 'block';
+  tooltip.querySelector('.tt-name').textContent = d.name;
+  tooltip.querySelector('.tt-name').style.color = departments[d.dept].color;
+  tooltip.querySelector('.tt-dept').textContent = departments[d.dept].label;
+  tooltip.querySelector('.tt-role').textContent = d.role;
+}).on('mousemove', (event) => {
+  tooltip.style.left = (event.pageX + 14) + 'px';
+  tooltip.style.top  = (event.pageY - 10) + 'px';
+}).on('mouseleave', () => {
+  tooltip.style.display = 'none';
+});
+
+// ─── TICK ───────────────────────────────────────────────
+simulation.on('tick', () => {
+  linkBase
+    .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+    .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+  linkPulse
+    .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+    .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+  nodeG.attr('transform', d => `translate(${d.x},${d.y})`);
+});
+
+// ─── DRAG ───────────────────────────────────────────────
+function dragStart(event, d) {
+  if (!event.active) simulation.alphaTarget(0.3).restart();
+  d.fx = d.x; d.fy = d.y;
+}
+function dragging(event, d) {
+  d.fx = event.x; d.fy = event.y;
+}
+function dragEnd(event, d) {
+  if (!event.active) simulation.alphaTarget(0);
+  if (!d.isCenter) { d.fx = null; d.fy = null; }
+}
+
+// ─── LEGENDE ────────────────────────────────────────────
+const legend = document.getElementById('legend');
+Object.values(departments).forEach(dept => {
+  const item = document.createElement('div');
+  item.className = 'legend-item';
+  item.innerHTML = `<span class="legend-dot" style="background:${dept.color}"></span>${dept.label}`;
+  legend.appendChild(item);
+});
+
+// ─── RESPONSIVE ─────────────────────────────────────────
+window.addEventListener('resize', () => {
+  const w = container.clientWidth, h = container.clientHeight;
+  svg.attr('width', w).attr('height', h).attr('viewBox', `0 0 ${w} ${h}`);
+  opNode.fx = w / 2; opNode.fy = h / 2;
+  simulation.force('center', d3.forceCenter(w / 2, h / 2));
+  simulation.alpha(0.3).restart();
+});
+
+// ─── PERIODISCHES PULSIEREN (Nachrichten-Simulation) ────
+setInterval(() => {
+  const idx = Math.floor(Math.random() * links.length);
+  const link = links[idx];
+  const src = typeof link.source === 'object' ? link.source : nodes.find(n => n.id === link.source);
+  const tgt = typeof link.target === 'object' ? link.target : nodes.find(n => n.id === link.target);
+  if (!src || !tgt) return;
+
+  // Fliegender Partikel
+  const particle = svg.append('circle')
+    .attr('r', 3)
+    .attr('fill', departments[src.dept]?.color || '#fff')
+    .attr('filter', 'url(#glow)')
+    .attr('cx', src.x).attr('cy', src.y);
+
+  particle.transition()
+    .duration(800 + Math.random() * 600)
+    .ease(d3.easeQuadInOut)
+    .attr('cx', tgt.x).attr('cy', tgt.y)
+    .attr('r', 1)
+    .attr('opacity', 0)
+    .remove();
+}, 600);
+</script>
+</body>
+</html>

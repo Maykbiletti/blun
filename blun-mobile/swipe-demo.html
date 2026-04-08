@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>BLUN Mobile Swipe Demo</title>
+  <link rel="stylesheet" href="swipe-engine.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, system-ui, sans-serif; background: #0a0a0f; color: #e0e0e0; }
+    .panel-chat { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .panel-canvas { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    h2 { font-size: 1.5rem; margin-bottom: 8px; }
+    p { opacity: 0.6; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+
+  <div class="swipe-container" id="app">
+    <div class="swipe-track" data-swipe-track>
+      <div class="swipe-panel panel-chat">
+        <h2>💬 Chat</h2>
+        <p>← Swipe links fuer Canvas →</p>
+      </div>
+      <div class="swipe-panel panel-canvas">
+        <h2>🎨 Canvas</h2>
+        <p>← Swipe rechts fuer Chat →</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="swipe-indicator">
+    <div class="swipe-dot active" id="dot-chat"></div>
+    <div class="swipe-dot" id="dot-canvas"></div>
+  </div>
+
+  <script type="module">
+    import { initSwipe } from './swipe-engine.ts';
+
+    const dotChat = document.getElementById('dot-chat');
+    const dotCanvas = document.getElementById('dot-canvas');
+
+    initSwipe({
+      container: document.getElementById('app'),
+      threshold: 50,
+      snapDuration: 280,
+      onSnap(panel) {
+        dotChat.classList.toggle('active', panel === 'chat');
+        dotCanvas.classList.toggle('active', panel === 'canvas');
+        console.log('Snap →', panel);
+      }
+    });
+  </script>
+
+</body>
+</html>

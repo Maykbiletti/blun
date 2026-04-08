@@ -1,0 +1,14 @@
+{
+  "name": "blun-dieter-telegram-bot",
+  "version": "1.0.0",
+  "description": "Telegram Bot fuer Dieter Memory Sync — BLUN.ai Agent-Team",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js",
+    "dev": "node bot.js --polling",
+    "test": "node test.js"
+  },
+  "dependencies": {
+    "node-telegram-bot-api": "^0.66.0"
+  }
+}

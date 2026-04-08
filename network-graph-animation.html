@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BLUN.ai — Agent Network Graph</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0a0f; overflow: hidden; font-family: 'Inter', 'Segoe UI', sans-serif; }
+  canvas { display: block; }
+  #info {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    color: #667; font-size: 13px; letter-spacing: 1px;
+  }
+  #title {
+    position: fixed; top: 30px; left: 50%; transform: translateX(-50%);
+    color: #fff; font-size: 28px; font-weight: 700; letter-spacing: 2px;
+    opacity: 0; animation: fadeIn 2s 1s forwards;
+  }
+  @keyframes fadeIn { to { opacity: 1; } }
+</style>
+</head>
+<body>
+<div id="title">BLUN.ai Agent Network</div>
+<canvas id="canvas"></canvas>
+<div id="info">DEMO ANIMATION — MARLENE / VIDEO PRODUKTION</div>
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// Agent-Definitionen
+const agents = [
+  { id: 'dieter',  name: 'Dieter',  role: 'Firmen-Assistent', color: '#0066FF', x: 0, y: 0 },
+  { id: 'heinrich',name: 'Heinrich',role: 'Backend Dev',       color: '#00CC66', x: 0, y: 0 },
+  { id: 'klaus',   name: 'Klaus',   role: 'DevOps & Security', color: '#FF4444', x: 0, y: 0 },
+  { id: 'greta',   name: 'Greta',   role: 'Agent Architektin', color: '#AA66FF', x: 0, y: 0 },
+  { id: 'guenter', name: 'Günter',  role: 'Infra Engineer',    color: '#FFAA00', x: 0, y: 0 },
+  { id: 'marlene', name: 'Marlene', role: 'Video & Medien',    color: '#FF66AA', x: 0, y: 0 },
+];
+
+// Verbindungen (wer arbeitet mit wem)
+const connections = [
+  ['dieter','heinrich'], ['dieter','greta'], ['dieter','marlene'],
+  ['heinrich','klaus'], ['heinrich','greta'], ['heinrich','guenter'],
+  ['klaus','guenter'], ['klaus','heinrich'],
+  ['greta','marlene'], ['greta','dieter'],
+  ['guenter','dieter'],
+  ['marlene','greta'],
+];
+
+// Positionen im Kreis anordnen
+function layoutCircle() {
+  const cx = canvas.width / 2;
+  const cy = canvas.height / 2;
+  const r = Math.min(cx, cy) * 0.55;
+  agents.forEach((a, i) => {
+    const angle = (i / agents.length) * Math.PI * 2 - Math.PI / 2;
+    a.targetX = cx + Math.cos(angle) * r;
+    a.targetY = cy + Math.sin(angle) * r;
+    if (a.x === 0) { a.x = cx; a.y = cy; } // start center
+  });
+}
+layoutCircle();
+window.addEventListener('resize', layoutCircle);
+
+// Nachrichten-Pakete
+const packets = [];
+function spawnPacket() {
+  const conn = connections[Math.floor(Math.random() * connections.length)];
+  const from = agents.find(a => a.id === conn[0]);
+  const to = agents.find(a => a.id === conn[1]);
+  packets.push({ from, to, t: 0, speed: 0.008 + Math.random() * 0.012 });
+}
+
+// Partikel-Hintergrund
+const particles = Array.from({length: 60}, () => ({
+  x: Math.random() * canvas.width,
+  y: Math.random() * canvas.height,
+  vx: (Math.random() - 0.5) * 0.3,
+  vy: (Math.random() - 0.5) * 0.3,
+  r: Math.random() * 1.5 + 0.5,
+  alpha: Math.random() * 0.3 + 0.1,
+}));
+
+let time = 0;
+let introPhase = 0; // 0-1, agents fly in
+
+function lerp(a, b, t) { return a + (b - a) * t; }
+function easeOut(t) { return 1 - Math.pow(1 - t, 3); }
+
+function draw() {
+  time += 0.016;
+  introPhase = Math.min(1, time / 3); // 3 Sek intro
+
+  ctx.fillStyle = '#0a0a0f';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Partikel
+  particles.forEach(p => {
+    p.x += p.vx; p.y += p.vy;
+    if (p.x < 0) p.x = canvas.width;
+    if (p.x > canvas.width) p.x = 0;
+    if (p.y < 0) p.y = canvas.height;
+    if (p.y > canvas.height) p.y = 0;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(100,120,255,${p.alpha})`;
+    ctx.fill();
+  });
+
+  // Agent-Positionen animieren
+  const eased = easeOut(introPhase);
+  agents.forEach(a => {
+    a.x = lerp(canvas.width/2, a.targetX, eased);
+    a.y = lerp(canvas.height/2, a.targetY, eased);
+  });
+
+  // Verbindungslinien
+  if (introPhase > 0.3) {
+    const lineAlpha = Math.min(1, (introPhase - 0.3) / 0.4);
+    connections.forEach(([fromId, toId]) => {
+      const from = agents.find(a => a.id === fromId);
+      const to = agents.find(a => a.id === toId);
+      ctx.beginPath();
+      ctx.moveTo(from.x, from.y);
+      ctx.lineTo(to.x, to.y);
+      ctx.strokeStyle = `rgba(50,60,100,${lineAlpha * 0.4})`;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    });
+  }
+
+  // Pakete spawnen & zeichnen
+  if (introPhase >= 1 && Math.random() < 0.03) spawnPacket();
+  for (let i = packets.length - 1; i >= 0; i--) {
+    const p = packets[i];
+    p.t += p.speed;
+    if (p.t >= 1) {
+      // Pulse-Effekt am Ziel
+      drawPulse(p.to.x, p.to.y, p.to.color);
+      packets.splice(i, 1);
+      continue;
+    }
+    const px = lerp(p.from.x, p.to.x, p.t);
+    const py = lerp(p.from.y, p.to.y, p.t);
+    ctx.beginPath();
+    ctx.arc(px, py, 4, 0, Math.PI * 2);
+    ctx.fillStyle = p.from.color;
+    ctx.shadowColor = p.from.color;
+    ctx.shadowBlur = 15;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Trail
+    for (let t = 1; t <= 4; t++) {
+      const tt = Math.max(0, p.t - t * 0.015);
+      const tx = lerp(p.from.x, p.to.x, tt);
+      const ty = lerp(p.from.y, p.to.y, tt);
+      ctx.beginPath();
+      ctx.arc(tx, ty, 3 - t * 0.5, 0, Math.PI * 2);
+      ctx.fillStyle = p.from.color + Math.floor((1 - t/5) * 80).toString(16).padStart(2,'0');
+      ctx.fill();
+    }
+  }
+
+  // Pulse-Effekte
+  pulses.forEach((p, i) => {
+    p.r += 1.5; p.alpha -= 0.02;
+    if (p.alpha <= 0) { pulses.splice(i, 1); return; }
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.strokeStyle = p.color + Math.floor(p.alpha * 255).toString(16).padStart(2,'0');
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  });
+
+  // Agent-Knoten zeichnen
+  agents.forEach((a, i) => {
+    const delay = i * 0.12;
+    const nodeAlpha = Math.min(1, Math.max(0, (introPhase - delay) / 0.3));
+    if (nodeAlpha <= 0) return;
+
+    // Glow
+    ctx.beginPath();
+    ctx.arc(a.x, a.y, 35, 0, Math.PI * 2);
+    ctx.fillStyle = a.color + '15';
+    ctx.fill();
+
+    // Äußerer Ring (pulsierend)
+    const pulse = 1 + Math.sin(time * 2 + i) * 0.08;
+    ctx.beginPath();
+    ctx.arc(a.x, a.y, 28 * pulse, 0, Math.PI * 2);
+    ctx.strokeStyle = a.color + '60';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Innerer Kreis
+    ctx.beginPath();
+    ctx.arc(a.x, a.y, 22, 0, Math.PI * 2);
+    const grad = ctx.createRadialGradient(a.x, a.y, 0, a.x, a.y, 22);
+    grad.addColorStop(0, a.color + 'CC');
+    grad.addColorStop(1, a.color + '44');
+    ctx.fillStyle = grad;
+    ctx.globalAlpha = nodeAlpha;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // Initiale
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 16px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.globalAlpha = nodeAlpha;
+    ctx.fillText(a.name[0], a.x, a.y);
+
+    // Name + Rolle
+    ctx.font = 'bold 13px Inter, sans-serif';
+    ctx.fillStyle = '#fff';
+    ctx.fillText(a.name, a.x, a.y + 40);
+    ctx.font = '11px Inter, sans-serif';
+    ctx.fillStyle = a.color + 'BB';
+    ctx.fillText(a.role, a.x, a.y + 56);
+    ctx.globalAlpha = 1;
+  });
+
+  requestAnimationFrame(draw);
+}
+
+const pulses = [];
+function drawPulse(x, y, color) {
+  pulses.push({ x, y, color, r: 22, alpha: 0.7 });
+}
+
+draw();
+</script>
+</body>
+</html>

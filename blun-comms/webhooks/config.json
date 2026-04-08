@@ -1,0 +1,27 @@
+{
+  "server": {
+    "port": 3210,
+    "host": "0.0.0.0"
+  },
+  "telegram": {
+    "botToken": "${TELEGRAM_BOT_TOKEN}",
+    "recipients": {
+      "mayk": "${MAYK_CHAT_ID}"
+    }
+  },
+  "webhookSecret": "${WEBHOOK_SECRET}",
+  "events": {
+    "agent.task.done": {
+      "notify": ["mayk"],
+      "template": "✅ Agent *{agentName}* hat Task erledigt:\n\n*{taskTitle}*\n{summary}\n\nZeit: {duration}"
+    },
+    "agent.task.failed": {
+      "notify": ["mayk"],
+      "template": "❌ Agent *{agentName}* — Task fehlgeschlagen:\n\n*{taskTitle}*\nFehler: {error}"
+    },
+    "agent.task.started": {
+      "notify": [],
+      "template": "🔄 Agent *{agentName}* startet: *{taskTitle}*"
+    }
+  }
+}
