@@ -56,6 +56,8 @@ function decryptKey(data) {
 
 // ===== RATE LIMIT WATCHER (Proactive) =====
 // Tracks remaining quota per provider, pauses BEFORE hitting 429
+const agentSessions = {};  // Track CLI session IDs per agent for --resume
+
 const rateLimitState = {
   anthropic: { blocked: false, retryAfter: 0, remaining: null, limit: null, resetAt: 0, usage: 0, windowStart: Date.now() },
   openai: { blocked: false, retryAfter: 0, remaining: null, limit: null, resetAt: 0, usage: 0, windowStart: Date.now() },
@@ -247,19 +249,50 @@ async function callCodexCLI(messages, model) {
   return { content: response, tokens: 5000, cost: 0 }; // Codex uses ChatGPT Pro subscription
 }
 
-async function callClaudeCLI(messages, apiKey, model) {
+async function callClaudeCLI(messages, apiKey, model, agentId) {
   var systemMsg = messages.find(function(m){return m.role==="system";});
   var userMsg = messages.filter(function(m){return m.role!=="system";}).map(function(m){return m.role+": "+m.content;}).join("\n\n");
   var prompt = (systemMsg ? "Context: " + systemMsg.content + "\n\n" : "") + userMsg;
   var env = apiKey ? { ANTHROPIC_API_KEY: apiKey } : {};
-  var args = ["--print"];
+  var args = ["--print", "-", "--output-format", "stream-json", "--verbose"];
   if (model) args.push("--model", model);
-  var result = await callCLI("claude", args, env, prompt, 120000);
-  return { content: result.trim(), tokens: 3000, cost: 0 };
+  // Resume existing session for this agent if available
+  var sessionKey = "agent_" + (agentId || "default");
+  if (agentSessions[sessionKey]) {
+    args.push("--resume", agentSessions[sessionKey]);
+  }
+  var result = await callCLI("claude", args, env, prompt, 180000);
+  // Parse stream-json: extract session_id and final text
+  var content = "";
+  var lines = result.split("\n");
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i].trim();
+    if (!line) continue;
+    try {
+      var evt = JSON.parse(line);
+      if (evt.type === "system" && evt.session_id) {
+        agentSessions[sessionKey] = evt.session_id;
+      }
+      if (evt.type === "assistant" && evt.message && evt.message.content) {
+        for (var j = 0; j < evt.message.content.length; j++) {
+          if (evt.message.content[j].type === "text") {
+            content = evt.message.content[j].text;
+          }
+        }
+      }
+      if (evt.type === "result" && evt.result) {
+        content = evt.result;
+      }
+    } catch(e) {
+      // Not JSON, might be raw text
+      if (!line.startsWith("{")) content += line + "\n";
+    }
+  }
+  return { content: (content || result).trim(), tokens: 3000, cost: 0 };
 }
 
 
-async function callLLM(model, messages) {
+async function callLLM(model, messages, agentId) {
   var isLocal = model.startsWith("local:") || model.includes("llama") || model.includes("tiny") || model.includes("mistral") || model.includes("phi") || model.includes("deepseek") || model.includes("gemma") || model.includes("qwen");
   if (model.startsWith("local:")) model = model.replace("local:", "");
 
@@ -267,9 +300,13 @@ async function callLLM(model, messages) {
 
   // Route CLI-based models: gpt-* via Codex CLI, claude-* via Claude CLI
   if (model.startsWith("claude") && !model.includes("api:")) {
-    try { return await callClaudeCLI(messages, null, model); } catch(e) {
+    try { return await callClaudeCLI(messages, null, model, agentId); } catch(e) {
       // Fallback to API if CLI fails (e.g. usage limit)
-      console.error("[claude-cli] " + e.message + " — falling back to API");
+      console.error("[claude-cli] " + e.message + " — Fallback auf Codex CLI");
+      try { return await callCodexCLI(messages, 'gpt-4o'); } catch(e2) {
+        console.error("[codex-cli] Fallback auch fehlgeschlagen: " + e2.message);
+        return { content: "Alle Modelle im Rate Limit. Bitte spaeter nochmal.", tokens: 0, cost: 0 };
+      }
     }
   }
   var modelLow = model.toLowerCase();
@@ -447,7 +484,7 @@ async function heartbeat(agentId) {
         { role: "user", content: "Task: " + pendingTask.task }
       ];
 
-      var result = await callLLM(agent.model, messages);
+      var result = await callLLM(agent.model, messages, agentId);
       tokens = result.tokens;
       cost = result.cost;
 
@@ -542,7 +579,7 @@ async function chatWithAgent(agentId, message) {
     { role: "user", content: message }
   ]);
 
-  var result = await callLLM(agent.model, messages);
+  var result = await callLLM(agent.model, messages, agentId);
 
   await query("INSERT INTO agent_conversations (agent_id, role, content) VALUES ($1, $2, $3)", [agentId, "user", message]);
   await query("INSERT INTO agent_conversations (agent_id, role, content) VALUES ($1, $2, $3)", [agentId, "assistant", result.content]);
@@ -708,10 +745,10 @@ async function executeTools(agentId, message, aiResponse) {
       } else if (cmd.tool === 'assign_task') {
         var resolvedId = await resolveAgentRef(cmd.agent_ref);
         if (!resolvedId) { results.push('Agent "' + cmd.agent_ref + '" nicht gefunden'); continue; }
-        var r = await callLocalAPI('POST', '/api/organisator/agents/' + resolvedId + '/tasks', { description: cmd.description, priority: 'normal' });
+        var r = await callLocalAPI('POST', '/api/organisator/agents/' + resolvedId + '/task', { task: cmd.description, priority: 'normal' });
         results.push('Aufgabe zugewiesen an ' + cmd.agent_ref + ' (ID ' + resolvedId + '): ' + cmd.description);
       } else if (cmd.tool === 'list_tasks') {
-        var r = await callLocalAPI('GET', '/api/organisator/tasks');
+        var r = await callLocalAPI('GET', '/api/organisator/agents/1/tasks');
         var tasks = Array.isArray(r) ? r : (r.rows || []);
         var summary = tasks.slice(0, 20).map(function(t) { return '#' + t.id + ' [' + t.status + '] ' + (t.description || '').substring(0, 60); }).join('\n');
         results.push('Aufgaben:\n' + (summary || 'keine'));

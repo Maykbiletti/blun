@@ -1196,6 +1196,7 @@ function sendChat() {
     msgs.innerHTML+='<div class="msg msg-ai">'+formatMsg(reply)+'<span class="msg-ts">'+nowAi+'</span></div>';
     msgs.scrollTop=msgs.scrollHeight;
   }).catch(function(e){
+    if(thinkEl && thinkEl.parentNode) thinkEl.parentNode.removeChild(thinkEl);
     msgs.innerHTML+='<div class="msg msg-ai" style="color:var(--red)">Fehler: '+esc(e.message)+'</div>';
   }).finally(function(){document.getElementById('chatSendBtn').disabled=false;});
 }
@@ -1606,6 +1607,7 @@ function sendWsChat() {
     msgs.innerHTML+='<div class="msg msg-ai">'+formatMsg(reply)+'<span class="msg-ts">'+nowAi+'</span></div>';
     msgs.scrollTop=msgs.scrollHeight;
   }).catch(function(e){
+    if(thinkEl && thinkEl.parentNode) thinkEl.parentNode.removeChild(thinkEl);
     msgs.innerHTML+='<div class="msg msg-ai" style="color:var(--red)">Fehler: '+esc(e.message)+'</div>';
   }).finally(function(){document.getElementById('wsChatSendBtn').disabled=false;});
 }

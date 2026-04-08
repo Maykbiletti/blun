@@ -48,6 +48,7 @@ const adminPlansRoutes = require("./src/routes/admin-plans");
 const i18nRoutes = require("./src/routes/i18n");
 const teamsRoutes = require("./src/routes/teams");
 const connectionsRoutes = require("./src/routes/connections");
+const { router: companiesRoutes, companyContext } = require("./src/routes/companies");
 const { startAllBots, activeBots } = require("./src/channels/telegram");
 
 const PORT = parseInt(process.env.BLUN_PORT || "3200", 10);
@@ -178,6 +179,7 @@ app.use("/api/monitor", monitorRoutes);
 app.use("/api/admin/plans", adminPlansRoutes);
 app.use("/api/teams", teamsRoutes);
 app.use("/api/connections", connectionsRoutes);
+app.use("/api/companies", companyContext, companiesRoutes);
 app.use("/support", supportChatRoutes);
 app.get("/support-widget.js", function(req, res) { res.sendFile(__dirname + "/dashboard/support-widget.js"); });
 app.get("/i18n-loader.js", function(req, res) { res.sendFile(__dirname + "/dashboard/i18n-loader.js"); });
