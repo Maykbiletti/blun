@@ -509,13 +509,13 @@ async function heartbeat(agentId) {
           var ahead = await new Promise(function(res){ cp5.exec("cd /root/blun && git log main.." + br + " --oneline", {timeout:5000}, function(e,o){ res((o||"").trim()); }); });
           if (ahead) {
             console.log("[operator] QA review + merge for " + br + ": " + ahead.substring(0,100));
-            // QA Review: Helmut checks the branch before merge
-            await new Promise(function(res){ cp5.exec("cd /root/blun && git checkout " + br, {timeout:5000}, function(e,o,er){ res(true); }); });
+            var brWorktree = "/root/blun-worktrees/" + br.replace(/\//g, "-");
             var brDiff = await new Promise(function(res){ cp5.exec("cd /root/blun && git diff main..." + br, {timeout:10000,maxBuffer:500000}, function(e,o,er){ res((o||"").substring(0,5000)); }); });
-            var qaPrompt = "Du bist Helmut, QA-Lead. Pruefe diesen Code-Diff vom Branch " + br + ":\n\n" + brDiff + "\n\nPruefe auf: Syntax-Fehler, Sicherheitsluecken, fehlende Error-Handling, ob es zum BLUN-Projekt passt. Wenn du Probleme findest, fixe sie direkt mit Edit/Write. Fuehre node -c auf alle geaenderten .js Dateien aus. Antworte am Ende mit QA:PASS oder QA:FAIL.";
+            var qaCwd = require("fs").existsSync(brWorktree) ? brWorktree : "/root/blun";
+            var qaPrompt = "Du bist Helmut, QA-Lead. Pruefe diesen Code-Diff vom Branch " + br + ":" + "\n\n" + brDiff + "\n\n" + "Pruefe auf: Syntax-Fehler, Sicherheitsluecken, fehlende Error-Handling, ob es zum BLUN-Projekt passt. Wenn du Probleme findest, fixe sie direkt mit Edit/Write. Fuehre node -c auf alle geaenderten .js Dateien aus. Antworte am Ende mit QA:PASS oder QA:FAIL.";
             var qaArgs = ["--print", "-", "--output-format", "text", "--max-turns", "5", "--model", "claude-sonnet-4-20250514"];
             var qaResult = await new Promise(function(resolve) {
-              var child = cp5.spawn("claude", qaArgs, { cwd: "/root/blun", timeout: 120000, env: Object.assign({}, process.env, { DISABLE_INTERACTIVITY: "1" }) });
+              var child = cp5.spawn("claude", qaArgs, { cwd: qaCwd, timeout: 120000, env: Object.assign({}, process.env, { DISABLE_INTERACTIVITY: "1" }) });
               var out = "";
               child.stdin.write(qaPrompt);
               child.stdin.end();
@@ -528,21 +528,20 @@ async function heartbeat(agentId) {
             var qaOutput = qaResult.output || "";
             var qaPassed = qaOutput.indexOf("QA:PASS") !== -1 || qaOutput.indexOf("PASS") !== -1;
             console.log("[operator] QA result for " + br + ": " + (qaPassed ? "PASS" : "FAIL") + " (" + qaOutput.length + " chars)");
-            // Commit any QA fixes on the branch
-            await new Promise(function(res){ cp5.exec("cd /root/blun && git add -A && git diff --cached --quiet || git commit -m 'QA fixes by Helmut'", {timeout:10000}, function(e,o,er){ res(true); }); });
-            // Merge to main
-            await new Promise(function(res){ cp5.exec("cd /root/blun && git checkout main", {timeout:5000}, function(e,o,er){ res(true); }); });
+            if (require("fs").existsSync(brWorktree)) {
+              await new Promise(function(res){ cp5.exec("cd " + brWorktree + " && git add -A && git diff --cached --quiet || git commit -m 'QA fixes by Helmut'", {timeout:10000}, function(e,o,er){ res(true); }); });
+            }
             if (qaPassed) {
-              var mergeResult = await new Promise(function(res){ cp5.exec("cd /root/blun && git merge " + br + " --no-edit", {timeout:10000}, function(e,o,er){ res({err:e, out:(o||"")+(er||"")}); }); });
+              var mergeResult = await new Promise(function(res){ cp5.exec("cd /root/blun && git merge " + br + " --no-edit", {timeout:10000}, function(e,o,er){ res({err:e, out:(o||"")+((er||""))}); }); });
               if (mergeResult.err) {
                 console.error("[operator] Merge conflict on " + br + ": " + mergeResult.out.substring(0,200));
                 await new Promise(function(res){ cp5.exec("cd /root/blun && git merge --abort", {timeout:5000}, function(e,o,er){ res(true); }); });
               } else {
                 console.log("[operator] Merged " + br + " (QA passed)");
-                await new Promise(function(res){ cp5.exec("cd /root/blun && git branch -d " + br, {timeout:5000}, function(e,o,er){ res(true); }); });
+                await new Promise(function(res){ cp5.exec("cd /root/blun && git worktree remove " + brWorktree + " --force 2>/dev/null; git branch -d " + br, {timeout:10000}, function(e,o,er){ res(true); }); });
               }
             } else {
-              console.log("[operator] Branch " + br + " NOT merged — QA failed. Keeping branch for rework.");
+              console.log("[operator] Branch " + br + " NOT merged - QA failed. Keeping worktree for rework.");
             }
           }
         }
@@ -624,19 +623,24 @@ async function heartbeat(agentId) {
       var sysContext = (identityRow ? identityRow.content + "\n\n" : "") + (agent.system_prompt || "Du bist ein hilfreicher Agent.") + skillStr + "\n\nKONTEXT AUS MEMORY:\n" + memStr;
       var taskPrompt = sysContext + "\n\nTask: " + pendingTask.task + "\n\nWICHTIG: Du arbeitest direkt im BLUN-Projekt. Schreibe echten, funktionierenden Code. Aendere oder erstelle Dateien. Keine Konzepte oder Markdown.";
 
-      // === GIT BRANCH ISOLATION: Each agent works in own branch ===
+      // === WORKSPACE ISOLATION: Each agent works in own git worktree ===
       var cp2 = require("child_process");
       var branchName = "agent/" + (agent.name || "agent-" + agentId).toLowerCase().replace(/[^a-z0-9]/g, "-");
+      var worktreePath = "/root/blun-worktrees/" + branchName.replace(/\//g, "-");
       try {
-        // Ensure branch exists, create from main if not
-        var branchExists = await new Promise(function(res){ cp2.exec("cd /root/blun && git branch --list " + branchName, {timeout:5000}, function(e,o){ res((o||"").trim().length > 0); }); });
-        if (!branchExists) {
-          await new Promise(function(res){ cp2.exec("cd /root/blun && git branch " + branchName + " main", {timeout:5000}, function(e,o,er){ res(true); }); });
-          console.log("[agent-cli] Created branch " + branchName);
+        var fs2 = require("fs");
+        if (!fs2.existsSync("/root/blun-worktrees")) fs2.mkdirSync("/root/blun-worktrees", {recursive:true});
+        if (!fs2.existsSync(worktreePath)) {
+          // Create branch if needed
+          var branchExists = await new Promise(function(res){ cp2.exec("cd /root/blun && git branch --list " + branchName, {timeout:5000}, function(e,o){ res((o||"").trim().length > 0); }); });
+          if (!branchExists) {
+            await new Promise(function(res){ cp2.exec("cd /root/blun && git branch " + branchName + " main", {timeout:5000}, function(e,o,er){ res(true); }); });
+          }
+          // Create worktree
+          await new Promise(function(res){ cp2.exec("cd /root/blun && git worktree add " + worktreePath + " " + branchName, {timeout:10000}, function(e,o,er){ res(true); }); });
+          console.log("[agent-cli] Created worktree " + worktreePath + " on " + branchName);
         }
-        // Checkout agent branch
-        await new Promise(function(res){ cp2.exec("cd /root/blun && git checkout " + branchName, {timeout:5000}, function(e,o,er){ res(true); }); });
-      } catch(brErr) { console.error("[agent-cli] Branch error:", brErr.message); }
+      } catch(brErr) { console.error("[agent-cli] Worktree error:", brErr.message); }
 
       // Check for existing session to resume (Paperclip-style)
       var sessionRow = await queryOne("SELECT content FROM agent_memory WHERE agent_id = $1 AND key = 'cli_session_id'", [agentId]);
@@ -658,7 +662,7 @@ async function heartbeat(agentId) {
 
       var cliResult = await new Promise(function(resolve) {
         var child = cp2.spawn(cliCmd, cliArgs, {
-          cwd: "/root/blun",
+          cwd: worktreePath,
           timeout: 180000,
           env: Object.assign({}, process.env, { DISABLE_INTERACTIVITY: "1" })
         });
@@ -709,20 +713,18 @@ async function heartbeat(agentId) {
       tokens = 0; cost = 0;
       console.log("[agent-cli] " + agent.name + " exit=" + cliResult.code + " session=" + (newSessionId||"none") + " output=" + finalContent.length + "ch");
 
-      // Commit on agent branch and switch back to main
+      // Commit in agent worktree (no checkout switching needed!)
       try {
-        var hasChanges = await new Promise(function(res){ cp2.exec("cd /root/blun && git diff --name-only", {timeout:5000}, function(e,o){ res((o||"").trim().length > 0); }); });
+        var hasChanges = await new Promise(function(res){ cp2.exec("cd " + worktreePath + " && git diff --name-only", {timeout:5000}, function(e,o){ res((o||"").trim().length > 0); }); });
         if (hasChanges) {
           var commitMsg = agent.name + ": " + pendingTask.task.substring(0,60);
-          await new Promise(function(res){ cp2.exec('cd /root/blun && git add -A && git commit -m "' + commitMsg.replace(/"/g, '\\"') + '"', {timeout:10000}, function(e,o,er){ res(true); }); });
-          console.log("[agent-cli] Committed on " + branchName);
+          await new Promise(function(res){ cp2.exec('cd ' + worktreePath + ' && git add -A && git commit -m "' + commitMsg.replace(/"/g, '\\"') + '"', {timeout:10000}, function(e,o,er){ res(true); }); });
+          console.log("[agent-cli] Committed in worktree " + worktreePath);
         }
-        // Always switch back to main for next agent
-        await new Promise(function(res){ cp2.exec("cd /root/blun && git checkout main", {timeout:5000}, function(e,o,er){ res(true); }); });
       } catch(gitErr) { console.error("[agent-cli] Git commit error:", gitErr.message); }
       // Quality check: did the CLI actually change files?
       var cp3 = require("child_process");
-      var gitChanges = await new Promise(function(res){ cp3.exec("cd /root/blun && git diff --name-only", {timeout:5000}, function(e,o,er){ res((o||"").trim()); }); });
+      var gitChanges = await new Promise(function(res){ cp3.exec("cd " + worktreePath + " && git diff --name-only HEAD~1 HEAD", {timeout:5000}, function(e,o,er){ res((o||"").trim()); }); });
       var codeChanged = gitChanges.split("\n").filter(function(f){ return f.match(/\.(js|html|css|json)$/); }).length > 0;
       if (codeChanged) {
         await query("UPDATE agent_tasks SET status = $1, result = $2, completed_at = NOW() WHERE id = $3", ["completed", finalContent, pendingTask.id]);

@@ -97,7 +97,7 @@
 
 **Blockierte Pattern:**
 - ✅ Prompt-Injection: `"ignore previous"`, `"forget all"`, `"system prompt"`
-- ✅ Code-Injection: `${...}`, `backticks`, `<script>`
+- ✅ Code-Injection: `${...}`, `` `...` ``, `<script>`
 - ✅ HTML-Injection: `<iframe>`, `<object>`, `<embed>`
 - ✅ SQL-Injection: `union select`, `drop table`, `delete from`
 - ✅ XSS-Patterns: `javascript:`, `on*=`, HTML-Tags
