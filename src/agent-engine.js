@@ -568,29 +568,80 @@ async function heartbeat(agentId) {
       var memBudget = (agent.model && (agent.model.startsWith("local:") || agent.model.includes("gemma") || agent.model.includes("llama"))) ? 500 : 8000;
       var memStr = await loadSmartMemory(agentId, pendingTask.task, memBudget);
 
-      // === CLI-BASED EXECUTION (like Paperclip) ===
+      // === PAPERCLIP-STYLE CLI EXECUTION ===
       var sysContext = (identityRow ? identityRow.content + "\n\n" : "") + (agent.system_prompt || "Du bist ein hilfreicher Agent.") + skillStr + "\n\nKONTEXT AUS MEMORY:\n" + memStr;
-      var taskPrompt = sysContext + "\n\nTask: " + pendingTask.task + "\n\nWICHTIG: Du arbeitest direkt im BLUN-Projekt (/root/blun). Schreibe echten, funktionierenden Code. Aendere oder erstelle Dateien unter /root/blun/dashboard/ oder /root/blun/src/. Keine Konzepte oder Markdown — nur Code.";
+      var taskPrompt = sysContext + "\n\nTask: " + pendingTask.task + "\n\nWICHTIG: Du arbeitest direkt im BLUN-Projekt. Schreibe echten, funktionierenden Code. Aendere oder erstelle Dateien. Keine Konzepte oder Markdown.";
 
-      // Use Claude CLI for code tasks, API for non-code (operator dispatch etc.)
+      // Check for existing session to resume (Paperclip-style)
+      var sessionRow = await queryOne("SELECT content FROM agent_memory WHERE agent_id = $1 AND key = 'cli_session_id'", [agentId]);
+      var sessionId = sessionRow ? sessionRow.content.trim() : null;
+
+      // Determine CLI: claude or codex based on agent model
+      var cliCmd = "claude";
+      var cliModel = "claude-sonnet-4-20250514";
+      if (agent.model && (agent.model.includes("codex") || agent.model.includes("gpt"))) {
+        cliCmd = "codex";
+        cliModel = "";
+      }
+
+      // Build args (from Paperclip adapter-claude-local)
       var cp2 = require("child_process");
+      var cliArgs = ["--print", "-", "--output-format", "stream-json", "--verbose", "--dangerously-skip-permissions", "--max-turns", "5"];
+      if (sessionId) cliArgs.push("--resume", sessionId);
+      if (cliModel && cliCmd === "claude") cliArgs.push("--model", cliModel);
+
       var cliResult = await new Promise(function(resolve) {
-        var escaped = taskPrompt.replace(/'/g, "'\''");
-        var cmd = "claude -p '" + escaped + "' --output-format text --max-turns 3 --model claude-sonnet-4-20250514 2>&1";
-        cp2.exec(cmd, {
+        var child = cp2.spawn(cliCmd, cliArgs, {
           cwd: "/root/blun",
           timeout: 180000,
-          maxBuffer: 2000000,
           env: Object.assign({}, process.env, { DISABLE_INTERACTIVITY: "1" })
-        }, function(err, stdout, stderr) {
-          resolve({ output: (stdout || "") + (stderr || ""), err: err });
         });
+        var stdout = "", stderr = "";
+        child.stdin.write(taskPrompt);
+        child.stdin.end();
+        child.stdout.on("data", function(d) { if (stdout.length < 2000000) stdout += d.toString(); });
+        child.stderr.on("data", function(d) { if (stderr.length < 500000) stderr += d.toString(); });
+        child.on("close", function(code) { resolve({ stdout: stdout, stderr: stderr, code: code }); });
+        child.on("error", function(err) { resolve({ stdout: stdout, stderr: stderr, code: -1, err: err }); });
+        setTimeout(function() { try { child.kill("SIGTERM"); } catch(e){} }, 180000);
       });
 
-      var finalContent = cliResult.output || "CLI returned no output";
-      if (cliResult.err && cliResult.err.killed) finalContent += " [CLI TIMEOUT]";
-      tokens = 0; cost = 0; // CLI manages its own tokens
-      console.log("[agent-cli] " + agent.name + " finished task, output length: " + finalContent.length);
+      // Parse session ID from stream-json for resume next time
+      var newSessionId = null;
+      try {
+        var sjLines = (cliResult.stdout || "").split("\n");
+        for (var si = sjLines.length - 1; si >= 0; si--) {
+          if (sjLines[si].indexOf("session_id") !== -1) {
+            var sjObj = JSON.parse(sjLines[si]);
+            if (sjObj.session_id) { newSessionId = sjObj.session_id; break; }
+          }
+        }
+      } catch(parseErr) {}
+      if (newSessionId) {
+        await query("INSERT INTO agent_memory (agent_id, key, content) VALUES ($1, $2, $3) ON CONFLICT (agent_id, key) DO UPDATE SET content = $3, updated_at = NOW()", [agentId, "cli_session_id", newSessionId]);
+      }
+
+      // Extract text from stream-json events
+      var finalContent = "";
+      try {
+        var sjLines2 = (cliResult.stdout || "").split("\n");
+        for (var si2 = 0; si2 < sjLines2.length; si2++) {
+          try {
+            var ev = JSON.parse(sjLines2[si2]);
+            if (ev.type === "assistant" && ev.message && ev.message.content) {
+              for (var pi = 0; pi < ev.message.content.length; pi++) {
+                if (ev.message.content[pi].type === "text") finalContent += ev.message.content[pi].text + "\n";
+              }
+            }
+            if (ev.result) finalContent += ev.result;
+          } catch(e2) {}
+        }
+      } catch(e3) {}
+      if (!finalContent) finalContent = (cliResult.stdout || "").substring(0, 5000);
+      if (!finalContent) finalContent = "CLI returned no output";
+
+      tokens = 0; cost = 0;
+      console.log("[agent-cli] " + agent.name + " exit=" + cliResult.code + " session=" + (newSessionId||"none") + " output=" + finalContent.length + "ch");
       // Quality check: did the CLI actually change files?
       var cp3 = require("child_process");
       var gitChanges = await new Promise(function(res){ cp3.exec("cd /root/blun && git diff --name-only", {timeout:5000}, function(e,o,er){ res((o||"").trim()); }); });
