@@ -258,10 +258,7 @@ textarea{resize:vertical;min-height:80px}
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M6 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/></svg>
 Agents <span class="badge-count" id="agentCount">0</span>
 </div>
-<div class="nav-item" data-page="chat" onclick="showPage('chat')">
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-Chat
-</div>
+<!-- Chat removed -->
 <div class="nav-item" data-page="livelog" onclick="showPage('livelog')">
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M8 10l4 4 4-4"/></svg>
 Livelog
@@ -462,6 +459,21 @@ Profil
 <div class="stats-row" id="modelStats"></div>
 <div class="card-head"><div class="card-title">KI-Modelle</div><button class="btn btn-sm btn-outline" onclick="loadModels()">Aktualisieren</button></div>
 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px;margin-top:8px" id="modelList"></div>
+</div>
+
+<!-- PAGE: DASHBOARD -->
+<div class="page" id="page-dashboard" style="overflow-y:auto;padding:16px">
+<div class="empty"><div class="empty-icon">📊</div><div>Dashboard</div></div>
+</div>
+
+<!-- PAGE: CANVAS -->
+<div class="page" id="page-canvas" style="overflow:hidden;padding:0">
+<div id="canvasEditorContainer" style="flex:1;overflow:hidden;height:100%"></div>
+</div>
+
+<!-- PAGE: MARKETPLACE -->
+<div class="page" id="page-marketplace" style="overflow-y:auto;padding:16px">
+<div class="empty"><div class="empty-icon">🛍️</div><div>Marketplace</div></div>
 </div>
 
 <!-- PAGE: AFFILIATE -->
@@ -799,12 +811,12 @@ window.addEventListener('popstate', function(){
 });
 function getPageFromPath(){
   var path=window.location.pathname.replace('/dashboard/','').replace('/dashboard','');
-  return path&&path!=='/'?path:'agents';
+  var pg=path&&path!=='/'?path:'agents'; if(pg==='chat')pg='agents'; return pg;
 }
 
 // ===== LOAD ALL =====
 function loadAll() {
-  api('/api/organisator/agents').then(function(d){agents=d;renderAgents();renderChatList();document.getElementById('agentCount').textContent=d.length;var op=getOperator();if(op)openAgentWorkspace(op.id);});
+  api('/api/organisator/agents').then(function(d){agents=d;renderAgents();renderChatList();document.getElementById('agentCount').textContent=d.length;var op=getOperator();var la=localStorage.getItem('blun_last_agent');if(la){openAgentWorkspace(parseInt(la));}else if(op){openAgentWorkspace(op.id);}});
   api('/api/organisator/companies').then(function(d){companies=d;renderCompanies();});
   api('/api/organisator/stats').then(function(d){renderStats(d);}).catch(function(){});
   api('/api/models').then(function(d){allModels=d.models||d||[];}).catch(function(){});
@@ -838,7 +850,7 @@ function getOperator() { return agents.find(function(a){return a.role&&(a.role.t
 function agentColor(a) { return COLORS[(a.id||0)%COLORS.length]; }
 function agentInitials(a) { var n=a.name||'?'; var parts=n.split(/\s+/); return parts.length>1?parts[0][0]+parts[1][0]:n.substring(0,2); }
 
-function renderAgents() {
+function renderAgents(filteredAgents) { var agentList = filteredAgents || agents;
   var op = getOperator();
   // Operator banner
   var bannerEl = document.getElementById('operatorBanner');
@@ -918,7 +930,7 @@ function renderOperatorPage() {
     document.getElementById('opMemList').innerHTML = h;
   });
   api('/api/organisator/agents/'+op.id+'/conversations').then(function(d) {
-    var h = d.length ? '<div class="chat-msgs" style="flex:1;overflow-y:auto">'+d.map(function(m){return '<div class="msg msg-'+(m.role==='user'?'user':'ai')+'">'+esc(m.content)+'</div>';}).join('')+'</div>' : '<div class="empty">Keine Chats</div>';
+    var h = d.length ? '<div class="chat-msgs" style="flex:1;overflow-y:auto">'+d.map(function(m){var ts=m.created_at?new Date(m.created_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'';return '<div class="msg msg-'+(m.role==='user'?'user':'ai')+'">'+formatMsg(m.content)+(ts?'<span class="msg-ts">'+ts+'</span>':'')+'</div>';}).join('')+'</div>' : '<div class="empty">Keine Chats</div>';
     h += '<div class="chat-input-wrap"><textarea class="chat-input" id="opChatInput" rows="1" placeholder="Nachricht an '+esc(op.name)+'..." onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();sendOperatorChat()}"></textarea><button class="chat-send" onclick="sendOperatorChat()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg></button></div>';
     document.getElementById('opChatHistory').innerHTML = h;
   });
@@ -1160,22 +1172,7 @@ function filterChatAgents(q) {
     c.style.display=c.textContent.toLowerCase().indexOf(q)>=0?'flex':'none';
   });
 }
-function openChat(agentId) {
-  chatAgent = agents.find(function(a){return a.id===agentId;});
-  if(!chatAgent) return;
-  showPage('chat');
-  var right = document.getElementById('chatRight');
-  right.innerHTML = '<div class="chat-head"><div class="agent-av" style="background:'+agentColor(chatAgent)+';width:32px;height:32px;font-size:13px">'+agentInitials(chatAgent).toUpperCase()+'</div><div><div style="font-size:14px;font-weight:600">'+esc(chatAgent.name)+'</div><div style="font-size:11px;color:var(--tx2)">'+esc(chatAgent.model||'')+'</div></div><select style="margin-left:auto;width:auto;min-width:160px;padding:4px 8px;font-size:11px" onchange="switchChatModel(this.value)">'+modelOptions(chatAgent.model)+'</select></div>'+
-    '<div class="chat-msgs" id="chatMsgs"><div class="spinner"></div></div>'+
-    '<div class="chat-input-wrap"><textarea class="chat-input" id="chatInput" rows="1" placeholder="Nachricht..." onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();sendChat()}"></textarea><button class="chat-send" id="chatSendBtn" onclick="sendChat()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg></button></div>';
-  // Load history
-  api('/api/organisator/agents/'+agentId+'/conversations').then(function(d){
-    var el=document.getElementById('chatMsgs');
-    el.innerHTML=d.map(function(m){return '<div class="msg msg-'+(m.role==='user'?'user':'ai')+'">'+formatMsg(m.content)+'</div>';}).join('');
-    el.scrollTop=el.scrollHeight;
-  });
-  if(window.innerWidth<=768) right.classList.add('active');
-}
+function openChat(agentId) { openAgentWorkspace(agentId); }
 function sendChat() {
   if(!chatAgent) return;
   var input=document.getElementById('chatInput');
@@ -1211,30 +1208,63 @@ function formatMsg(txt) {
 
 // ===== LIVELOG =====
 function loadLivelog() {
-  api('/api/organisator/agents').then(function(agts){
-    // Get recent heartbeats for all agents
-    var promises = agts.slice(0,20).map(function(a){return api('/api/organisator/agents/'+a.id+'/heartbeats?limit=5').then(function(hbs){return hbs.map(function(h){h.agent_name=a.name;return h;});}).catch(function(){return [];});});
-    Promise.all(promises).then(function(results){
-      var all=[];results.forEach(function(r){all=all.concat(r);});
-      all.sort(function(a,b){return new Date(b.created_at)-new Date(a.created_at);});
-      var container=document.getElementById('logContainer');
-      container.innerHTML=all.slice(0,100).map(function(h){
-        var t=new Date(h.created_at);
-        var typeClass=h.status==='active'?'badge-green':h.status==='error'?'badge-red':'badge-amber';
-        return '<div class="log-line"><span class="log-time">'+pad(t.getHours())+':'+pad(t.getMinutes())+':'+pad(t.getSeconds())+'</span><span class="log-agent">'+esc(h.agent_name||'?')+'</span><span class="log-type"><span class="badge '+typeClass+'">'+esc(h.status||'?')+'</span></span><span class="log-content">'+(h.tokens_used?'Tokens: '+h.tokens_used:'')+(h.cost?' | $'+parseFloat(h.cost).toFixed(4):'')+'</span></div>';
-      }).join('');
-      document.getElementById('logCount').textContent=all.length+' Eintraege';
-    });
+  api('/api/organisator/livefeed').then(function(items){
+    var container=document.getElementById('logContainer');
+    container.innerHTML=items.map(function(e){
+      var t=new Date(e.ts);
+      var time=pad(t.getHours())+':'+pad(t.getMinutes())+':'+pad(t.getSeconds());
+      var icon='', badge='', content='';
+      if(e.type==='chat'){
+        icon=e.role==='user'?'💬':'🤖';
+        badge='<span class="badge '+(e.role==='user'?'badge-blue':'badge-green')+'">'+esc(e.role)+'</span>';
+        content=esc(e.content||'');
+      } else if(e.type==='task'){
+        icon='📋';
+        var tc=e.status==='completed'?'badge-green':e.status==='in_progress'?'badge-amber':'badge-blue';
+        badge='<span class="badge '+tc+'">'+esc(e.status)+'</span>';
+        content=esc(e.content||'');
+      } else if(e.type==='heartbeat'){
+        icon='💚';
+        badge='<span class="badge '+(e.status==='active'?'badge-green':'badge-red')+'">'+esc(e.status||'?')+'</span>';
+        content=(e.tokens?'Tokens: '+e.tokens:'')+(e.cost?' | $'+parseFloat(e.cost).toFixed(4):'');
+      } else if(e.type==='activity'){
+        icon='👤';
+        badge='<span class="badge badge-amber">'+esc(e.action||'?')+'</span>';
+        content=esc(e.detail||'')+(e.ip?' ('+esc(e.ip)+')':'');
+      }
+      return '<div class="log-line"><span class="log-time">'+time+'</span><span class="log-agent">'+icon+' '+(e.agent?esc(e.agent):'System')+'</span><span class="log-type">'+badge+'</span><span class="log-content">'+content+'</span></div>';
+    }).join('');
+    document.getElementById('logCount').textContent=items.length+' Eintraege';
+  }).catch(function(){
+    document.getElementById('logContainer').innerHTML='<div style="color:var(--tx2);padding:20px">Fehler beim Laden</div>';
   });
 }
 function clearLog(){document.getElementById('logContainer').innerHTML='';document.getElementById('logCount').textContent='0 Eintraege';}
 
 // ===== COMPANIES =====
 function renderCompanies() {
+  var activeCompany = localStorage.getItem('blun_company') || '';
   document.getElementById('companyList').innerHTML = companies.map(function(c){
-    return '<div class="card"><div class="card-head"><div class="card-title">'+esc(c.name)+'</div><span class="badge badge-blue">'+(c.agent_count||0)+' Agents</span></div>'+
-      '<div style="font-size:12px;color:var(--tx2)">'+esc((c.config&&c.config.description)||'')+'</div></div>';
+    var isActive = (activeCompany == c.id);
+    return '<div class="card" onclick="switchCompany('+c.id+',this)" style="cursor:pointer;border:'+(isActive?'2px solid var(--b)':'1px solid var(--brd)')+'"><div class="card-head"><div class="card-title">'+esc(c.name)+(isActive?' <span class=\'badge badge-green\'>Aktiv</span>':'')+'</div><span class="badge badge-blue">'+(c.agent_count||0)+' Agents</span></div>'+
+      '<div style="font-size:12px;color:var(--tx2)">'+esc((c.config&&c.config.description)||'')+'</div>'+
+      (c.logo_url?'<img src="'+esc(c.logo_url)+'" style="height:24px;margin-top:8px">':'')+
+      '</div>';
   }).join('');
+}
+function switchCompany(id, el) {
+  localStorage.setItem('blun_company', id);
+  var comp = companies.find(function(c){return c.id===id;});
+  if(comp) {
+    document.title = comp.name + ' — BLUN';
+    // Show only agents of this company
+    var filtered = agents.filter(function(a){return a.company_id===id;});
+    // Re-render with filtered agents
+    renderAgents(filtered);
+    renderChatList(filtered);
+  }
+  // Re-render company list to show active state
+  renderCompanies();
 }
 function createCompany() {
   var name=document.getElementById('newCompanyName').value.trim(); if(!name) return;
@@ -1548,8 +1578,7 @@ function loadWsChat(id) {
   var msgs=document.getElementById('wsChatMsgs');
   msgs.innerHTML='<div class="spinner"></div>';
   api('/api/organisator/agents/'+id+'/conversations').then(function(d){
-    var sorted = d.slice().reverse();
-    msgs.innerHTML=sorted.map(function(m){var ts=m.created_at?new Date(m.created_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'';return '<div class="msg msg-'+(m.role==='user'?'user':'ai')+'">'+formatMsg(m.content)+(ts?'<div class="msg-ts">'+ts+'</div>':'')+'</div>';}).join('');
+    msgs.innerHTML=d.map(function(m){var ts=m.created_at?new Date(m.created_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'';return '<div class="msg msg-'+(m.role==='user'?'user':'ai')+'">'+formatMsg(m.content)+(ts?'<div class="msg-ts">'+ts+'</div>':'')+'</div>';}).join('');
     msgs.scrollTop=msgs.scrollHeight;
   }).catch(function(){msgs.innerHTML='';});
 }
@@ -2086,5 +2115,58 @@ function initBlunWS() {
     </div>
   </div>
 </div>
+
+<script src="/dashboard/js/workspace-prefs.js"></script>
+<script src="/dashboard/js/nav-sidebar.js"></script>
+<script src="/dashboard/components/canvas-editor.js"></script>
+
+<script>
+// R28 Init: Canvas-Editor, Nav-Sidebar, Workspace-Prefs
+document.addEventListener('DOMContentLoaded', function() {
+  // 1. Restore Workspace Prefs
+  if (window.WorkspacePrefs) {
+    window.WorkspacePrefs.restoreWorkspace();
+  }
+
+  // 2. Initialize Nav-Sidebar (Hash Routing)
+  if (window.NavSidebar && !window._navSidebarInstance) {
+    window._navSidebarInstance = new NavSidebar({
+      onNavigate: function(section) {
+        // Track navigation
+        if (window.WorkspacePrefs) {
+          window.WorkspacePrefs.setLastSection(section);
+        }
+      }
+    });
+  }
+
+  // 3. Initialize Canvas-Editor
+  var canvasContainer = document.getElementById('canvasEditorContainer');
+  if (canvasContainer && window.CanvasEditor) {
+    var wsUrl = null; // Optional WebSocket URL
+    var canvasEditor = new CanvasEditor('canvasEditorContainer', wsUrl);
+    window._canvasEditor = canvasEditor;
+
+    // Handle Canvas Accept
+    document.addEventListener('canvas-accept', function(e) {
+      console.log('Canvas content accepted:', e.detail.content);
+      // API call would go here
+    });
+  }
+
+  // 4. Restore Split Ratio if available
+  if (window._canvasEditor && window.WorkspacePrefs) {
+    var ratio = window.WorkspacePrefs.getSplitRatio();
+    if (ratio) {
+      window._canvasEditor.setSplitRatio(ratio);
+    }
+  }
+
+  // 5. Watch Panel Resizes
+  if (window.WorkspacePrefs) {
+    window.WorkspacePrefs.watchPanelResizes(['canvas-chat-panel', 'canvas-preview-panel']);
+  }
+});
+</script>
 
 </body></html>
