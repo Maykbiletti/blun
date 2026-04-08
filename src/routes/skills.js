@@ -6,6 +6,7 @@
 const { Router } = require('express');
 const { query, queryOne } = require('../db');
 const { getRegistry, getSkillByName } = require('../skills/registry');
+const SkillSandbox = require('../security/sandbox');
 
 var router = Router();
 
@@ -94,5 +95,34 @@ async function getAgentSkills(req, res) {
   );
   res.json(rows);
 }
+
+// Execute skill in sandbox
+router.post('/:id/execute', async function (req, res) {
+  try {
+    var skill = await queryOne('SELECT * FROM skills WHERE id = $1', [req.params.id]);
+    if (!skill) return res.status(404).json({ error: 'Skill not found' });
+
+    // Create sandbox (req.user set by auth middleware)
+    var sandbox = new SkillSandbox(
+      skill.code,
+      req.body.agentId || null,
+      req.user?.id || null,
+      {
+        skillName: skill.name,
+        allowedDomains: skill.config?.allowedDomains || []
+      }
+    );
+
+    // Execute in sandbox
+    var result = await sandbox.execute(req.body.input || {});
+
+    // Cleanup
+    await sandbox.cleanup();
+
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 module.exports = { router: router, getAgentSkills: getAgentSkills };

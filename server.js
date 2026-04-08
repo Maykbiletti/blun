@@ -77,8 +77,54 @@ app.get("/datenschutz", (req, res) => { res.sendFile(__dirname + "/dashboard/dat
 app.get("/contact", function(req, res) { res.sendFile(__dirname + "/dashboard/contact.html"); });
 app.get("/feature/websites", function(req, res) { res.sendFile(__dirname + "/dashboard/feature-websites.html"); });app.get("/feature/software", function(req, res) { res.sendFile(__dirname + "/dashboard/feature-software.html"); });app.get("/feature/assistants", function(req, res) { res.sendFile(__dirname + "/dashboard/feature-assistants.html"); });app.get("/feature/compare", function(req, res) { res.sendFile(__dirname + "/dashboard/feature-compare.html"); });app.get("/feature/local-ai", function(req, res) { res.sendFile(__dirname + "/dashboard/feature-local-ai.html"); });app.get("/feature/everything", function(req, res) { res.sendFile(__dirname + "/dashboard/feature-everything.html"); });
 
-app.use(helmet({ contentSecurityPolicy: false }));
-app.use(cors());
+// Security Headers: Helmet + CSP
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", "https:", "wss:"],
+      frameSrc: ["'none'"],
+      objectSrc: ["'none'"],
+      upgradeInsecureRequests: []
+    }
+  },
+  crossOriginEmbedderPolicy: true,
+  crossOriginOpenerPolicy: true,
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  dnsPrefetchControl: true,
+  frameguard: { action: 'deny' },
+  hidePoweredBy: true,
+  hsts: { maxAge: 31536000, includeSubDomains: true },
+  ieNoOpen: true,
+  noSniff: true,
+  referrerPolicy: { policy: 'no-referrer' },
+  xssFilter: true
+}));
+
+// CORS: Whitelist Auth-Domains
+const corsOptions = {
+  origin: function(origin, callback) {
+    const allowedOrigins = [
+      'http://localhost:3200',
+      'http://localhost:3000',
+      'https://blun.ai',
+      'https://www.blun.ai',
+      'https://beta.blun.ai'
+    ];
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('CORS not allowed'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-blun-key', 'x-api-key']
+};
+app.use(cors(corsOptions));
 // Stripe webhook needs raw body before JSON parser
 app.use("/billing/webhook", express.raw({ type: "application/json" }));
 
@@ -119,6 +165,8 @@ app.use("/canvas", authenticate, canvasRoutes);
 app.use("/websites", websitesRoutes);
 app.use("/software", softwareRoutes);
 app.use("/api/website-wizard", websiteWizardRoutes);
+app.get("/api/rate-limit-status", function(req, res) { try { var engine = require("./src/agent-engine"); res.json(engine.getRateLimitStatus ? engine.getRateLimitStatus() : {}); } catch(e) { res.json({ error: e.message }); } });
+
 app.get("/api/available-providers", async function(req, res) { try { var { query } = require("./src/db"); var rows = await query("SELECT DISTINCT provider FROM ai_connections WHERE status = 'active'"); res.json({ providers: rows.map(function(r) { return r.provider; }) }); } catch(e) { res.json({ providers: [] }); } });
 app.use("/api/models", modelsRoutes);
 app.use("/api/profile", authenticate, profileRoutes);
