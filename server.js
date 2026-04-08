@@ -86,6 +86,12 @@ app.use(express.json({ limit: "10mb" }));
 app.use(morgan("short"));
 app.use(cookieParser());
 
+// Security middleware — before all routes
+const inputSanitizer = require("./src/middleware/input-sanitizer");
+const rateLimiter = require("./src/middleware/rate-limiter");
+app.use(inputSanitizer);
+app.use(rateLimiter);
+
 app.use("/api/i18n", i18nRoutes);
 // Auth middleware — accept cookie session OR x-blun-key header
 app.use("/api", function (req, res, next) {
