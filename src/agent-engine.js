@@ -104,6 +104,49 @@ function isRateLimited(provider) {
   return false;
 }
 
+// === CLI CONCURRENCY LIMITER ===
+var cliConcurrency = { active: 0, max: 3, queued: 0, totalToday: 0, lastReset: Date.now(), paused: false, pauseUntil: 0 };
+
+async function acquireCliSlot(agentName) {
+  // Reset daily counter
+  if (Date.now() - cliConcurrency.lastReset > 3600000) {
+    cliConcurrency.totalToday = 0;
+    cliConcurrency.lastReset = Date.now();
+  }
+  // Check if paused (ratelimit hit)
+  if (cliConcurrency.paused && Date.now() < cliConcurrency.pauseUntil) {
+    var waitSec = Math.ceil((cliConcurrency.pauseUntil - Date.now()) / 1000);
+    console.log("[ratelimit] CLI paused, " + agentName + " wartet " + waitSec + "s...");
+    await new Promise(function(r) { setTimeout(r, waitSec * 1000); });
+    cliConcurrency.paused = false;
+  }
+  // Wait for slot
+  while (cliConcurrency.active >= cliConcurrency.max) {
+    cliConcurrency.queued++;
+    console.log("[ratelimit] " + agentName + " wartet auf CLI-Slot (" + cliConcurrency.active + "/" + cliConcurrency.max + " aktiv, " + cliConcurrency.queued + " queued)");
+    await new Promise(function(r) { setTimeout(r, 5000); });
+    cliConcurrency.queued--;
+  }
+  cliConcurrency.active++;
+  cliConcurrency.totalToday++;
+  console.log("[ratelimit] " + agentName + " got CLI slot (" + cliConcurrency.active + "/" + cliConcurrency.max + " aktiv)");
+}
+
+function releaseCliSlot(agentName) {
+  cliConcurrency.active = Math.max(0, cliConcurrency.active - 1);
+  console.log("[ratelimit] " + agentName + " released CLI slot (" + cliConcurrency.active + "/" + cliConcurrency.max + " aktiv)");
+}
+
+function pauseCli(seconds) {
+  cliConcurrency.paused = true;
+  cliConcurrency.pauseUntil = Date.now() + seconds * 1000;
+  console.log("[ratelimit] CLI paused for " + seconds + "s (Ratelimit-Schutz)");
+}
+
+function getCliRateLimitStatus() {
+  return { active: cliConcurrency.active, max: cliConcurrency.max, queued: cliConcurrency.queued, totalHour: cliConcurrency.totalToday, paused: cliConcurrency.paused };
+}
+
 // Get rate limit status for dashboard API
 function getRateLimitStatus() {
   var status = {};
@@ -660,6 +703,7 @@ async function heartbeat(agentId) {
       if (sessionId) cliArgs.push("--resume", sessionId);
       if (cliModel && cliCmd === "claude") cliArgs.push("--model", cliModel);
 
+      await acquireCliSlot(agent.name);
       var cliResult = await new Promise(function(resolve) {
         var child = cp2.spawn(cliCmd, cliArgs, {
           cwd: worktreePath,
@@ -710,6 +754,12 @@ async function heartbeat(agentId) {
       if (!finalContent) finalContent = (cliResult.stdout || "").substring(0, 5000);
       if (!finalContent) finalContent = "CLI returned no output";
 
+      releaseCliSlot(agent.name);
+      // Detect ratelimit from CLI output
+      if ((cliResult.stderr || "").indexOf("rate") !== -1 || (cliResult.stderr || "").indexOf("429") !== -1 || (cliResult.stderr || "").indexOf("overloaded") !== -1) {
+        pauseCli(120);
+        console.log("[ratelimit] CLI hit rate limit for " + agent.name);
+      }
       tokens = 0; cost = 0;
       console.log("[agent-cli] " + agent.name + " exit=" + cliResult.code + " session=" + (newSessionId||"none") + " output=" + finalContent.length + "ch");
 

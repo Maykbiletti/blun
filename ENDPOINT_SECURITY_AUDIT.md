@@ -79,11 +79,11 @@
 
 ### Current Implementation (`src/middleware/rate-limiter.js`)
 
-| Tier | Endpunkte | Limit | Endpunkt-Beispiele |
-|------|-----------|-------|-------------------|
-| **Public** | ✅ 10/min | Contact, Newsletter, i18n | Rate-Limited |
-| **Protected** | ✅ 120/min | Alle `/api/*` außer Public | Rate-Limited |
-| **Admin** | ✅ 30/min | Alle `/api/admin/*` | Rate-Limited |
+| Tier | Endpunkte | Limit | Status |
+|------|-----------|-------|--------|
+| **Public** | Contact, Newsletter, i18n | ✅ 10/min | Rate-Limited |
+| **Protected** | Alle `/api/*` außer Public | ✅ 120/min | Rate-Limited |
+| **Admin** | Alle `/admin-panel/*` | ✅ 30/min | Rate-Limited |
 
 **Store:** In-Memory Map (verliert Daten bei Restart)  
 **Bypass:** Localhost (127.0.0.1, ::1)  
@@ -97,7 +97,7 @@
 
 **Blockierte Pattern:**
 - ✅ Prompt-Injection: `"ignore previous"`, `"forget all"`, `"system prompt"`
-- ✅ Code-Injection: `${...}`, `` `...` ``, `<script>`
+- ✅ Code-Injection: `${...}`, `` \`backtick injection\` ``, `<script>`
 - ✅ HTML-Injection: `<iframe>`, `<object>`, `<embed>`
 - ✅ SQL-Injection: `union select`, `drop table`, `delete from`
 - ✅ XSS-Patterns: `javascript:`, `on*=`, HTML-Tags
