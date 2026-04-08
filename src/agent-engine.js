@@ -570,7 +570,7 @@ async function heartbeat(agentId) {
 
       var messages = [
         { role: "system", content: (identityRow ? identityRow.content + "\n\n" : "") + (agent.system_prompt || "Du bist ein hilfreicher Agent.") + skillStr + memStr },
-        { role: "user", content: "Task: " + pendingTask.task }
+        { role: "user", content: "Task: " + pendingTask.task + "\n\nWICHTIG: Du MUSST echten Code produzieren und mit [TOOL:WRITE_FILE:/root/blun/dashboard/dateiname.html] oder [TOOL:WRITE_FILE:/root/blun/src/dateiname.js] ins Projekt schreiben. Keine Konzepte, keine Plaene, keine Markdown-Texte. Nur fertiger, funktionierender Code. Wenn du keinen Code schreibst, wird dein Task als gescheitert gewertet." }
       ];
 
       var result = await callLLM(agent.model, messages, agentId);
