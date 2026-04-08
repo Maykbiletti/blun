@@ -114,7 +114,9 @@ const corsOptions = {
       'http://localhost:3000',
       'https://blun.ai',
       'https://www.blun.ai',
-      'https://beta.blun.ai'
+      'https://beta.blun.ai',
+      'http://100.91.112.46:3200',
+      'http://65.21.76.124:3200'
     ];
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
@@ -273,6 +275,24 @@ async function start() {
   try {
     var pong = await pub.ping();
     console.log("[redis] Connected — " + pong);
+  // Schema integrity check — ensure all required columns exist
+  try {
+    var schemaMigrations = [
+      "ALTER TABLE blun_agents ADD COLUMN IF NOT EXISTS last_heartbeat TIMESTAMPTZ",
+      "ALTER TABLE blun_agents ADD COLUMN IF NOT EXISTS department VARCHAR(100) DEFAULT ''",
+      "ALTER TABLE blun_agents ADD COLUMN IF NOT EXISTS title VARCHAR(200) DEFAULT ''",
+      "ALTER TABLE blun_agents ADD COLUMN IF NOT EXISTS config JSONB DEFAULT '{}'",
+      "ALTER TABLE agent_tasks ADD COLUMN IF NOT EXISTS result TEXT",
+      "ALTER TABLE agent_tasks ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ"
+    ];
+    for (var i = 0; i < schemaMigrations.length; i++) {
+      await pool.query(schemaMigrations[i]);
+    }
+    console.log("[schema] All required columns verified (" + schemaMigrations.length + " checks)");
+  } catch(schemaErr) {
+    console.error("[schema] Migration warning:", schemaErr.message);
+  }
+
   } catch (err) {
     console.error("[redis] Failed to connect:", err.message);
     process.exit(1);
@@ -280,6 +300,16 @@ async function start() {
 
   // Start all enabled Telegram bots
   try { await startAllBots(); } catch (err) { console.error("[telegram] Boot error:", err.message); }
+
+  // Auto-start all active agents
+  try {
+    var engine = require("./src/agent-engine");
+    var agents = await pool.query("SELECT id, name FROM blun_agents WHERE status = 'active'");
+    for (var i = 0; i < agents.rows.length; i++) {
+      engine.startAgent(agents.rows[i].id);
+    }
+    console.log("[agents] Started " + agents.rows.length + " active agents");
+  } catch(err) { console.error("[agents] Auto-start error:", err.message); }
 
   server.listen(PORT, function () {
     console.log("");

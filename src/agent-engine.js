@@ -254,14 +254,14 @@ async function callClaudeCLI(messages, apiKey, model, agentId) {
   var userMsg = messages.filter(function(m){return m.role!=="system";}).map(function(m){return m.role+": "+m.content;}).join("\n\n");
   var prompt = (systemMsg ? "Context: " + systemMsg.content + "\n\n" : "") + userMsg;
   var env = apiKey ? { ANTHROPIC_API_KEY: apiKey } : {};
-  var args = ["--print", "-", "--output-format", "stream-json", "--verbose"];
+  var args = ["--print", "-"];
   if (model) args.push("--model", model);
   // Resume existing session for this agent if available
   var sessionKey = "agent_" + (agentId || "default");
   if (agentSessions[sessionKey]) {
     args.push("--resume", agentSessions[sessionKey]);
   }
-  var result = await callCLI("claude", args, env, prompt, 180000);
+  var result = await callCLI("claude", args, env, prompt, 60000);
   // Parse stream-json: extract session_id and final text
   var content = "";
   var lines = result.split("\n");
@@ -299,9 +299,9 @@ async function callLLM(model, messages, agentId) {
   var url, headers, body;
 
   // Route CLI-based models: gpt-* via Codex CLI, claude-* via Claude CLI
+  // Haiku: skip CLI, use direct API (much faster)
   if (model.startsWith("claude") && !model.includes("api:")) {
     try { return await callClaudeCLI(messages, null, model, agentId); } catch(e) {
-      // Fallback to API if CLI fails (e.g. usage limit)
       console.error("[claude-cli] " + e.message + " — Fallback auf Codex CLI");
       try { return await callCodexCLI(messages, 'gpt-4o'); } catch(e2) {
         console.error("[codex-cli] Fallback auch fehlgeschlagen: " + e2.message);
@@ -459,8 +459,8 @@ async function heartbeat(agentId) {
   }
 
   var pendingTask = await queryOne(
-    "SELECT * FROM agent_tasks WHERE agent_id = $1 AND status = $2 ORDER BY created_at ASC LIMIT 1",
-    [agentId, "pending"]
+    "SELECT * FROM agent_tasks WHERE agent_id = $1 AND status IN ('pending', 'in_progress') ORDER BY created_at ASC LIMIT 1",
+    [agentId]
   );
 
   var status = "active";
@@ -472,12 +472,28 @@ async function heartbeat(agentId) {
     await query("UPDATE agent_tasks SET status = $1 WHERE id = $2", ["processing", pendingTask.id]);
 
     try {
-      var memory = await loadAgentMemory(agentId);
-      var memKeys = Object.keys(memory);
-      var memStr = "";
-      if (memKeys.length > 0) {
-        memStr = "\n\nDein Gedaechtnis:\n" + memKeys.map(function(k) { return k + ": " + memory[k]; }).join("\n");
+      // Load identity
+      var identityRow = await queryOne("SELECT content FROM agent_memory WHERE agent_id = $1 AND key = 'IDENTITY'", [agentId]);
+      if (!identityRow) {
+        var identityContent = "# " + (agent.name || "Agent") + "\n" +
+          "- Rolle: " + (agent.role || "KI-Agent") + "\n" +
+          (agent.department ? "- Abteilung: " + agent.department + "\n" : "") +
+          "- Team: BLUN.ai Agent-Team\n" +
+          "- Sprache: Deutsch\n" +
+          "Ich bin " + (agent.name || "ein Agent") + " und Teil des BLUN Agent-Teams.";
+        await query("INSERT INTO agent_memory (agent_id, key, content) VALUES ($1, 'IDENTITY', $2) ON CONFLICT (agent_id, key) DO NOTHING", [agentId, identityContent]);
+        identityRow = { content: identityContent };
       }
+      // Load skills
+      var agentSkills = await query(
+        "SELECT s.name, s.code, s.description FROM skills s JOIN agent_skills as2 ON as2.skill_id = s.id WHERE as2.agent_id = $1 AND s.safe = true",
+        [agentId]
+      );
+      var nl = String.fromCharCode(10);
+      var skillStr = agentSkills.length ? nl+nl+"DEINE SKILLS:"+nl + agentSkills.map(function(s){ return "- " + s.name + ": " + (s.code || s.description); }).join(nl) : "";
+      // Load memory
+      var memBudget = (agent.model && (agent.model.startsWith("local:") || agent.model.includes("gemma") || agent.model.includes("llama"))) ? 500 : 8000;
+      var memStr = await loadSmartMemory(agentId, pendingTask.task, memBudget);
 
       var messages = [
         { role: "system", content: (identityRow ? identityRow.content + "\n\n" : "") + (agent.system_prompt || "Du bist ein hilfreicher Agent.") + skillStr + memStr },
@@ -488,14 +504,20 @@ async function heartbeat(agentId) {
       tokens = result.tokens;
       cost = result.cost;
 
-      await query("UPDATE agent_tasks SET status = $1, result = $2, completed_at = NOW() WHERE id = $3", ["completed", result.content, pendingTask.id]);
+      // Execute any tools in the response (CHAT_AGENT, FILE_READ, etc.)
+      var toolResult = await executeTools(agentId, pendingTask.task, result.content);
+      var finalContent = result.content;
+      if (toolResult) {
+        finalContent += String.fromCharCode(10) + String.fromCharCode(10) + "Tool-Ergebnisse:" + String.fromCharCode(10) + toolResult;
+      }
+      await query("UPDATE agent_tasks SET status = $1, result = $2, completed_at = NOW() WHERE id = $3", ["completed", finalContent, pendingTask.id]);
       await query("INSERT INTO agent_conversations (agent_id, role, content) VALUES ($1, $2, $3)", [agentId, "user", pendingTask.task]);
-      await query("INSERT INTO agent_conversations (agent_id, role, content) VALUES ($1, $2, $3)", [agentId, "assistant", result.content]);
+      await query("INSERT INTO agent_conversations (agent_id, role, content) VALUES ($1, $2, $3)", [agentId, "assistant", finalContent]);
   // Auto-memory: save last activity
   try {
     var today = new Date().toISOString().substring(0,10);
     var summary = result.content.substring(0,300).replace(/\n/g,' ');
-    await saveAgentMemory(agentId, 'zuletzt_' + today, 'User: ' + message.substring(0,80) + ' | Antwort: ' + summary);
+    await saveAgentMemory(agentId, 'zuletzt_' + today, 'Chat: ' + (typeof message !== 'undefined' && message ? message : (typeof pendingTask !== 'undefined' && pendingTask ? pendingTask.task : '')).substring(0,80) + ' | Antwort: ' + summary);
   } catch(me) { console.error('[auto-memory]', me.message); }
 
       status = "active";
@@ -514,6 +536,7 @@ function startAgent(agentId) {
   if (activeAgents.has(agentId)) return;
 
   // Set status to active FIRST, before any heartbeat runs
+  startDreamCycle(agentId);
   query("UPDATE blun_agents SET status = $1, last_heartbeat = NOW() WHERE id = $2", ["active", agentId]).then(function() {
     var run = async function() {
       try { await heartbeat(agentId); } catch (e) { console.error("[agent-engine] Heartbeat error:", e.message); }
@@ -530,6 +553,7 @@ function startAgent(agentId) {
 }
 
 function stopAgent(agentId) {
+  stopDreamCycle(agentId);
   var entry = activeAgents.get(agentId);
   if (entry) {
     clearInterval(entry.timer);
@@ -587,7 +611,7 @@ async function chatWithAgent(agentId, message) {
   try {
     var today = new Date().toISOString().substring(0,10);
     var summary = result.content.substring(0,300).replace(/\n/g,' ');
-    await saveAgentMemory(agentId, 'zuletzt_' + today, 'User: ' + message.substring(0,80) + ' | Antwort: ' + summary);
+    await saveAgentMemory(agentId, 'zuletzt_' + today, 'Chat: ' + (typeof message !== 'undefined' && message ? message : (typeof pendingTask !== 'undefined' && pendingTask ? pendingTask.task : '')).substring(0,80) + ' | Antwort: ' + summary);
   } catch(me) { console.error('[auto-memory]', me.message); }
 
   if (result.tokens > 0) {
@@ -606,7 +630,92 @@ async function chatWithAgent(agentId, message) {
   return { response: result.content, tokens: result.tokens, cost: result.cost };
 }
 
-module.exports = { startAgent, stopAgent, getActiveAgents, chatWithAgent, callLLM, loadAgentMemory, saveAgentMemory, activeAgents, getRateLimitStatus };
+
+
+// === AUTO-DREAM: Memory Consolidation ===
+// Runs periodically for each agent — consolidates, deduplicates, cleans old memories
+var dreamIntervals = {};
+
+async function dreamCycle(agentId) {
+  try {
+    var agent = await queryOne("SELECT * FROM blun_agents WHERE id = $1", [agentId]);
+    if (!agent || agent.status === 'idle') return;
+
+    var memories = await query("SELECT key, content, updated_at FROM agent_memory WHERE agent_id = $1 ORDER BY updated_at DESC", [agentId]);
+    if (memories.length < 5) return; // not enough to consolidate
+
+    // Find old daily logs (zuletzt_*) older than 3 days
+    var now = Date.now();
+    var threeDaysMs = 3 * 24 * 60 * 60 * 1000;
+    var oldDailyKeys = [];
+    for (var i = 0; i < memories.length; i++) {
+      if (memories[i].key.startsWith('zuletzt_') && memories[i].updated_at) {
+        var age = now - new Date(memories[i].updated_at).getTime();
+        if (age > threeDaysMs) oldDailyKeys.push(memories[i]);
+      }
+    }
+
+    // Consolidate old daily logs into a summary
+    if (oldDailyKeys.length >= 3) {
+      var summaryParts = oldDailyKeys.map(function(m) { return m.key + ': ' + m.content.substring(0,150); });
+      var nl = String.fromCharCode(10); var dreamPrompt = 'Fasse diese ' + oldDailyKeys.length + ' Tageseintraege in EINEM kurzen Absatz zusammen (max 200 Woerter). Nur die wichtigsten Fakten und Entscheidungen:' + nl + nl + summaryParts.join(nl);
+
+      var dreamResult = await callLLM(agent.model || 'claude-haiku-4-5-20251001', [
+        { role: 'user', content: dreamPrompt }
+      ], agentId);
+
+      if (dreamResult && dreamResult.content) {
+        var weekKey = 'woche_' + new Date().toISOString().substring(0,10);
+        await saveAgentMemory(agentId, weekKey, dreamResult.content.substring(0,500));
+
+        // Delete old daily entries
+        for (var j = 0; j < oldDailyKeys.length; j++) {
+          await query("DELETE FROM agent_memory WHERE agent_id = $1 AND key = $2", [agentId, oldDailyKeys[j].key]);
+        }
+        console.log('[dream] ' + agent.name + ': consolidated ' + oldDailyKeys.length + ' daily logs into ' + weekKey);
+      }
+    }
+
+    // Remove duplicate memories (same content, different keys)
+    var seen = {};
+    var dupes = [];
+    for (var k = 0; k < memories.length; k++) {
+      var hash = memories[k].content.substring(0,100).toLowerCase().trim();
+      if (seen[hash]) {
+        dupes.push(memories[k].key);
+      } else {
+        seen[hash] = true;
+      }
+    }
+    if (dupes.length > 0) {
+      for (var d = 0; d < dupes.length; d++) {
+        await query("DELETE FROM agent_memory WHERE agent_id = $1 AND key = $2", [agentId, dupes[d]]);
+      }
+      console.log('[dream] ' + agent.name + ': removed ' + dupes.length + ' duplicate memories');
+    }
+
+  } catch(err) {
+    console.error('[dream] ' + agentId + ' error:', err.message);
+  }
+}
+
+function startDreamCycle(agentId) {
+  if (dreamIntervals[agentId]) return;
+  // Run every 6 hours
+  dreamIntervals[agentId] = setInterval(function() { dreamCycle(agentId); }, 6 * 60 * 60 * 1000);
+  // First dream after 30 minutes
+  setTimeout(function() { dreamCycle(agentId); }, 30 * 60 * 1000);
+}
+
+function stopDreamCycle(agentId) {
+  if (dreamIntervals[agentId]) {
+    clearInterval(dreamIntervals[agentId]);
+    delete dreamIntervals[agentId];
+  }
+}
+
+
+module.exports = { startAgent, stopAgent, getActiveAgents, chatWithAgent, callLLM, loadAgentMemory, saveAgentMemory, activeAgents, getRateLimitStatus, dreamCycle, startDreamCycle, stopDreamCycle };
 
 // === DIETER TOOL CALLING ===
 var http = require('http');
@@ -656,7 +765,13 @@ async function executeTools(agentId, message, aiResponse) {
     if ((m = lines[i].match(/\[TOOL:MODEL_STATUS:([^\]]+)\]/i))) cmds.push({ tool: 'model_status', id: m[1].trim() });
     if ((m = lines[i].match(/\[TOOL:LIST_AGENTS\]/i))) cmds.push({ tool: 'list_agents' });
     if ((m = lines[i].match(/\[TOOL:SERVER_STATUS\]/i))) cmds.push({ tool: 'server_status' });
-    if ((m = lines[i].match(/\[TOOL:CREATE_AGENT:([^|]+)\|([^|]+)\|([^\]]+)\]/i))) cmds.push({ tool: 'create_agent', name: m[1].trim(), role: m[2].trim(), model: m[3].trim() });
+    if ((m = lines[i].match(/\[TOOL:CREATE_AGENT:([^|]+)\|([^|]+)\|([^|\]]+)\|?([^\]]*)\]/i))) cmds.push({ tool: 'create_agent', name: m[1].trim(), role: m[2].trim(), model: m[3].trim(), department: (m[4]||'').trim() });
+    if ((m = lines[i].match(/\[TOOL:DELETE_AGENT:(\d+)\]/i))) cmds.push({ tool: 'delete_agent', id: m[1].trim() });
+    if ((m = lines[i].match(/\[TOOL:RESET_AGENT:(\d+)\]/i))) cmds.push({ tool: 'reset_agent', id: m[1].trim() });
+    if ((m = lines[i].match(/\[TOOL:AGENT_MEMORY:(\d+)\]/i))) cmds.push({ tool: 'agent_memory', id: m[1].trim() });
+    if ((m = lines[i].match(/\[TOOL:SET_MEMORY:(\d+)\|([^|]+)\|([^\]]+)\]/i))) cmds.push({ tool: 'set_memory', id: m[1].trim(), key: m[2].trim(), value: m[3].trim() });
+    if ((m = lines[i].match(/\[TOOL:CHAT_AGENT:(\d+)\|([^\]]+)\]/i))) cmds.push({ tool: 'chat_agent', id: m[1].trim(), message: m[2].trim() });
+    if ((m = lines[i].match(/\[TOOL:CREATE_AGENT:([^|]+)\|([^|]+)\|([^|\]]+)\|?([^\]]*)\]/i))) cmds.push({ tool: 'create_agent', name: m[1].trim(), role: m[2].trim(), model: m[3].trim(), department: (m[4]||'').trim() });
     if ((m = lines[i].match(/\[TOOL:DELETE_AGENT:([^\\]]+)\]/i))) cmds.push({ tool: 'delete_agent', id: m[1].trim() });
     if ((m = lines[i].match(/\[TOOL:RESET_AGENT:([^\\]]+)\]/i))) cmds.push({ tool: 'reset_agent', id: m[1].trim() });
     if ((m = lines[i].match(/\[TOOL:AGENT_MEMORY:([^\\]]+)\]/i))) cmds.push({ tool: 'agent_memory', id: m[1].trim() });
@@ -668,6 +783,10 @@ async function executeTools(agentId, message, aiResponse) {
     if ((m = lines[i].match(/\[TOOL:ASSIGN_TASK:([^|]+)\|([^\]]+?)(?:\|PRIORITY:\d+)?\]/i))) cmds.push({ tool: 'assign_task', agent_ref: m[1].trim(), description: m[2].trim() });
     if ((m = lines[i].match(/\[TOOL:LIST_TASKS\]/i))) cmds.push({ tool: 'list_tasks' });
     if ((m = lines[i].match(/\[TOOL:BUILD_COMPANY:([^|]+)\|([^\]]+)\]/i))) cmds.push({ tool: 'build_company', name: m[1].trim(), description: m[2].trim() });
+    if ((m = lines[i].match(/\[TOOL:GIT_COMMIT:([^\]]+)\]/i))) cmds.push({ tool: "git_commit", msg: m[1].trim() });
+    if ((m = lines[i].match(/\[TOOL:GIT_PUSH:([^\]]+)\]/i))) cmds.push({ tool: "git_commit", msg: m[1].trim() });
+    if ((m = lines[i].match(/\[TOOL:GIT_REMOTE\]/i))) cmds.push({ tool: "git_remote" });
+    if ((m = lines[i].match(/\[TOOL:DEPLOY\]/i))) cmds.push({ tool: "deploy" });
     codeTools.parseLine(lines[i], cmds);
   }
   if (cmds.length === 0) return null;
@@ -704,8 +823,10 @@ async function executeTools(agentId, message, aiResponse) {
         var r = await callLocalAPI('POST', '/api/organisator/agents', {
           name: cmd.name,
           role: cmd.role,
+          department: cmd.department || '',
           model: cmd.model,
           status: 'active',
+          company_id: agent.company_id || 1,
           system_prompt: 'Du bist ' + cmd.name + ', ein ' + cmd.role + '. Du sprichst Deutsch und hilfst proaktiv.'
         });
         results.push('Agent erstellt: ' + (r.name || r.error || JSON.stringify(r)));
@@ -759,8 +880,58 @@ async function executeTools(agentId, message, aiResponse) {
         results.push('Firma "' + cmd.name + '" erstellt (ID: ' + companyId + '). Beschreibung: ' + cmd.description);
         results.push('Erstelle jetzt passende Agents fuer diese Firma...');
         // The AI will then use CREATE_AGENT tools in the follow-up based on these results
-      } else if (cmd.tool === "bash" || cmd.tool === "file_read" || cmd.tool === "git_commit") {
-        await codeTools.handleCmd(cmd, results);
+      } else if (cmd.tool === 'git_remote') {
+        try {
+          var agentRow = await queryOne('SELECT company_id FROM blun_agents WHERE id = $1', [agentId]);
+          var conns = await query('SELECT name, config FROM user_connections WHERE type = $1 AND company_id = $2', ['git', agentRow ? agentRow.company_id : null]);
+          if (conns.length) {
+            results.push('Git Remotes: ' + conns.map(function(c){ var cfg = typeof c.config === 'string' ? JSON.parse(c.config) : c.config; return c.name + ' = ' + (cfg.url || 'no url') + ' (SSH Key: ' + (cfg.ssh_key || 'default') + ')'; }).join(', '));
+          } else {
+            results.push('Keine Git-Repos in Verbindungen eingetragen.');
+          }
+        } catch(dbErr) { results.push('DB Error: ' + dbErr.message); }
+      } else if (cmd.tool === 'deploy') {
+        try {
+          // Syntax check all key files before restart
+          var cp2 = require('child_process');
+          var check = await new Promise(function(res){ cp2.exec('node -c /root/blun/src/server.js && node -c /root/blun/src/agent-engine.js && node -c /root/blun/src/code-tools.js', {timeout:10000}, function(e,o,er){ res({err:e,out:(o||'')+(er||'')}); }); });
+          if (check.err) {
+            results.push('DEPLOY_ERR: Syntax check failed: ' + check.out);
+          } else {
+            var restart = await new Promise(function(res){ cp2.exec('pm2 restart blun', {timeout:15000}, function(e,o,er){ res((o||'')+(er||'')); }); });
+            results.push('DEPLOY: pm2 restart done. ' + restart.substring(0,500));
+          }
+        } catch(e) { results.push('DEPLOY_ERR: ' + e.message); }
+            } else if (cmd.tool === "bash" || cmd.tool === "file_read" || cmd.tool === "file_write" || cmd.tool === "list_files" || cmd.tool === "git_commit") {
+        await codeTools.handleCmd(cmd, results, agentId);
+      } else if (cmd.tool === 'create_agent') {
+        var r = await callLocalAPI('POST', '/api/organisator/agents', {
+          name: cmd.name,
+          role: cmd.role,
+          department: cmd.department || '',
+          model: cmd.model,
+          status: 'active',
+          company_id: agent.company_id || 1,
+          system_prompt: 'Du bist ' + cmd.name + ', ein ' + cmd.role + '. Du sprichst Deutsch und hilfst proaktiv.'
+        });
+        results.push('Agent erstellt: ' + (r.name || r.error || JSON.stringify(r)));
+      } else if (cmd.tool === 'delete_agent') {
+        var r = await callLocalAPI('DELETE', '/api/organisator/agents/' + cmd.id);
+        results.push('Agent ' + cmd.id + ' geloescht: ' + (r.ok ? 'OK' : (r.error || JSON.stringify(r))));
+      } else if (cmd.tool === 'reset_agent') {
+        var r = await callLocalAPI('PUT', '/api/organisator/agents/' + cmd.id, { status: 'active' });
+        results.push('Agent ' + cmd.id + ' resettet: ' + (r.name || r.error || JSON.stringify(r)));
+      } else if (cmd.tool === 'agent_memory') {
+        var r = await callLocalAPI('GET', '/api/organisator/agents/' + cmd.id + '/memory');
+        var mem = r || {};
+        var entries = Object.keys(mem).map(function(k) { return k + ': ' + mem[k]; }).join('\n');
+        results.push('Memory Agent ' + cmd.id + ':\n' + (entries || 'leer'));
+      } else if (cmd.tool === 'set_memory') {
+        var r = await callLocalAPI('POST', '/api/organisator/agents/' + cmd.id + '/memory', { key: cmd.key, content: cmd.value });
+        results.push('Memory gesetzt: ' + cmd.key + ' fuer Agent ' + cmd.id);
+      } else if (cmd.tool === 'chat_agent') {
+        var r = await callLocalAPI('POST', '/api/organisator/agents/' + cmd.id + '/chat', { message: cmd.message });
+        results.push('Antwort von Agent ' + cmd.id + ': ' + (r.response || r.error || JSON.stringify(r)));
       } else if (cmd.tool === 'server_status') {
         var r = await callLocalAPI('GET', '/api/monitor/stats');
         results.push('Server: ' + JSON.stringify(r));

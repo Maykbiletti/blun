@@ -19,8 +19,10 @@ router.use("/", function(req, res, next) {
 // === COMPANIES ===
 router.get("/companies", async function(req, res) {
   try {
+    var userId = req.user ? req.user.id : null;
     var companies = await query(
-      "SELECT c.*, (SELECT COUNT(*) FROM blun_agents WHERE company_id = c.id) as agent_count FROM companies c ORDER BY c.name"
+      "SELECT c.*, (SELECT COUNT(*) FROM blun_agents WHERE company_id = c.id) as agent_count FROM companies c WHERE c.owner_id = $1 ORDER BY c.name",
+      [userId]
     );
     res.json(companies);
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -108,6 +110,21 @@ router.post("/agents/:id/stop", async function(req, res) {
   try { engine.stopAgent(req.params.id); res.json({ ok: true }); } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+router.post("/agents/create", async function(req, res) {
+  try {
+    var { name, role, department, model, system_prompt } = req.body;
+    if (!name) return res.status(400).json({ error: "name required" });
+    var dup = await queryOne("SELECT id FROM blun_agents WHERE LOWER(name) = LOWER($1)", [name]);
+    if (dup) return res.status(409).json({ error: "Agent mit diesem Namen existiert bereits" });
+    var agent = await queryOne(
+      "INSERT INTO blun_agents (name, role, department, model, system_prompt) VALUES ($1,$2,$3,$4,$5) RETURNING *",
+      [name, role || "assistant", department || "", model || "tinyllama-1.1b", system_prompt || ""]
+    );
+    try { engine.startAgent(agent.id); } catch(e2) {}
+    res.json(agent);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 router.post("/agents/:id/task", async function(req, res) {
   try {
     var { task } = req.body;
@@ -120,6 +137,26 @@ router.post("/agents/:id/task", async function(req, res) {
 router.get("/agents/:id/tasks", async function(req, res) {
   try { res.json(await query("SELECT * FROM agent_tasks WHERE agent_id = $1 ORDER BY created_at DESC LIMIT 50", [req.params.id])); }
   catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.put("/agents/:id/tasks/:taskId", async function(req, res) {
+  try {
+    var { status } = req.body;
+    if (!['pending','in_progress','completed','failed'].includes(status)) return res.status(400).json({ error: "invalid status" });
+    var updates = "status = $1";
+    var params = [status, req.params.taskId, req.params.id];
+    if (status === 'completed') updates += ", completed_at = NOW()";
+    var row = await queryOne("UPDATE agent_tasks SET " + updates + " WHERE id = $2 AND agent_id = $3 RETURNING *", params);
+    if (!row) return res.status(404).json({ error: "task not found" });
+    res.json(row);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.delete("/agents/:id/tasks/:taskId", async function(req, res) {
+  try {
+    await query("DELETE FROM agent_tasks WHERE id = $1 AND agent_id = $2", [req.params.taskId, req.params.id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 router.get("/agents/:id/memory", async function(req, res) {
@@ -230,6 +267,39 @@ router.get('/livefeed', async function(req, res) {
     console.error('livefeed error:', e.message);
     res.status(500).json({error: e.message});
   }
+});
+
+// === CEO-PANEL: OVERVIEW (All Tasks + Comments) ===
+router.get("/overview", async function(req, res) {
+  try {
+    var tasks = await query(
+      "SELECT id, task as title, status, assigned_to, created_at, updated_at FROM agent_tasks ORDER BY created_at DESC"
+    );
+    res.json({ tasks: tasks });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// === TASK COMMENTS ===
+router.post("/tasks/:id/comment", async function(req, res) {
+  try {
+    var { user_id, comment } = req.body;
+    if (!comment) return res.status(400).json({ error: "comment required" });
+    var row = await queryOne(
+      "INSERT INTO agent_task_comments (task_id, user_id, comment) VALUES ($1, $2, $3) RETURNING *",
+      [req.params.id, user_id || null, comment]
+    );
+    res.json(row);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.get("/tasks/:id/comments", async function(req, res) {
+  try {
+    var comments = await query(
+      "SELECT id, task_id, user_id, comment, created_at FROM agent_task_comments WHERE task_id = $1 ORDER BY created_at ASC",
+      [req.params.id]
+    );
+    res.json(comments);
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 module.exports = router;

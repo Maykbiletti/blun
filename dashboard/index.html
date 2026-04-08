@@ -121,9 +121,9 @@ textarea{resize:vertical;min-height:80px}
 .chat-msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:6px}
 .msg{max-width:70%;padding:10px 14px;border-radius:14px;font-size:13px;line-height:1.5;word-break:break-word}
 .msg-user{background:var(--b);color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
-.msg-ai{background:var(--bg4);color:var(--tx);align-self:flex-start;border-bottom-left-radius:4px}
-.msg-ai pre{background:var(--bg);padding:8px;border-radius:6px;overflow-x:auto;font-size:12px;margin:4px 0}
-.msg-ai code{font-size:12px}
+.msg-ai{background:var(--bg4);color:#e5e5e5;align-self:flex-start;border-bottom-left-radius:4px}
+.msg-ai pre{background:#1a1a2e;color:#e2e8f0;padding:8px;border-radius:6px;overflow-x:auto;font-size:12px;margin:4px 0;border:1px solid #2d2d4e}
+.msg-ai code{font-size:12px;color:#e2e8f0;background:rgba(255,255,255,.08);padding:2px 5px;border-radius:4px}
 .chat-input-wrap{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--brd);flex-shrink:0;align-items:flex-end}
 .chat-input{flex:1;min-width:0;background:var(--bg4);border:1px solid var(--brd);border-radius:12px;padding:10px 14px;color:var(--tx);font-size:14px;outline:none;resize:none;max-height:120px;line-height:1.4}
 .chat-send{background:var(--b);color:#fff;border:none;border-radius:10px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -386,17 +386,17 @@ Profil
         <div style="margin-bottom:12px">
           <div style="font-weight:600;font-size:13px;margin-bottom:6px">Git Repositories</div>
           <div id="modalGitList" style="margin-bottom:6px"></div>
-          <button class="btn btn-sm btn-outline" style="width:100%" onclick="openAddConnModal('git')">+ Add Repo</button>
+          <button class="btn btn-sm btn-outline" style="width:100%" onclick="openInfraModal('git')">+ Add Repo</button>
         </div>
         <div>
           <div style="font-weight:600;font-size:13px;margin-bottom:6px">SSH Connections</div>
           <div id="modalSshList" style="margin-bottom:6px"></div>
-          <button class="btn btn-sm btn-outline" style="width:100%" onclick="openAddConnModal('ssh')">+ Add SSH</button>
+          <button class="btn btn-sm btn-outline" style="width:100%" onclick="openInfraModal('ssh')">+ Add SSH</button>
         </div>
         <div style="margin-top:12px">
           <div style="font-weight:600;font-size:13px;margin-bottom:6px">Tailscale VPN</div>
           <div id="modalTailscaleList" style="margin-bottom:6px"></div>
-          <button class="btn btn-sm btn-outline" style="width:100%" onclick="openAddConnModal('tailscale')">+ Add Tailscale Node</button>
+          <button class="btn btn-sm btn-outline" style="width:100%" onclick="openInfraModal('tailscale')">+ Add Tailscale Node</button>
         </div>
       </div>
 
@@ -895,7 +895,7 @@ function renderAgents(filteredAgents) { var agentList = filteredAgents || agents
         '<div class="agent-av" style="background:'+agentColor(a)+'">'+agentInitials(a).toUpperCase()+(isOn?'<div class="online-dot"></div>':'')+'</div>'+
         '<div class="agent-info"><div class="agent-name">'+esc(a.name)+'</div><div class="agent-role">'+esc(a.role||'')+'</div>'+
         '<div class="agent-meta">'+modelTag+'<span class="tag">'+esc(a.model||'?')+'</span></div></div>'+
-        '<div class="agent-actions">'+(isOn?'<button class="btn-icon" title="Stoppen" onclick="event.stopPropagation();toggleAgent('+a.id+',false)" style="color:var(--red)">⏹</button>':'<button class="btn-icon" title="Starten" onclick="event.stopPropagation();toggleAgent('+a.id+',true)" style="color:var(--green)">▶</button>')+'<button class="btn-icon" title="Chat" onclick="event.stopPropagation();openChat('+a.id+')">💬</button></div></div>';
+        '<div class="agent-actions">'+(isOn?'<button class="btn-icon" title="Stoppen" onclick="event.stopPropagation();toggleAgent('+a.id+',false)" style="color:var(--red)">⏹</button>':'<button class="btn-icon" title="Starten" onclick="event.stopPropagation();toggleAgent('+a.id+',true)" style="color:var(--green)">▶</button>')+'</div></div>';
     });
     html += '</div></div>';
   });
@@ -959,11 +959,17 @@ function sendOperatorChat() {
   var msg=input.value.trim(); if(!msg) return;
   input.value='';
   var container=document.getElementById('opChatHistory').querySelector('.chat-msgs');
-  if(container){container.innerHTML+='<div class="msg msg-user">'+esc(msg)+'</div>';container.scrollTop=container.scrollHeight;}
+  var uEl=document.createElement('div');uEl.className='msg msg-user';uEl.innerHTML=esc(msg);if(container){container.appendChild(uEl);container.scrollTop=container.scrollHeight;}
+  var tEl=document.createElement('div');tEl.className='msg msg-ai';tEl.innerHTML='<span class="thinking-dots"><span></span><span></span><span></span></span>';if(container){container.appendChild(tEl);container.scrollTop=container.scrollHeight;}
   api('/api/organisator/agents/'+op.id+'/chat',{method:'POST',body:JSON.stringify({message:msg})}).then(function(d){
     var reply=d.response||d.content||d.message||JSON.stringify(d);
-    if(container){container.innerHTML+='<div class="msg msg-ai">'+formatMsg(reply)+'</div>';container.scrollTop=container.scrollHeight;}
-  }).catch(function(e){if(container)container.innerHTML+='<div class="msg msg-ai" style="color:var(--red)">Fehler: '+esc(e.message)+'</div>';});
+    var rEl=document.createElement('div');rEl.className='msg msg-ai';rEl.innerHTML=formatMsg(reply);
+    if(tEl.parentNode){tEl.parentNode.replaceChild(rEl,tEl);}else if(container){container.appendChild(rEl);}
+    if(container)container.scrollTop=container.scrollHeight;
+  }).catch(function(e){
+    var eEl=document.createElement('div');eEl.className='msg msg-ai';eEl.style.color='var(--red)';eEl.textContent='Fehler: '+e.message;
+    if(tEl.parentNode){tEl.parentNode.replaceChild(eEl,tEl);}else if(container){container.appendChild(eEl);}
+  });
 }
 function assignOperatorTask() {
   var op=getOperator(); if(!op) return;
@@ -1186,18 +1192,20 @@ function sendChat() {
   input.value='';
   var msgs=document.getElementById('chatMsgs');
   var now=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-  msgs.innerHTML+='<div class="msg msg-user">'+esc(msg)+'<span class="msg-ts">'+now+'</span></div>';
+  var userEl=document.createElement('div');userEl.className='msg msg-user';userEl.innerHTML=esc(msg)+'<span class="msg-ts">'+now+'</span>';msgs.appendChild(userEl);
+  msgs.scrollTop=msgs.scrollHeight;
+  var localThink=document.createElement('div');localThink.className='msg msg-ai';localThink.innerHTML='<span class="thinking-dots"><span></span><span></span><span></span></span>';msgs.appendChild(localThink);
   msgs.scrollTop=msgs.scrollHeight;
   document.getElementById('chatSendBtn').disabled=true;
   api('/api/organisator/agents/'+chatAgent.id+'/chat',{method:'POST',body:JSON.stringify({message:msg})}).then(function(d){
     var reply=d.response||d.content||d.message||JSON.stringify(d);
-    if(thinkEl && thinkEl.parentNode) thinkEl.parentNode.removeChild(thinkEl);
     var nowAi=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-    msgs.innerHTML+='<div class="msg msg-ai">'+formatMsg(reply)+'<span class="msg-ts">'+nowAi+'</span></div>';
+    var replyEl=document.createElement('div');replyEl.className='msg msg-ai';replyEl.innerHTML=formatMsg(reply)+'<span class="msg-ts">'+nowAi+'</span>';
+    if(localThink.parentNode){localThink.parentNode.replaceChild(replyEl,localThink);}else{msgs.appendChild(replyEl);}
     msgs.scrollTop=msgs.scrollHeight;
   }).catch(function(e){
-    if(thinkEl && thinkEl.parentNode) thinkEl.parentNode.removeChild(thinkEl);
-    msgs.innerHTML+='<div class="msg msg-ai" style="color:var(--red)">Fehler: '+esc(e.message)+'</div>';
+    var errEl=document.createElement('div');errEl.className='msg msg-ai';errEl.style.color='var(--red)';errEl.textContent='Fehler: '+e.message;
+    if(localThink.parentNode){localThink.parentNode.replaceChild(errEl,localThink);}else{msgs.appendChild(errEl);}
   }).finally(function(){document.getElementById('chatSendBtn').disabled=false;});
 }
 function switchChatModel(model) {
@@ -1215,7 +1223,8 @@ function formatMsg(txt) {
 
 // ===== LIVELOG =====
 function loadLivelog() {
-  api('/api/organisator/livefeed').then(function(items){
+  api('/api/organisator/livefeed').then(function(rawItems){
+    var items=rawItems.filter(function(e){if(e.type==='heartbeat'&&(!e.cost||parseFloat(e.cost)==0))return false;return true;});
     var container=document.getElementById('logContainer');
     container.innerHTML=items.map(function(e){
       var t=new Date(e.ts);
@@ -1596,19 +1605,19 @@ function sendWsChat() {
   input.value='';
   var msgs=document.getElementById('wsChatMsgs');
   var now=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-  msgs.innerHTML+='<div class="msg msg-user">'+esc(msg)+'<span class="msg-ts">'+now+'</span></div>';
-  var thinkEl = document.createElement('div'); thinkEl.className='msg msg-ai'; thinkEl.innerHTML='<span class="thinking-dots"><span></span><span></span><span></span></span>'; msgs.appendChild(thinkEl);
+  var userEl=document.createElement('div');userEl.className='msg msg-user';userEl.innerHTML=esc(msg)+'<span class="msg-ts">'+now+'</span>';msgs.appendChild(userEl);
+  var thinkEl=document.createElement('div');thinkEl.className='msg msg-ai';thinkEl.innerHTML='<span class="thinking-dots"><span></span><span></span><span></span></span>';msgs.appendChild(thinkEl);
   msgs.scrollTop=msgs.scrollHeight;
   document.getElementById('wsChatSendBtn').disabled=true;
   api('/api/organisator/agents/'+currentAgent.id+'/chat',{method:'POST',body:JSON.stringify({message:msg})}).then(function(d){
     var reply=d.response||d.content||d.message||JSON.stringify(d);
-    if(thinkEl && thinkEl.parentNode) thinkEl.parentNode.removeChild(thinkEl);
     var nowAi=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-    msgs.innerHTML+='<div class="msg msg-ai">'+formatMsg(reply)+'<span class="msg-ts">'+nowAi+'</span></div>';
+    var replyEl=document.createElement('div');replyEl.className='msg msg-ai';replyEl.innerHTML=formatMsg(reply)+'<span class="msg-ts">'+nowAi+'</span>';
+    if(thinkEl.parentNode){thinkEl.parentNode.replaceChild(replyEl,thinkEl);}else{msgs.appendChild(replyEl);}
     msgs.scrollTop=msgs.scrollHeight;
   }).catch(function(e){
-    if(thinkEl && thinkEl.parentNode) thinkEl.parentNode.removeChild(thinkEl);
-    msgs.innerHTML+='<div class="msg msg-ai" style="color:var(--red)">Fehler: '+esc(e.message)+'</div>';
+    var errEl=document.createElement('div');errEl.className='msg msg-ai';errEl.style.color='var(--red)';errEl.textContent='Fehler: '+e.message;
+    if(thinkEl.parentNode){thinkEl.parentNode.replaceChild(errEl,thinkEl);}else{msgs.appendChild(errEl);}
   }).finally(function(){document.getElementById('wsChatSendBtn').disabled=false;});
 }
 
@@ -1869,15 +1878,19 @@ function saveConnModal() {
   });
 }
 function loadWsConnections() {
-  if(!currentAgent) return;
-  api('/api/organisator/agents/'+currentAgent.id+'/memory').then(function(mem){
-    var gitConns = [];
-    var sshConns = [];
-    var tsConns = [];
-    Object.keys(mem||{}).forEach(function(k){
-      if(k.startsWith('git_repo_')) try{ gitConns.push(Object.assign({_key:k}, JSON.parse(mem[k]))); }catch(e){}
-      if(k.startsWith('ssh_conn_')) try{ sshConns.push(Object.assign({_key:k}, JSON.parse(mem[k]))); }catch(e){}
-      if(k.startsWith('tailscale_')) try{ tsConns.push(Object.assign({_key:k}, JSON.parse(mem[k]))); }catch(e){}
+  api('/api/connections/infra').then(function(conns){
+    if(!Array.isArray(conns)) conns = [];
+    var gitConns = conns.filter(function(c){return c.type==='git';}).map(function(c){
+      var cfg = typeof c.config==='string'?JSON.parse(c.config):(c.config||{});
+      return Object.assign({_id:c.id, _key:'infra_'+c.id, name:cfg.name||c.name, url:cfg.url||'', token:cfg.token||'', company:c.company_name||''}, cfg);
+    });
+    var sshConns = conns.filter(function(c){return c.type==='ssh';}).map(function(c){
+      var cfg = typeof c.config==='string'?JSON.parse(c.config):(c.config||{});
+      return Object.assign({_id:c.id, _key:'infra_'+c.id, name:cfg.name||c.name, host:cfg.host||'', user:cfg.user||'root', company:c.company_name||''}, cfg);
+    });
+    var tsConns = conns.filter(function(c){return c.type==='tailscale';}).map(function(c){
+      var cfg = typeof c.config==='string'?JSON.parse(c.config):(c.config||{});
+      return Object.assign({_id:c.id, _key:'infra_'+c.id, name:cfg.name||c.name, tailscale_ip:cfg.tailscale_ip||'', public_ip:cfg.public_ip||'', role:cfg.role||'', status:cfg.status||'online', company:c.company_name||''}, cfg);
     });
     renderWsGitList(gitConns);
     renderWsSshList(sshConns);
@@ -1889,7 +1902,7 @@ function renderWsGitList(list) {
     return '<div class="card" style="padding:8px;margin-bottom:6px;font-size:13px">'+
       '<div style="font-weight:600">'+esc(c.name||'Repo')+(c.company?'<span style="font-size:11px;color:var(--b);margin-left:6px">'+esc(c.company)+'</span>':'')+'</div>'+
       '<div style="color:var(--tx2);font-size:11px">'+esc(c.url||'')+'</div>'+
-      '<button class="btn btn-sm btn-outline" style="margin-top:4px;color:var(--red)" data-key="'+c._key+'" onclick="wsDelConn(this)">Entfernen</button></div>';
+      '<button class="btn btn-sm btn-outline" style="margin-top:4px;color:var(--red)" onclick="wsDelInfra('+c._id+')">Entfernen</button></div>';
   }).join('') : '<div style="color:var(--tx2);font-size:12px;padding:4px">Noch keine Repos</div>';
 }
 function renderWsSshList(list) {
@@ -1897,7 +1910,7 @@ function renderWsSshList(list) {
     return '<div class="card" style="padding:8px;margin-bottom:6px;font-size:13px">'+
       '<div style="font-weight:600">'+esc(c.name||'SSH')+(c.company?'<span style="font-size:11px;color:var(--b);margin-left:6px">'+esc(c.company)+'</span>':'')+'</div>'+
       '<div style="color:var(--tx2);font-size:11px">'+esc((c.user||'')+'@'+(c.host||''))+'</div>'+
-      '<button class="btn btn-sm btn-outline" style="margin-top:4px;color:var(--red)" data-key="'+c._key+'" onclick="wsDelConn(this)">Entfernen</button></div>';
+      '<button class="btn btn-sm btn-outline" style="margin-top:4px;color:var(--red)" onclick="wsDelInfra('+c._id+')">Entfernen</button></div>';
   }).join('') : '<div style="color:var(--tx2);font-size:12px;padding:4px">Noch keine SSH-Verbindungen</div>';
 }
 function renderWsTailscaleList(list) {
@@ -1906,7 +1919,7 @@ function renderWsTailscaleList(list) {
       '<div style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:'+(c.status==='online'?'var(--green)':'var(--red)')+'"></span><span style="font-weight:600">'+esc(c.name||'Node')+'</span></div>'+
       '<div style="color:var(--tx2);font-size:11px;margin-top:2px">'+esc(c.tailscale_ip||'')+' ('+esc(c.public_ip||'')+')</div>'+
       '<div style="color:var(--tx2);font-size:11px">'+esc(c.role||'')+'</div>'+
-      '<button class="btn btn-sm btn-outline" style="margin-top:4px;color:var(--red)" data-key="'+c._key+'" onclick="wsDelConn(this)">Entfernen</button></div>';
+      '<button class="btn btn-sm btn-outline" style="margin-top:4px;color:var(--red)" onclick="wsDelInfra('+c._id+')">Entfernen</button></div>';
   }).join('') : '<div style="color:var(--tx2);font-size:12px;padding:4px">Noch keine Tailscale Nodes</div>';
 }
 function addWsConnection(type) {
@@ -1944,7 +1957,83 @@ function addWsConnection(type) {
 }
 function wsDelConn(btn) {
   var key = btn.getAttribute('data-key');
-  api('/api/organisator/agents/'+currentAgent.id+'/memory/'+key, {method:'DELETE'}).then(function(){
+  if (!key) return;
+  if (key.startsWith('infra_')) {
+    wsDelInfra(parseInt(key.replace('infra_','')));
+  } else {
+    fetch('/api/organisator/agents/'+currentAgent.id+'/memory/'+key, {method:'DELETE', headers:{'Authorization':'Bearer '+TOKEN}}).then(function(){ loadWsConnections(); });
+  }
+}
+function wsDelInfra(id) {
+  fetch('/api/connections/infra/'+id, {method:'DELETE', headers:{'Authorization':'Bearer '+TOKEN}}).then(function(r){ return r.json(); }).then(function(d){ console.log('deleted',id,d); loadWsConnections(); }).catch(function(e){ console.error('del fail',e); });
+}
+
+
+function openInfraModal(type) {
+  var infraType = type;
+  window._infraType = type;
+  var titles = {git:'Git Repository hinzufuegen', ssh:'SSH Verbindung hinzufuegen', tailscale:'Tailscale Node hinzufuegen'};
+  var inp = 'style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--tx);margin-top:4px"';
+  var fields = '';
+  if (type === 'git') {
+    fields = '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--tx2)">NAME</label><input id="inf_name" placeholder="z.B. blun" '+inp+'></div>' +
+      '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--tx2)">URL</label><input id="inf_url" placeholder="git@github.com:user/repo.git" '+inp+'></div>' +
+      '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--tx2)">SSH KEY PATH</label><input id="inf_sshkey" placeholder="/root/.ssh/id_ed25519" '+inp+'></div>';
+  } else if (type === 'ssh') {
+    fields = '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--tx2)">NAME</label><input id="inf_name" placeholder="z.B. 65er" '+inp+'></div>' +
+      '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--tx2)">HOST/IP</label><input id="inf_host" placeholder="65.21.76.124" '+inp+'></div>' +
+      '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--tx2)">USER</label><input id="inf_user" placeholder="root" '+inp+'></div>' +
+      '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--tx2)">PASSWORT</label><input id="inf_pw" type="password" placeholder="optional" '+inp+'></div>';
+  } else {
+    fields = '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--tx2)">NAME</label><input id="inf_name" placeholder="z.B. 65er" '+inp+'></div>' +
+      '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--tx2)">TAILSCALE IP</label><input id="inf_tsip" placeholder="100.x.x.x" '+inp+'></div>' +
+      '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--tx2)">PUBLIC IP</label><input id="inf_pubip" placeholder="optional" '+inp+'></div>' +
+      '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--tx2)">ROLLE</label><input id="inf_role" placeholder="z.B. BLUN Dashboard" '+inp+'></div>';
+  }
+  // Create modal if not exists
+  if (!document.getElementById('infraOverlay2')) {
+    var ov = document.createElement('div');
+    ov.id = 'infraOverlay2';
+    ov.style.cssText = 'display:flex;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;align-items:center;justify-content:center';
+    ov.onclick = function(e){if(e.target===ov)closeInfraModal();};
+    ov.innerHTML = '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:24px;max-width:440px;width:90%;position:relative">' +
+      '<button onclick="closeInfraModal()" style="position:absolute;top:12px;right:12px;background:none;border:none;color:var(--tx2);cursor:pointer;font-size:18px">X</button>' +
+      '<h2 id="infraTitle2" style="margin-bottom:16px"></h2>' +
+      '<div id="infraFields2"></div>' +
+      '<div style="margin-top:12px"><label style="font-size:12px;color:var(--tx2)">FIRMA</label><select id="infraCompany2" style="width:100%;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--tx);margin-top:4px"><option value="">-- Keine --</option></select></div>' +
+      '<button class="btn btn-sm" style="margin-top:16px;width:100%;padding:10px;background:#3b82f6;color:#fff;border:none;border-radius:6px;cursor:pointer" onclick="saveInfraModal()">Speichern</button></div>';
+    document.body.appendChild(ov);
+  }
+  document.getElementById('infraTitle2').textContent = titles[type] || 'Hinzufuegen';
+  document.getElementById('infraFields2').innerHTML = fields;
+  document.getElementById('infraOverlay2').style.display = 'flex';
+  // Load companies
+  api('/api/organisator/companies').then(function(cos){
+    var list = Array.isArray(cos) ? cos : [];
+    document.getElementById('infraCompany2').innerHTML = '<option value="">-- Keine --</option>' + list.map(function(c){return '<option value="'+c.id+'">'+esc(c.name)+'</option>';}).join('');
+  });
+}
+
+function closeInfraModal() {
+  var ov = document.getElementById('infraOverlay2');
+  if (ov) ov.style.display = 'none';
+}
+
+function saveInfraModal() {
+  var name = document.getElementById('inf_name').value.trim();
+  if (!name) return;
+  var config = {};
+  var type = window._infraType;
+  if (type === 'git') {
+    config = {url: (document.getElementById('inf_url')||{}).value||'', ssh_key: (document.getElementById('inf_sshkey')||{}).value||''};
+  } else if (type === 'ssh') {
+    config = {host: (document.getElementById('inf_host')||{}).value||'', user: (document.getElementById('inf_user')||{}).value||'root', password: (document.getElementById('inf_pw')||{}).value||''};
+  } else {
+    config = {tailscale_ip: (document.getElementById('inf_tsip')||{}).value||'', public_ip: (document.getElementById('inf_pubip')||{}).value||'', role: (document.getElementById('inf_role')||{}).value||'', status: 'online'};
+  }
+  var companyId = document.getElementById('infraCompany2').value || null;
+  api('/api/connections/infra', {method:'POST', body:JSON.stringify({type: type, name: name, config: config, company_id: companyId ? parseInt(companyId) : null})}).then(function(){
+    closeInfraModal();
     loadWsConnections();
   });
 }

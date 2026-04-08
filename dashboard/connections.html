@@ -132,6 +132,34 @@ h1{font-size:24px;font-weight:700;color:#fff;margin-bottom:6px}
   <div class="providers" id="providers">
     <div class="loading-state">Laden...</div>
   </div>
+
+  <h2 style="margin-top:32px;font-size:18px;font-weight:600">Git Repositories</h2>
+  <p class="subtitle">Git-Repos fuer Code-Deployments deiner Agents.</p>
+  <div id="gitList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px"></div>
+  <button class="btn-connect" style="width:auto;padding:8px 16px;font-size:13px" onclick="openInfraModal('git')">+ Repository hinzufuegen</button>
+
+  <h2 style="margin-top:32px;font-size:18px;font-weight:600">SSH Connections</h2>
+  <p class="subtitle">Server-Zugaenge fuer Deployments und Wartung.</p>
+  <div id="sshList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px"></div>
+  <button class="btn-connect" style="width:auto;padding:8px 16px;font-size:13px" onclick="openInfraModal('ssh')">+ SSH Verbindung hinzufuegen</button>
+
+  <h2 style="margin-top:32px;font-size:18px;font-weight:600">Tailscale VPN</h2>
+  <p class="subtitle">VPN-Nodes fuer sichere Server-Kommunikation.</p>
+  <div id="tailscaleList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px"></div>
+  <button class="btn-connect" style="width:auto;padding:8px 16px;font-size:13px" onclick="openInfraModal('tailscale')">+ Tailscale Node hinzufuegen</button>
+</div>
+
+<div class="overlay" id="infraOverlay" onclick="if(event.target===this)closeInfraModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;align-items:center;justify-content:center">
+  <div class="modal" style="max-width:440px">
+    <button class="modal-close" onclick="closeInfraModal()" style="position:absolute;top:12px;right:12px;background:none;border:none;color:var(--tx2);cursor:pointer">X</button>
+    <h2 id="infraTitle" style="margin-bottom:16px"></h2>
+    <div id="infraFields"></div>
+    <div style="margin-top:12px">
+      <label style="font-size:12px;color:var(--tx2)">FIRMA</label>
+      <select id="infraCompany" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--tx);margin-top:4px"><option value="">-- Keine --</option></select>
+    </div>
+    <button class="btn-connect" style="margin-top:16px;width:100%" onclick="saveInfraModal()">Speichern</button>
+  </div>
 </div>
 
 <!-- OAuth / Device Auth Modal -->
@@ -583,6 +611,101 @@ async function submitAuthCode() {
   var r = await fetch("/api/connections/" + (window.__authProvider||"anthropic") + "/device-auth/submit-code", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ session_id: window.__authSessionId, code: c }) }).catch(function() { return null; });
   if (r && r.ok) { document.getElementById("codeInputArea").style.display = "none"; s.innerHTML = '<span class="spinner spinner-blue"></span> Warte auf Best\u00E4tigung...'; }
 }
+
+
+// === Infra Connections ===
+var infraConns = [];
+var infraType = '';
+
+async function loadInfraConnections() {
+  try {
+    var res = await fetch("/api/connections/infra", {headers:{"Authorization":"Bearer "+localStorage.getItem("token")}});
+    infraConns = await res.json();
+    renderInfraList('git', 'gitList');
+    renderInfraList('ssh', 'sshList');
+    renderInfraList('tailscale', 'tailscaleList');
+  } catch(e) { console.error("infra load error", e); }
+}
+
+function renderInfraList(type, containerId) {
+  var el = document.getElementById(containerId);
+  if (!el) return;
+  var items = Array.isArray(infraConns) ? infraConns.filter(function(c){ return c.type === type; }) : [];
+  if (!items.length) { el.innerHTML = '<div style="color:var(--tx2);font-size:13px;padding:4px">Keine Eintraege</div>'; return; }
+  el.innerHTML = items.map(function(c) {
+    var cfg = typeof c.config === 'string' ? JSON.parse(c.config) : (c.config || {});
+    var detail = '';
+    if (type === 'git') detail = cfg.url || '';
+    if (type === 'ssh') detail = (cfg.user || 'root') + '@' + (cfg.host || '');
+    if (type === 'tailscale') detail = (cfg.tailscale_ip || '') + ' (' + (cfg.role || '') + ')';
+    var cn = c.company_name ? ' <span style="font-size:11px;color:#3b82f6;margin-left:6px">' + escH(c.company_name) + '</span>' : '';
+    return '<div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px">' +
+      '<div><div style="font-weight:600;font-size:14px">' + escH(c.name) + cn + '</div>' +
+      '<div style="color:var(--tx2);font-size:12px;margin-top:2px">' + escH(detail) + '</div></div>' +
+      '<button style="background:none;border:none;color:var(--tx2);cursor:pointer;font-size:18px" onclick="deleteInfra(' + c.id + ')" title="Loeschen">x</button></div>';
+  }).join('');
+}
+
+function escH(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+function openInfraModal(type) {
+  infraType = type;
+  var titles = {git:'Git Repository hinzufuegen', ssh:'SSH Verbindung hinzufuegen', tailscale:'Tailscale Node hinzufuegen'};
+  document.getElementById('infraTitle').textContent = titles[type] || 'Hinzufuegen';
+  var inp = 'style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--tx);margin-top:4px"';
+  var fields = '';
+  if (type === 'git') {
+    fields = '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--tx2)">NAME</label><input id="inf_name" placeholder="z.B. blun" '+inp+'></div>' +
+      '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--tx2)">URL</label><input id="inf_url" placeholder="git@github.com:user/repo.git" '+inp+'></div>' +
+      '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--tx2)">SSH KEY PATH</label><input id="inf_sshkey" placeholder="/root/.ssh/id_ed25519" '+inp+'></div>';
+  } else if (type === 'ssh') {
+    fields = '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--tx2)">NAME</label><input id="inf_name" placeholder="z.B. 65er" '+inp+'></div>' +
+      '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--tx2)">HOST/IP</label><input id="inf_host" placeholder="65.21.76.124" '+inp+'></div>' +
+      '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--tx2)">USER</label><input id="inf_user" placeholder="root" '+inp+'></div>' +
+      '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--tx2)">PASSWORT</label><input id="inf_pw" type="password" placeholder="optional" '+inp+'></div>';
+  } else {
+    fields = '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--tx2)">NAME</label><input id="inf_name" placeholder="z.B. 65er" '+inp+'></div>' +
+      '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--tx2)">TAILSCALE IP</label><input id="inf_tsip" placeholder="100.x.x.x" '+inp+'></div>' +
+      '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--tx2)">PUBLIC IP</label><input id="inf_pubip" placeholder="optional" '+inp+'></div>' +
+      '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--tx2)">ROLLE</label><input id="inf_role" placeholder="z.B. BLUN Dashboard" '+inp+'></div>';
+  }
+  document.getElementById('infraFields').innerHTML = fields;
+  fetch("/api/organisator/companies", {headers:{"Authorization":"Bearer "+localStorage.getItem("token")}})
+    .then(function(r){return r.json()})
+    .then(function(cos){
+      var list = Array.isArray(cos) ? cos : [];
+      document.getElementById('infraCompany').innerHTML = '<option value="">-- Keine --</option>' + list.map(function(c){return '<option value="'+c.id+'">'+escH(c.name)+'</option>';}).join('');
+    });
+  document.getElementById('infraOverlay').style.display = 'flex';
+}
+
+function closeInfraModal() { document.getElementById('infraOverlay').style.display = 'none'; }
+
+async function saveInfraModal() {
+  var name = document.getElementById('inf_name').value.trim();
+  if (!name) return;
+  var config = {};
+  if (infraType === 'git') {
+    config = {url: (document.getElementById('inf_url')||{}).value||'', ssh_key: (document.getElementById('inf_sshkey')||{}).value||''};
+  } else if (infraType === 'ssh') {
+    config = {host: (document.getElementById('inf_host')||{}).value||'', user: (document.getElementById('inf_user')||{}).value||'root', password: (document.getElementById('inf_pw')||{}).value||''};
+  } else {
+    config = {tailscale_ip: (document.getElementById('inf_tsip')||{}).value||'', public_ip: (document.getElementById('inf_pubip')||{}).value||'', role: (document.getElementById('inf_role')||{}).value||'', status: 'online'};
+  }
+  var companyId = document.getElementById('infraCompany').value || null;
+  await fetch("/api/connections/infra", {method:"POST", headers:{"Authorization":"Bearer "+localStorage.getItem("token"),"Content-Type":"application/json"}, body: JSON.stringify({type: infraType, name: name, config: config, company_id: companyId ? parseInt(companyId) : null})});
+  closeInfraModal();
+  loadInfraConnections();
+}
+
+async function deleteInfra(id) {
+  if (!confirm('Verbindung loeschen?')) return;
+  await fetch("/api/connections/infra/" + id, {method:"DELETE", headers:{"Authorization":"Bearer "+localStorage.getItem("token")}});
+  loadInfraConnections();
+}
+
+loadInfraConnections();
+
 </script>
 </body>
 </html>

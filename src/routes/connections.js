@@ -304,4 +304,95 @@ router.get("/:provider/usage", async function(req, res) {
   }
 });
 
+
+
+
+// Sync connections to Operator memory after changes
+async function syncToOperatorMemory(userId) {
+  try {
+    // Find operator agent for this user (first agent in user's first company)
+    var company = await pool.query("SELECT id FROM companies WHERE owner_id = $1 LIMIT 1", [userId]);
+    if (!company.rows.length) return;
+    var companyId = company.rows[0].id;
+    var operator = await pool.query("SELECT id FROM blun_agents WHERE company_id = $1 ORDER BY id LIMIT 1", [companyId]);
+    if (!operator.rows.length) return;
+    var operatorId = operator.rows[0].id;
+
+    // Get all connections for this user
+    var conns = await pool.query("SELECT type, name, config FROM user_connections WHERE user_id = $1 ORDER BY type, name", [userId]);
+
+    var git = [], ssh = [], ts = [];
+    conns.rows.forEach(function(c) {
+      var cfg = typeof c.config === 'string' ? JSON.parse(c.config) : (c.config || {});
+      if (c.type === 'git') git.push(c.name + ' = ' + (cfg.url || '') + ' (Key: ' + (cfg.ssh_key || 'default') + ')');
+      if (c.type === 'ssh') ssh.push(c.name + ' = ' + (cfg.user || 'root') + '@' + (cfg.host || ''));
+      if (c.type === 'tailscale') ts.push(c.name + ' = ' + (cfg.tailscale_ip || '') + ' (' + (cfg.role || '') + ')');
+    });
+
+    var memContent = 'VERBINDUNGEN (auto-sync):\n';
+    if (git.length) memContent += 'Git Repos: ' + git.join(', ') + '\n';
+    if (ssh.length) memContent += 'SSH: ' + ssh.join(', ') + '\n';
+    if (ts.length) memContent += 'Tailscale: ' + ts.join(', ') + '\n';
+    memContent += 'Benutze [TOOL:GIT_REMOTE] und [TOOL:GIT_PUSH:msg] fuer Git-Operationen.';
+
+    await pool.query(
+      "INSERT INTO agent_memory (agent_id, key, content) VALUES ($1, $2, $3) ON CONFLICT (agent_id, key) DO UPDATE SET content = $3, updated_at = NOW()",
+      [operatorId, 'CONNECTIONS_SYNC', memContent]
+    );
+  } catch(e) { console.error('[connections] sync to operator memory failed:', e.message); }
+}
+
+// === User Connections (SSH, Git, Tailscale) ===
+
+// GET /api/connections/infra — list SSH/Git/Tailscale connections for user
+router.get("/infra", async function(req, res) {
+  try {
+    var userId = req.user ? req.user.id : null;
+    var rows = await pool.query(
+      "SELECT uc.*, c.name as company_name FROM user_connections uc LEFT JOIN companies c ON c.id = uc.company_id WHERE uc.user_id = $1 ORDER BY uc.type, uc.name",
+      [userId]
+    );
+    res.json(rows.rows);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/connections/infra — add new connection
+router.post("/infra", async function(req, res) {
+  try {
+    var userId = req.user ? req.user.id : null;
+    var { type, name, config, company_id } = req.body;
+    if (!type || !name) return res.status(400).json({ error: "type and name required" });
+    var r = await pool.query(
+      "INSERT INTO user_connections (user_id, type, name, config, company_id) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+      [userId, type, name, JSON.stringify(config || {}), company_id || null]
+    );
+    await syncToOperatorMemory(userId);
+    res.json(r.rows[0]);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// PUT /api/connections/infra/:id — update connection
+router.put("/infra/:id", async function(req, res) {
+  try {
+    var userId = req.user ? req.user.id : null;
+    var { name, config, company_id } = req.body;
+    var r = await pool.query(
+      "UPDATE user_connections SET name = COALESCE($1, name), config = COALESCE($2::jsonb, config), company_id = COALESCE($3, company_id) WHERE id = $4 AND user_id = $5 RETURNING *",
+      [name, config ? JSON.stringify(config) : null, company_id, req.params.id, userId]
+    );
+    if (!r.rows.length) return res.status(404).json({ error: "Not found" });
+    res.json(r.rows[0]);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// DELETE /api/connections/infra/:id — delete connection
+router.delete("/infra/:id", async function(req, res) {
+  try {
+    var userId = req.user ? req.user.id : null;
+    await pool.query("DELETE FROM user_connections WHERE id = $1 AND user_id = $2", [req.params.id, userId]);
+    await syncToOperatorMemory(userId);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 module.exports = router;
