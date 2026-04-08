@@ -44,7 +44,12 @@ router.post("/register", async function (req, res) {
     );
     var user = result.rows[0];
     var session = await createSession(user.id);
-    res.cookie("blun_token", session.token, { httpOnly: true, secure: false, sameSite: "lax", maxAge: 30 * 24 * 60 * 60 * 1000 });
+    res.cookie("blun_token", session.token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: "lax",
+      maxAge: 30 * 24 * 60 * 60 * 1000
+    });
     var regIp = req.headers["x-forwarded-for"] || req.connection.remoteAddress;
     logActivity(user.id, "register", { email: user.email }, regIp);
     res.json({ user: user, token: session.token, expires_at: session.expires_at });
@@ -74,7 +79,12 @@ router.post("/login", async function (req, res) {
       return res.status(401).json({ error: "Invalid email or password" });
     }
     var session = await createSession(user.id);
-    res.cookie("blun_token", session.token, { httpOnly: true, secure: false, sameSite: "lax", maxAge: 30 * 24 * 60 * 60 * 1000 });
+    res.cookie("blun_token", session.token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: "lax",
+      maxAge: 30 * 24 * 60 * 60 * 1000
+    });
     var loginIp = req.headers["x-forwarded-for"] || req.connection.remoteAddress;
     logActivity(user.id, "login", { email: user.email }, loginIp);
     res.json({
