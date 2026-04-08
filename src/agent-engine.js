@@ -748,6 +748,28 @@ async function heartbeat(agentId) {
     }
   }
 
+  // === HEALTH MONITORING: Track consecutive failures, auto-pause ===
+  try {
+    var recentTasks = await query("SELECT status FROM agent_tasks WHERE agent_id = $1 ORDER BY id DESC LIMIT 3", [agentId]);
+    var rows = recentTasks ? recentTasks.rows || recentTasks : [];
+    var consecutiveFails = 0;
+    for (var fi = 0; fi < rows.length; fi++) {
+      if (rows[fi].status === "error" || rows[fi].status === "completed_no_code") consecutiveFails++;
+      else break;
+    }
+    if (consecutiveFails >= 3) {
+      console.error("[health] Agent " + agentId + " (" + agent.name + ") failed 3x in a row — AUTO-PAUSING");
+      await query("UPDATE blun_agents SET status = 'paused' WHERE id = $1", [agentId]);
+      await saveAgentMemory(agentId, "health_paused", "Auto-paused after 3 consecutive failures at " + new Date().toISOString());
+      // Notify operator
+      var operatorRow = await queryOne("SELECT id FROM blun_agents WHERE company_id = $1 AND role = 'operator' LIMIT 1", [agent.company_id]);
+      if (operatorRow) {
+        await query("INSERT INTO agent_tasks (agent_id, task, status, priority) VALUES ($1, $2, 'pending', 'high')", [operatorRow.id, "HEALTH ALERT: Agent " + agent.name + " wurde nach 3 Fehlschlaegen auto-pausiert. Pruefe die letzten Tasks und entscheide ob der Agent reaktiviert werden soll."]);
+      }
+      status = "paused";
+    }
+  } catch(healthErr) { console.error("[health] Check error:", healthErr.message); }
+
   await query("UPDATE blun_agents SET status = $1, last_heartbeat = NOW() WHERE id = $2", [status, agentId]);
   await query("INSERT INTO agent_heartbeats (agent_id, status, model, tokens_used, cost) VALUES ($1, $2, $3, $4, $5)", [agentId, status, agent.model, tokens, cost]);
 }
