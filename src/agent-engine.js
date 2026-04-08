@@ -297,11 +297,16 @@ async function callLLM(model, messages) {
 
     if (model.startsWith("claude")) {
       url = "https://api.anthropic.com/v1/messages";
-      // Check if we should use claude CLI
-    if (process.env.CLAUDE_USE_CLI === "1") {
+      // Always try CLI first for Claude models
       try { return await callClaudeCLI(messages, config.api_key); } catch(e) { console.error("[claude-cli]", e.message); }
-    }
-    headers = { "Content-Type": "application/json", "x-api-key": config.api_key, "anthropic-version": "2023-06-01" };
+      // Fallback to REST API — detect OAuth token vs API key
+      if (config.api_key && config.api_key.length > 80) {
+        // OAuth token: use Authorization Bearer
+        headers = { "Content-Type": "application/json", "Authorization": "Bearer " + config.api_key, "anthropic-version": "2023-06-01" };
+      } else {
+        // Regular API key: use x-api-key
+        headers = { "Content-Type": "application/json", "x-api-key": config.api_key, "anthropic-version": "2023-06-01" };
+      }
       var sys = messages.find(function(m) { return m.role === "system"; });
       var msgs = messages.filter(function(m) { return m.role !== "system"; });
       body = { model: model, messages: msgs, max_tokens: 2048 };
