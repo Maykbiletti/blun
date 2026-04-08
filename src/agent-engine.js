@@ -466,6 +466,74 @@ async function heartbeat(agentId) {
   var status = "active";
   var tokens = 0, cost = 0;
 
+  // === OPERATOR AUTO-DISPATCH: If operator has no tasks, assign to idle agents ===
+  if (!pendingTask && agent.company_id) {
+    try {
+      var isOperator = await queryOne("SELECT id FROM blun_agents WHERE company_id = $1 ORDER BY id LIMIT 1", [agent.company_id]);
+      if (isOperator && isOperator.id === agentId) {
+        var idleAgents = await query(
+          "SELECT a.id, a.name, a.role FROM blun_agents a WHERE a.company_id = $1 AND a.id != $2 AND a.status = 'active' AND NOT EXISTS (SELECT 1 FROM agent_tasks t WHERE t.agent_id = a.id AND t.status IN ('pending','in_progress','processing')) LIMIT 5",
+          [agent.company_id, agentId]
+        );
+        if (idleAgents.length > 0) {
+          var agentList = idleAgents.map(function(a) { return a.name + " (ID " + a.id + ", " + (a.role||"no role") + ")"; }).join(", ");
+          var dispatchPrompt = "Du bist der Operator. Folgende Agents haben gerade keine Aufgaben: " + agentList + ".\nErstelle fuer JEDEN einen sinnvollen Task basierend auf ihrer Rolle. Antworte NUR mit [TOOL:ASSIGN_TASK:agent_id:task beschreibung] pro Agent, eine Zeile pro Agent. Keine Erklaerung.";
+          var identityRow = await queryOne("SELECT content FROM agent_memory WHERE agent_id = $1 AND key = 'identity'", [agentId]);
+          var sysPrompt = (identityRow ? identityRow.content : "Du bist der Operator.") + "\nDu verteilst autonom Tasks an dein Team.";
+          var dispatchResult = await callLLM(agent.model || "claude-sonnet", [{ role: "system", content: sysPrompt }, { role: "user", content: dispatchPrompt }], agentId);
+          if (dispatchResult && dispatchResult.content) {
+            var dLines = dispatchResult.content.split("\n");
+            for (var di = 0; di < dLines.length; di++) {
+              var dm = dLines[di].match(/\[TOOL:ASSIGN_TASK:(\d+):([^\]]+)\]/i);
+              if (dm) {
+                await query("INSERT INTO agent_tasks (agent_id, task, status, created_at) VALUES ($1, $2, 'pending', NOW())", [parseInt(dm[1]), dm[2].trim()]);
+                console.log("[operator] Auto-assigned task to agent " + dm[1] + ": " + dm[2].trim().substring(0,60));
+              }
+            }
+            tokens = (dispatchResult.usage && dispatchResult.usage.output_tokens) || 0;
+            cost = tokens * 0.000003;
+          }
+        }
+      }
+    } catch(dispatchErr) { console.error("[operator] Auto-dispatch error:", dispatchErr.message); }
+
+    // === AUTO-DEPLOY: If all tasks completed and none pending, push + deploy ===
+    try {
+      var pendingCount = await queryOne("SELECT count(*) as c FROM agent_tasks WHERE agent_id IN (SELECT id FROM blun_agents WHERE company_id = $1) AND status IN ('pending','in_progress','processing')", [agent.company_id]);
+      var recentCompleted = await queryOne("SELECT count(*) as c FROM agent_tasks WHERE agent_id IN (SELECT id FROM blun_agents WHERE company_id = $1) AND status = 'completed' AND completed_at > NOW() - interval '30 min'", [agent.company_id]);
+      var lastDeploy = await queryOne("SELECT content FROM agent_memory WHERE agent_id = $1 AND key = 'last_auto_deploy'", [agentId]);
+      var lastDeployTime = lastDeploy ? new Date(lastDeploy.content) : new Date(0);
+      var minutesSinceDeploy = (Date.now() - lastDeployTime.getTime()) / 60000;
+
+      if (pendingCount && parseInt(pendingCount.c) === 0 && recentCompleted && parseInt(recentCompleted.c) >= 3 && minutesSinceDeploy > 30) {
+        console.log("[operator] All tasks done, " + recentCompleted.c + " completed recently. Auto push+deploy...");
+        var cp2 = require("child_process");
+        // Syntax check
+        var check = await new Promise(function(res){ cp2.exec("node -c /root/blun/src/server.js && node -c /root/blun/src/agent-engine.js && node -c /root/blun/src/code-tools.js", {timeout:10000}, function(e,o,er){ res({err:e,out:(o||"")+(er||"")}); }); });
+        if (!check.err) {
+          // Read git config from connections
+          var gitConn = await queryOne("SELECT config FROM user_connections WHERE type = 'git' AND company_id = $1 ORDER BY id LIMIT 1", [agent.company_id]);
+          var sshKey = "/root/.ssh/id_ed25519_github_pro";
+          var gitUrl = "blun-pro";
+          if (gitConn && gitConn.config) {
+            var cfg = typeof gitConn.config === "string" ? JSON.parse(gitConn.config) : gitConn.config;
+            if (cfg.ssh_key) sshKey = cfg.ssh_key;
+            if (cfg.url) gitUrl = cfg.url;
+          }
+          var pushCmd = 'BLUN_DEPLOYER=dieter git add -A && BLUN_DEPLOYER=dieter git commit -m "Auto-deploy: ' + recentCompleted.c + ' tasks completed" && GIT_SSH_COMMAND="ssh -i ' + sshKey + ' -o StrictHostKeyChecking=no" git push ' + gitUrl + ' main 2>&1';
+          var pushOut = await new Promise(function(res){ cp2.exec(pushCmd, {cwd:"/root/blun",timeout:60000,maxBuffer:500000}, function(e,o,er){ res((o||"")+(er||"")); }); });
+          console.log("[operator] Auto-push: " + pushOut.substring(0,200));
+          // pm2 restart
+          var restart = await new Promise(function(res){ cp2.exec("pm2 restart blun", {timeout:15000}, function(e,o,er){ res((o||"")+(er||"")); }); });
+          console.log("[operator] Auto-deploy done: " + restart.substring(0,100));
+          await query("INSERT INTO agent_memory (agent_id, key, content) VALUES ($1, $2, $3) ON CONFLICT (agent_id, key) DO UPDATE SET content = $3, updated_at = NOW()", [agentId, "last_auto_deploy", new Date().toISOString()]);
+        } else {
+          console.error("[operator] Auto-deploy blocked — syntax error: " + check.out.substring(0,200));
+        }
+      }
+    } catch(deployErr) { console.error("[operator] Auto-deploy error:", deployErr.message); }
+  }
+
   if (pendingTask) {
     status = "working";
     await query("UPDATE blun_agents SET status = $1, last_heartbeat = NOW() WHERE id = $2", ["working", agentId]);
