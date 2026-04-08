@@ -147,6 +147,61 @@ function getCliRateLimitStatus() {
   return { active: cliConcurrency.active, max: cliConcurrency.max, queued: cliConcurrency.queued, totalHour: cliConcurrency.totalToday, paused: cliConcurrency.paused };
 }
 
+// === API RATELIMIT CHECKER: Polls Anthropic headers every 2min ===
+var apiRateLimit = { remaining: null, limit: null, resetAt: null, lastCheck: 0, tokensRemaining: null, tokensLimit: null };
+
+async function checkApiRateLimit() {
+  try {
+    var creds = JSON.parse(require("fs").readFileSync("/root/.claude/.credentials.json", "utf8"));
+    var token = creds.claudeAiOauth && creds.claudeAiOauth.accessToken;
+    if (!token) return;
+
+    var resp = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Authorization": "Bearer " + token,
+        "Content-Type": "application/json",
+        "anthropic-version": "2023-06-01"
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 1,
+        messages: [{ role: "user", content: "." }]
+      })
+    });
+
+    // Read rate limit headers
+    var h = resp.headers;
+    var rr = h.get("anthropic-ratelimit-requests-remaining");
+    var rl = h.get("anthropic-ratelimit-requests-limit");
+    var tr = h.get("anthropic-ratelimit-tokens-remaining");
+    var tl = h.get("anthropic-ratelimit-tokens-limit");
+    var reset = h.get("anthropic-ratelimit-requests-reset");
+
+    if (rr !== null) apiRateLimit.remaining = parseInt(rr);
+    if (rl !== null) apiRateLimit.limit = parseInt(rl);
+    if (tr !== null) apiRateLimit.tokensRemaining = parseInt(tr);
+    if (tl !== null) apiRateLimit.tokensLimit = parseInt(tl);
+    if (reset) apiRateLimit.resetAt = new Date(reset).getTime();
+    apiRateLimit.lastCheck = Date.now();
+
+    var pct = apiRateLimit.limit ? Math.round((apiRateLimit.remaining / apiRateLimit.limit) * 100) : -1;
+    console.log("[ratelimit-api] Requests: " + apiRateLimit.remaining + "/" + apiRateLimit.limit + " (" + pct + "%) | Tokens: " + apiRateLimit.tokensRemaining + "/" + apiRateLimit.tokensLimit);
+
+    // Auto-pause CLI if under 10%
+    if (apiRateLimit.limit && apiRateLimit.remaining < apiRateLimit.limit * 0.1) {
+      var resetIn = apiRateLimit.resetAt ? Math.ceil((apiRateLimit.resetAt - Date.now()) / 1000) : 120;
+      if (resetIn < 10) resetIn = 120;
+      pauseCli(resetIn);
+      console.log("[ratelimit-api] WARNUNG: Nur noch " + pct + "% Requests! CLI pausiert " + resetIn + "s");
+    }
+  } catch(e) { console.error("[ratelimit-api] Check error:", e.message); }
+}
+
+// Run check every 2 minutes
+setInterval(checkApiRateLimit, 120000);
+setTimeout(checkApiRateLimit, 10000); // First check after 10s
+
 // Get rate limit status for dashboard API
 function getRateLimitStatus() {
   var status = {};

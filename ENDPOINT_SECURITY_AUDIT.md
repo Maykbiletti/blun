@@ -79,8 +79,8 @@
 
 ### Current Implementation (`src/middleware/rate-limiter.js`)
 
-| Tier | Endpunkte | Limit | Status |
-|------|-----------|-------|--------|
+| Tier | Endpunkt-Beispiele | Limit | Status |
+|------|-------------------|-------|--------|
 | **Public** | Contact, Newsletter, i18n | ✅ 10/min | Rate-Limited |
 | **Protected** | Alle `/api/*` außer Public | ✅ 120/min | Rate-Limited |
 | **Admin** | Alle `/admin-panel/*` | ✅ 30/min | Rate-Limited |
