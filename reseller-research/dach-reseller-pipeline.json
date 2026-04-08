@@ -1,0 +1,630 @@
+{
+  "pipeline_metadata": {
+    "created_by": "Rolf - Business Developer",
+    "created_date": "2026-04-08",
+    "last_updated": "2026-04-08",
+    "total_partners": 10,
+    "total_potential_arr": "4200000",
+    "currency": "EUR",
+    "market": "DACH",
+    "version": "1.0"
+  },
+  "partners": {
+    "nexus_digital": {
+      "id": "nexus_digital",
+      "rank": 1,
+      "company_name": "Nexus Digital Solutions GmbH",
+      "status": "target",
+      "priority": "high",
+      "location": {
+        "country": "DE",
+        "cities": ["München", "Berlin", "Hamburg"],
+        "headquarters": "München"
+      },
+      "contact": {
+        "ceo": {
+          "name": "Dr. Marcus Weber",
+          "email": "m.weber@nexus-digital.de",
+          "linkedin": "linkedin.com/in/marcus-weber-ai",
+          "phone": "+49 89 123-4567"
+        },
+        "partner_manager": {
+          "name": "Sarah Kellner",
+          "email": "s.kellner@nexus-digital.de",
+          "linkedin": "linkedin.com/in/sarah-kellner-partnerships",
+          "phone": "+49 89 123-4568"
+        },
+        "website": "nexus-digital.de/partner-program"
+      },
+      "business": {
+        "revenue_2025": 45000000,
+        "employees": 280,
+        "customer_base": 2400,
+        "target_segments": ["Enterprise AI", "Automation", "Mittelstand"],
+        "verticals": ["Automotive", "Fintech", "Manufacturing"]
+      },
+      "potential": {
+        "estimated_customers_12m": 120,
+        "avg_arr_per_customer": 4800,
+        "total_arr_potential": 576000,
+        "commission_estimate": 144000,
+        "confidence_score": 95
+      },
+      "outreach": {
+        "primary_channel": "email",
+        "secondary_channel": "linkedin",
+        "best_contact": "partner_manager",
+        "approach": "technical_demo",
+        "timeline": "immediate",
+        "notes": "Warm intro über gemeinsamen Kontakt bei Bitkom möglich"
+      },
+      "fit_analysis": {
+        "portfolio_match": 95,
+        "customer_overlap": 88,
+        "technical_compatibility": 92,
+        "geographic_coverage": 85,
+        "overall_fit": 95
+      }
+    },
+    "alpentech": {
+      "id": "alpentech",
+      "rank": 2,
+      "company_name": "AlpenTech Distributors AG",
+      "status": "target",
+      "priority": "high",
+      "location": {
+        "country": "AT/CH",
+        "cities": ["Wien", "Zürich", "Graz"],
+        "headquarters": "Wien"
+      },
+      "contact": {
+        "managing_director": {
+          "name": "Ing. Klaus Zimmermann",
+          "email": "k.zimmermann@alpentech.at",
+          "linkedin": "linkedin.com/in/klaus-zimmermann-tech",
+          "phone": "+43 1 234-5678"
+        },
+        "business_dev": {
+          "name": "Maria Schneider",
+          "email": "m.schneider@alpentech.at",
+          "linkedin": "linkedin.com/in/maria-schneider-bdm",
+          "phone": "+43 1 234-5679"
+        },
+        "website": "alpentech.at/partnerprogramm"
+      },
+      "business": {
+        "revenue_2025": 28000000,
+        "employees": 165,
+        "customer_base": 1800,
+        "target_segments": ["SMB", "Enterprise Software", "KMU"],
+        "verticals": ["Tourismus", "Logistik", "Consulting"]
+      },
+      "potential": {
+        "estimated_customers_12m": 200,
+        "avg_arr_per_customer": 2400,
+        "total_arr_potential": 480000,
+        "commission_estimate": 120000,
+        "confidence_score": 90
+      },
+      "outreach": {
+        "primary_channel": "conference",
+        "secondary_channel": "email",
+        "best_contact": "business_dev",
+        "approach": "market_entry",
+        "timeline": "ai_business_austria_may_2026",
+        "notes": "Persönliches Meeting bei AI Business Austria Conference im Mai"
+      },
+      "fit_analysis": {
+        "portfolio_match": 90,
+        "customer_overlap": 85,
+        "technical_compatibility": 88,
+        "geographic_coverage": 95,
+        "overall_fit": 90
+      }
+    },
+    "cloudbridge": {
+      "id": "cloudbridge",
+      "rank": 3,
+      "company_name": "CloudBridge Partners GmbH",
+      "status": "target",
+      "priority": "high",
+      "location": {
+        "country": "DE",
+        "cities": ["Frankfurt", "Düsseldorf", "Stuttgart"],
+        "headquarters": "Frankfurt"
+      },
+      "contact": {
+        "vp_sales": {
+          "name": "Thomas Richter",
+          "email": "t.richter@cloudbridge.de",
+          "linkedin": "linkedin.com/in/thomas-richter-cloud",
+          "phone": "+49 69 987-6543"
+        },
+        "channel_manager": {
+          "name": "Lisa Hoffmann",
+          "email": "l.hoffmann@cloudbridge.de",
+          "linkedin": "linkedin.com/in/lisa-hoffmann-channels",
+          "phone": "+49 69 987-6544"
+        },
+        "website": "cloudbridge.de/partner"
+      },
+      "business": {
+        "revenue_2025": 67000000,
+        "employees": 420,
+        "customer_base": 890,
+        "target_segments": ["Enterprise", "Cloud Infrastructure", "AI Stack"],
+        "verticals": ["Banking", "Insurance", "Healthcare"]
+      },
+      "potential": {
+        "estimated_customers_12m": 45,
+        "avg_arr_per_customer": 12000,
+        "total_arr_potential": 540000,
+        "commission_estimate": 162000,
+        "confidence_score": 85
+      },
+      "outreach": {
+        "primary_channel": "technical_presentation",
+        "secondary_channel": "linkedin",
+        "best_contact": "channel_manager",
+        "approach": "api_integration",
+        "timeline": "q2_2026",
+        "notes": "Fokus auf White-Label Lösung und Enterprise Compliance"
+      },
+      "fit_analysis": {
+        "portfolio_match": 85,
+        "customer_overlap": 78,
+        "technical_compatibility": 95,
+        "geographic_coverage": 80,
+        "overall_fit": 85
+      }
+    },
+    "swiss_ai": {
+      "id": "swiss_ai",
+      "rank": 4,
+      "company_name": "Swiss AI Collective AG",
+      "status": "target",
+      "priority": "medium",
+      "location": {
+        "country": "CH",
+        "cities": ["Zürich", "Genf", "Basel"],
+        "headquarters": "Zürich"
+      },
+      "contact": {
+        "ceo": {
+          "name": "Dr. Elena Moretti",
+          "email": "e.moretti@swiss-ai.ch",
+          "linkedin": "linkedin.com/in/elena-moretti-ai",
+          "phone": "+41 44 123-4567"
+        },
+        "head_partnerships": {
+          "name": "Reto Müller",
+          "email": "r.mueller@swiss-ai.ch",
+          "linkedin": "linkedin.com/in/reto-mueller-partnerships",
+          "phone": "+41 44 123-4568"
+        },
+        "website": "swiss-ai.ch/collaboration"
+      },
+      "business": {
+        "revenue_2025": 19000000,
+        "employees": 95,
+        "customer_base": 340,
+        "target_segments": ["AI Consulting", "Premium Services", "Innovation"],
+        "verticals": ["Private Banking", "Pharma", "Luxury Goods"]
+      },
+      "potential": {
+        "estimated_customers_12m": 35,
+        "avg_arr_per_customer": 15000,
+        "total_arr_potential": 525000,
+        "commission_estimate": 210000,
+        "confidence_score": 95
+      },
+      "outreach": {
+        "primary_channel": "innovation_workshop",
+        "secondary_channel": "direct_ceo",
+        "best_contact": "ceo",
+        "approach": "co_development",
+        "timeline": "immediate",
+        "notes": "Joint R&D Session in Zürich, potentielle Equity-Diskussion"
+      },
+      "fit_analysis": {
+        "portfolio_match": 95,
+        "customer_overlap": 70,
+        "technical_compatibility": 98,
+        "geographic_coverage": 85,
+        "overall_fit": 95
+      }
+    },
+    "mittelstand_ai": {
+      "id": "mittelstand_ai",
+      "rank": 5,
+      "company_name": "Mittelstand.AI GmbH",
+      "status": "target",
+      "priority": "high",
+      "location": {
+        "country": "DE",
+        "cities": ["Köln", "Hannover", "Nürnberg"],
+        "headquarters": "Köln"
+      },
+      "contact": {
+        "ceo": {
+          "name": "Dipl.-Ing. Andreas Becker",
+          "email": "a.becker@mittelstand-ai.de",
+          "linkedin": "linkedin.com/in/andreas-becker-digitalisierung",
+          "phone": "+49 221 456-7890"
+        },
+        "partner_sales": {
+          "name": "Jennifer Krause",
+          "email": "j.krause@mittelstand-ai.de",
+          "linkedin": "linkedin.com/in/jennifer-krause-sales",
+          "phone": "+49 221 456-7891"
+        },
+        "website": "mittelstand-ai.de/partnerschaft"
+      },
+      "business": {
+        "revenue_2025": 34000000,
+        "employees": 220,
+        "customer_base": 3200,
+        "target_segments": ["KMU", "Mittelstand", "Traditionelle Industrie"],
+        "verticals": ["Metall", "Maschinenbau", "Handwerk"]
+      },
+      "potential": {
+        "estimated_customers_12m": 180,
+        "avg_arr_per_customer": 2200,
+        "total_arr_potential": 396000,
+        "commission_estimate": 99000,
+        "confidence_score": 88
+      },
+      "outreach": {
+        "primary_channel": "kmu_fokus",
+        "secondary_channel": "email",
+        "best_contact": "partner_sales",
+        "approach": "industry_specific",
+        "timeline": "q2_2026",
+        "notes": "Spezielle KMU-Pricing und Branchen-Templates erforderlich"
+      },
+      "fit_analysis": {
+        "portfolio_match": 88,
+        "customer_overlap": 92,
+        "technical_compatibility": 85,
+        "geographic_coverage": 88,
+        "overall_fit": 88
+      }
+    },
+    "digital_austria": {
+      "id": "digital_austria",
+      "rank": 6,
+      "company_name": "Digital Austria Solutions GmbH",
+      "status": "prospect",
+      "priority": "medium",
+      "location": {
+        "country": "AT",
+        "cities": ["Wien", "Salzburg", "Innsbruck"],
+        "headquarters": "Wien"
+      },
+      "contact": {
+        "managing_director": {
+          "name": "Mag. Stefan Hofer",
+          "email": "s.hofer@digital-austria.at",
+          "linkedin": "linkedin.com/in/stefan-hofer-digital",
+          "phone": "+43 1 345-6789"
+        },
+        "sales_director": {
+          "name": "Petra Waldmann",
+          "email": "p.waldmann@digital-austria.at",
+          "linkedin": "linkedin.com/in/petra-waldmann-sales",
+          "phone": "+43 1 345-6790"
+        },
+        "website": "digital-austria.at/partner"
+      },
+      "business": {
+        "revenue_2025": 21000000,
+        "employees": 135,
+        "customer_base": 1200,
+        "target_segments": ["Government", "Healthcare", "Education"],
+        "verticals": ["Public Sector", "Gesundheitswesen", "Bildung"]
+      },
+      "potential": {
+        "estimated_customers_12m": 80,
+        "avg_arr_per_customer": 3600,
+        "total_arr_potential": 288000,
+        "commission_estimate": 72000,
+        "confidence_score": 75
+      },
+      "outreach": {
+        "primary_channel": "government_compliance",
+        "secondary_channel": "email",
+        "best_contact": "sales_director",
+        "approach": "compliance_focused",
+        "timeline": "q3_2026",
+        "notes": "GDPR und österreichische Datenschutz-Compliance wichtig"
+      },
+      "fit_analysis": {
+        "portfolio_match": 75,
+        "customer_overlap": 65,
+        "technical_compatibility": 88,
+        "geographic_coverage": 80,
+        "overall_fit": 75
+      }
+    },
+    "rheintech": {
+      "id": "rheintech",
+      "rank": 7,
+      "company_name": "RheinTech Distribution GmbH",
+      "status": "prospect",
+      "priority": "medium",
+      "location": {
+        "country": "DE",
+        "cities": ["Düsseldorf", "Essen", "Dortmund"],
+        "headquarters": "Düsseldorf"
+      },
+      "contact": {
+        "ceo": {
+          "name": "Michael Schneider",
+          "email": "m.schneider@rheintech.de",
+          "linkedin": "linkedin.com/in/michael-schneider-rheintech",
+          "phone": "+49 211 567-8901"
+        },
+        "channel_lead": {
+          "name": "Sabine König",
+          "email": "s.koenig@rheintech.de",
+          "linkedin": "linkedin.com/in/sabine-koenig-channels",
+          "phone": "+49 211 567-8902"
+        },
+        "website": "rheintech.de/vertriebspartner"
+      },
+      "business": {
+        "revenue_2025": 38000000,
+        "employees": 195,
+        "customer_base": 1600,
+        "target_segments": ["Industrie 4.0", "Manufacturing", "Energie"],
+        "verticals": ["Chemie", "Stahl", "Automotive"]
+      },
+      "potential": {
+        "estimated_customers_12m": 95,
+        "avg_arr_per_customer": 3200,
+        "total_arr_potential": 304000,
+        "commission_estimate": 76000,
+        "confidence_score": 80
+      },
+      "outreach": {
+        "primary_channel": "industry_events",
+        "secondary_channel": "linkedin",
+        "best_contact": "channel_lead",
+        "approach": "industry_4_0",
+        "timeline": "hannover_messe_2027",
+        "notes": "Fokus auf Industrie 4.0 und Manufacturing Automation"
+      },
+      "fit_analysis": {
+        "portfolio_match": 80,
+        "customer_overlap": 75,
+        "technical_compatibility": 85,
+        "geographic_coverage": 85,
+        "overall_fit": 80
+      }
+    },
+    "swiss_smb": {
+      "id": "swiss_smb",
+      "rank": 8,
+      "company_name": "Swiss SMB Partners AG",
+      "status": "prospect",
+      "priority": "low",
+      "location": {
+        "country": "CH",
+        "cities": ["Bern", "Luzern", "St. Gallen"],
+        "headquarters": "Bern"
+      },
+      "contact": {
+        "founder": {
+          "name": "Daniel Weber",
+          "email": "d.weber@swiss-smb.ch",
+          "linkedin": "linkedin.com/in/daniel-weber-smb",
+          "phone": "+41 31 234-5678"
+        },
+        "partnership_manager": {
+          "name": "Anne Zimmerer",
+          "email": "a.zimmerer@swiss-smb.ch",
+          "linkedin": "linkedin.com/in/anne-zimmerer-partnerships",
+          "phone": "+41 31 234-5679"
+        },
+        "website": "swiss-smb.ch/partner"
+      },
+      "business": {
+        "revenue_2025": 14000000,
+        "employees": 85,
+        "customer_base": 2100,
+        "target_segments": ["SMB", "Local Business", "Startups"],
+        "verticals": ["Handel", "Gastro", "Dienstleistung"]
+      },
+      "potential": {
+        "estimated_customers_12m": 140,
+        "avg_arr_per_customer": 1800,
+        "total_arr_potential": 252000,
+        "commission_estimate": 63000,
+        "confidence_score": 70
+      },
+      "outreach": {
+        "primary_channel": "smb_pricing",
+        "secondary_channel": "email",
+        "best_contact": "partnership_manager",
+        "approach": "cost_effective",
+        "timeline": "q4_2026",
+        "notes": "Niedrigpreis-Strategie für SMB-Markt erforderlich"
+      },
+      "fit_analysis": {
+        "portfolio_match": 70,
+        "customer_overlap": 85,
+        "technical_compatibility": 75,
+        "geographic_coverage": 75,
+        "overall_fit": 70
+      }
+    },
+    "nord_digital": {
+      "id": "nord_digital",
+      "rank": 9,
+      "company_name": "Nord Digital Systems GmbH",
+      "status": "research",
+      "priority": "low",
+      "location": {
+        "country": "DE",
+        "cities": ["Hamburg", "Bremen", "Kiel"],
+        "headquarters": "Hamburg"
+      },
+      "contact": {
+        "ceo": {
+          "name": "Jan Petersen",
+          "email": "j.petersen@nord-digital.de",
+          "linkedin": "linkedin.com/in/jan-petersen-nord",
+          "phone": "+49 40 678-9012"
+        },
+        "business_development": {
+          "name": "Anja Müller",
+          "email": "a.mueller@nord-digital.de",
+          "linkedin": "linkedin.com/in/anja-mueller-nord",
+          "phone": "+49 40 678-9013"
+        },
+        "website": "nord-digital.de/kooperationen"
+      },
+      "business": {
+        "revenue_2025": 16000000,
+        "employees": 98,
+        "customer_base": 950,
+        "target_segments": ["Maritime", "Logistics", "Transport"],
+        "verticals": ["Shipping", "Port Management", "Supply Chain"]
+      },
+      "potential": {
+        "estimated_customers_12m": 60,
+        "avg_arr_per_customer": 2800,
+        "total_arr_potential": 168000,
+        "commission_estimate": 42000,
+        "confidence_score": 65
+      },
+      "outreach": {
+        "primary_channel": "industry_specific",
+        "secondary_channel": "email",
+        "best_contact": "business_development",
+        "approach": "maritime_logistics",
+        "timeline": "2027",
+        "notes": "Nischen-Markt mit spezifischen Anforderungen"
+      },
+      "fit_analysis": {
+        "portfolio_match": 65,
+        "customer_overlap": 50,
+        "technical_compatibility": 80,
+        "geographic_coverage": 70,
+        "overall_fit": 65
+      }
+    },
+    "vienna_tech": {
+      "id": "vienna_tech",
+      "rank": 10,
+      "company_name": "Vienna Tech Solutions GmbH",
+      "status": "research",
+      "priority": "low",
+      "location": {
+        "country": "AT",
+        "cities": ["Wien", "Linz"],
+        "headquarters": "Wien"
+      },
+      "contact": {
+        "managing_director": {
+          "name": "Dr. Wolfgang Hauser",
+          "email": "w.hauser@vienna-tech.at",
+          "linkedin": "linkedin.com/in/wolfgang-hauser-tech",
+          "phone": "+43 1 456-7890"
+        },
+        "sales_manager": {
+          "name": "Claudia Bauer",
+          "email": "c.bauer@vienna-tech.at",
+          "linkedin": "linkedin.com/in/claudia-bauer-vienna",
+          "phone": "+43 1 456-7891"
+        },
+        "website": "vienna-tech.at/partner-werden"
+      },
+      "business": {
+        "revenue_2025": 12000000,
+        "employees": 75,
+        "customer_base": 800,
+        "target_segments": ["Startups", "Scale-ups", "Innovation"],
+        "verticals": ["Fintech", "Healthtech", "PropTech"]
+      },
+      "potential": {
+        "estimated_customers_12m": 50,
+        "avg_arr_per_customer": 2400,
+        "total_arr_potential": 120000,
+        "commission_estimate": 30000,
+        "confidence_score": 60
+      },
+      "outreach": {
+        "primary_channel": "startup_ecosystem",
+        "secondary_channel": "events",
+        "best_contact": "sales_manager",
+        "approach": "innovation_focus",
+        "timeline": "2027",
+        "notes": "Fokus auf innovative Startups und Scale-ups"
+      },
+      "fit_analysis": {
+        "portfolio_match": 60,
+        "customer_overlap": 70,
+        "technical_compatibility": 85,
+        "geographic_coverage": 65,
+        "overall_fit": 60
+      }
+    }
+  },
+  "outreach_schedule": {
+    "week_1": [
+      "nexus_digital",
+      "alpentech",
+      "cloudbridge"
+    ],
+    "week_2": [
+      "swiss_ai",
+      "mittelstand_ai",
+      "digital_austria"
+    ],
+    "week_3": [
+      "rheintech",
+      "swiss_smb"
+    ],
+    "week_4": [
+      "nord_digital",
+      "vienna_tech"
+    ]
+  },
+  "market_analysis": {
+    "total_dach_market_size": "890000000",
+    "ai_tools_growth_rate": 0.34,
+    "competitor_commission_rates": {
+      "zapier": 0.20,
+      "monday_com": 0.25,
+      "slack": 0.15,
+      "notion": 0.18
+    },
+    "blun_competitive_advantage": [
+      "Custom AI Agents",
+      "No-Code Agent Builder",
+      "Multi-Language Support",
+      "Enterprise Security",
+      "API-First Architecture"
+    ]
+  },
+  "success_metrics": {
+    "q2_2026": {
+      "target_lois": 3,
+      "target_pilots": 5,
+      "target_revenue": 150000
+    },
+    "q3_2026": {
+      "target_signed_partnerships": 2,
+      "target_revenue": 400000
+    },
+    "q4_2026": {
+      "target_partnerships": 5,
+      "target_revenue": 800000
+    },
+    "2027_full_year": {
+      "target_partnerships": 8,
+      "target_revenue": 2500000
+    }
+  }
+}

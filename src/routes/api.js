@@ -8,6 +8,7 @@ const { query, queryOne } = require('../db');
 const { startAgent, stopAgent, restartAgent, getProcessStatus } = require('../agent/runtime');
 const { sendToAgent } = require('../ws');
 const { v4: uuid } = require('uuid');
+const { requireAuth } = require('../middleware/auth');
 
 const router = Router();
 
@@ -21,35 +22,35 @@ router.get("/health", async function (req, res) {
   }
 });
 
-router.get('/companies', async function (req, res) {
+router.get('/companies', requireAuth, async function (req, res) {
   res.json(await query('SELECT * FROM companies ORDER BY created_at'));
 });
 
-router.get('/company/:id', async function (req, res) {
+router.get('/company/:id', requireAuth, async function (req, res) {
   var company = await queryOne('SELECT * FROM companies WHERE id = $1', [req.params.id]);
   if (!company) return res.status(404).json({ error: 'Company not found' });
   var agents = await query('SELECT * FROM agents WHERE company_id = $1 ORDER BY name', [req.params.id]);
   res.json(Object.assign({}, company, { agents: agents }));
 });
 
-router.post('/companies', async function (req, res) {
+router.post('/companies', requireAuth, async function (req, res) {
   var b = req.body;
   if (!b.name) return res.status(400).json({ error: 'name is required' });
   var row = await queryOne('INSERT INTO companies (name, config) VALUES ($1, $2) RETURNING *', [b.name, b.config || {}]);
   res.status(201).json(row);
 });
 
-router.get('/agents', async function (req, res) {
+router.get('/agents', requireAuth, async function (req, res) {
   res.json(await query('SELECT a.*, c.name AS company_name FROM agents a LEFT JOIN companies c ON c.id = a.company_id ORDER BY c.name, a.name'));
 });
 
-router.get('/agent/:id', async function (req, res) {
+router.get('/agent/:id', requireAuth, async function (req, res) {
   var agent = await queryOne('SELECT * FROM agents WHERE id = $1', [req.params.id]);
   if (!agent) return res.status(404).json({ error: 'Agent not found' });
   res.json(agent);
 });
 
-router.post('/agents', async function (req, res) {
+router.post('/agents', requireAuth, async function (req, res) {
   var b = req.body;
   if (!b.company_id || !b.name) return res.status(400).json({ error: 'company_id and name are required' });
   var row = await queryOne(
@@ -59,7 +60,7 @@ router.post('/agents', async function (req, res) {
   res.status(201).json(row);
 });
 
-router.patch('/agent/:id', async function (req, res) {
+router.patch('/agent/:id', requireAuth, async function (req, res) {
   var agent = await queryOne('SELECT * FROM agents WHERE id = $1', [req.params.id]);
   if (!agent) return res.status(404).json({ error: 'Agent not found' });
   var fields = ['name', 'role', 'title', 'model', 'adapter_type', 'tools', 'config', 'status'];
@@ -75,11 +76,11 @@ router.patch('/agent/:id', async function (req, res) {
   res.json(row);
 });
 
-router.post('/agent/:id/start', async function (req, res) { res.json(await startAgent(req.params.id)); });
-router.post('/agent/:id/stop', async function (req, res) { res.json(await stopAgent(req.params.id)); });
-router.post('/agent/:id/restart', async function (req, res) { res.json(await restartAgent(req.params.id)); });
+router.post('/agent/:id/start', requireAuth, async function (req, res) { res.json(await startAgent(req.params.id)); });
+router.post('/agent/:id/stop', requireAuth, async function (req, res) { res.json(await stopAgent(req.params.id)); });
+router.post('/agent/:id/restart', requireAuth, async function (req, res) { res.json(await restartAgent(req.params.id)); });
 
-router.post('/agent/:id/message', async function (req, res) {
+router.post('/agent/:id/message', requireAuth, async function (req, res) {
   var b = req.body;
   if (!b.body) return res.status(400).json({ error: 'body is required' });
   var agent = await queryOne('SELECT * FROM agents WHERE id = $1', [req.params.id]);
@@ -94,22 +95,22 @@ router.post('/agent/:id/message', async function (req, res) {
   res.json({ conversationId: convId, sent: true });
 });
 
-router.get('/agent/:id/conversations', async function (req, res) {
+router.get('/agent/:id/conversations', requireAuth, async function (req, res) {
   res.json(await query('SELECT c.*, COUNT(cm.id)::int AS message_count FROM conversations c LEFT JOIN conversation_messages cm ON cm.conversation_id = c.id WHERE c.agent_id = $1 GROUP BY c.id ORDER BY c.updated_at DESC', [req.params.id]));
 });
 
-router.get('/conversation/:id', async function (req, res) {
+router.get('/conversation/:id', requireAuth, async function (req, res) {
   var conv = await queryOne('SELECT * FROM conversations WHERE id = $1', [req.params.id]);
   if (!conv) return res.status(404).json({ error: 'Conversation not found' });
   var messages = await query('SELECT * FROM conversation_messages WHERE conversation_id = $1 ORDER BY created_at', [req.params.id]);
   res.json(Object.assign({}, conv, { messages: messages }));
 });
 
-router.get('/agent/:id/tasks', async function (req, res) {
+router.get('/agent/:id/tasks', requireAuth, async function (req, res) {
   res.json(await query('SELECT * FROM tasks WHERE agent_id = $1 ORDER BY created_at DESC', [req.params.id]));
 });
 
-router.post('/agent/:id/task', async function (req, res) {
+router.post('/agent/:id/task', requireAuth, async function (req, res) {
   var b = req.body;
   if (!b.title) return res.status(400).json({ error: 'title is required' });
   var agent = await queryOne('SELECT * FROM agents WHERE id = $1', [req.params.id]);

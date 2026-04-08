@@ -497,6 +497,33 @@ async function heartbeat(agentId) {
       }
     } catch(dispatchErr) { console.error("[operator] Auto-dispatch error:", dispatchErr.message); }
 
+    // === OPERATOR MERGE: Merge agent branches into main ===
+    try {
+      var cp5 = require("child_process");
+      var branches = await new Promise(function(res){ cp5.exec("cd /root/blun && git branch --list 'agent/*'", {timeout:5000}, function(e,o){ res((o||"").trim()); }); });
+      if (branches) {
+        var brList = branches.split("\n").map(function(b){ return b.trim().replace("* ",""); }).filter(function(b){ return b.length > 0; });
+        for (var bi = 0; bi < brList.length; bi++) {
+          var br = brList[bi];
+          // Check if branch has commits ahead of main
+          var ahead = await new Promise(function(res){ cp5.exec("cd /root/blun && git log main.." + br + " --oneline", {timeout:5000}, function(e,o){ res((o||"").trim()); }); });
+          if (ahead) {
+            console.log("[operator] Merging " + br + " into main: " + ahead.substring(0,100));
+            await new Promise(function(res){ cp5.exec("cd /root/blun && git checkout main", {timeout:5000}, function(e,o,er){ res(true); }); });
+            var mergeResult = await new Promise(function(res){ cp5.exec("cd /root/blun && git merge " + br + " --no-edit", {timeout:10000}, function(e,o,er){ res({err:e, out:(o||"")+(er||"")}); }); });
+            if (mergeResult.err) {
+              console.error("[operator] Merge conflict on " + br + ": " + mergeResult.out.substring(0,200));
+              await new Promise(function(res){ cp5.exec("cd /root/blun && git merge --abort", {timeout:5000}, function(e,o,er){ res(true); }); });
+            } else {
+              console.log("[operator] Merged " + br + " successfully");
+              // Delete merged branch
+              await new Promise(function(res){ cp5.exec("cd /root/blun && git branch -d " + br, {timeout:5000}, function(e,o,er){ res(true); }); });
+            }
+          }
+        }
+      }
+    } catch(mergeErr) { console.error("[operator] Merge error:", mergeErr.message); }
+
     // === AUTO-DEPLOY: If all tasks completed and none pending, push + deploy ===
     try {
       var pendingCount = await queryOne("SELECT count(*) as c FROM agent_tasks WHERE agent_id IN (SELECT id FROM blun_agents WHERE company_id = $1) AND status IN ('pending','in_progress','processing')", [agent.company_id]);
@@ -572,6 +599,20 @@ async function heartbeat(agentId) {
       var sysContext = (identityRow ? identityRow.content + "\n\n" : "") + (agent.system_prompt || "Du bist ein hilfreicher Agent.") + skillStr + "\n\nKONTEXT AUS MEMORY:\n" + memStr;
       var taskPrompt = sysContext + "\n\nTask: " + pendingTask.task + "\n\nWICHTIG: Du arbeitest direkt im BLUN-Projekt. Schreibe echten, funktionierenden Code. Aendere oder erstelle Dateien. Keine Konzepte oder Markdown.";
 
+      // === GIT BRANCH ISOLATION: Each agent works in own branch ===
+      var cp2 = require("child_process");
+      var branchName = "agent/" + (agent.name || "agent-" + agentId).toLowerCase().replace(/[^a-z0-9]/g, "-");
+      try {
+        // Ensure branch exists, create from main if not
+        var branchExists = await new Promise(function(res){ cp2.exec("cd /root/blun && git branch --list " + branchName, {timeout:5000}, function(e,o){ res((o||"").trim().length > 0); }); });
+        if (!branchExists) {
+          await new Promise(function(res){ cp2.exec("cd /root/blun && git branch " + branchName + " main", {timeout:5000}, function(e,o,er){ res(true); }); });
+          console.log("[agent-cli] Created branch " + branchName);
+        }
+        // Checkout agent branch
+        await new Promise(function(res){ cp2.exec("cd /root/blun && git checkout " + branchName, {timeout:5000}, function(e,o,er){ res(true); }); });
+      } catch(brErr) { console.error("[agent-cli] Branch error:", brErr.message); }
+
       // Check for existing session to resume (Paperclip-style)
       var sessionRow = await queryOne("SELECT content FROM agent_memory WHERE agent_id = $1 AND key = 'cli_session_id'", [agentId]);
       var sessionId = sessionRow ? sessionRow.content.trim() : null;
@@ -642,6 +683,18 @@ async function heartbeat(agentId) {
 
       tokens = 0; cost = 0;
       console.log("[agent-cli] " + agent.name + " exit=" + cliResult.code + " session=" + (newSessionId||"none") + " output=" + finalContent.length + "ch");
+
+      // Commit on agent branch and switch back to main
+      try {
+        var hasChanges = await new Promise(function(res){ cp2.exec("cd /root/blun && git diff --name-only", {timeout:5000}, function(e,o){ res((o||"").trim().length > 0); }); });
+        if (hasChanges) {
+          var commitMsg = agent.name + ": " + pendingTask.task.substring(0,60);
+          await new Promise(function(res){ cp2.exec('cd /root/blun && git add -A && git commit -m "' + commitMsg.replace(/"/g, '\\"') + '"', {timeout:10000}, function(e,o,er){ res(true); }); });
+          console.log("[agent-cli] Committed on " + branchName);
+        }
+        // Always switch back to main for next agent
+        await new Promise(function(res){ cp2.exec("cd /root/blun && git checkout main", {timeout:5000}, function(e,o,er){ res(true); }); });
+      } catch(gitErr) { console.error("[agent-cli] Git commit error:", gitErr.message); }
       // Quality check: did the CLI actually change files?
       var cp3 = require("child_process");
       var gitChanges = await new Promise(function(res){ cp3.exec("cd /root/blun && git diff --name-only", {timeout:5000}, function(e,o,er){ res((o||"").trim()); }); });
