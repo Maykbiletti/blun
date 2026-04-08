@@ -506,29 +506,34 @@ async function heartbeat(agentId) {
       var minutesSinceDeploy = (Date.now() - lastDeployTime.getTime()) / 60000;
 
       if (pendingCount && parseInt(pendingCount.c) === 0 && recentCompleted && parseInt(recentCompleted.c) >= 3 && minutesSinceDeploy > 30) {
-        console.log("[operator] All tasks done, " + recentCompleted.c + " completed recently. Auto push+deploy...");
         var cp2 = require("child_process");
-        // Syntax check
-        var check = await new Promise(function(res){ cp2.exec("node -c /root/blun/src/server.js && node -c /root/blun/src/agent-engine.js && node -c /root/blun/src/code-tools.js", {timeout:10000}, function(e,o,er){ res({err:e,out:(o||"")+(er||"")}); }); });
-        if (!check.err) {
-          // Read git config from connections
-          var gitConn = await queryOne("SELECT config FROM user_connections WHERE type = 'git' AND company_id = $1 ORDER BY id LIMIT 1", [agent.company_id]);
-          var sshKey = "/root/.ssh/id_ed25519_github_pro";
-          var gitUrl = "blun-pro";
-          if (gitConn && gitConn.config) {
-            var cfg = typeof gitConn.config === "string" ? JSON.parse(gitConn.config) : gitConn.config;
-            if (cfg.ssh_key) sshKey = cfg.ssh_key;
-            if (cfg.url) gitUrl = cfg.url;
-          }
-          var pushCmd = 'BLUN_DEPLOYER=dieter git add -A && BLUN_DEPLOYER=dieter git commit -m "Auto-deploy: ' + recentCompleted.c + ' tasks completed" && GIT_SSH_COMMAND="ssh -i ' + sshKey + ' -o StrictHostKeyChecking=no" git push ' + gitUrl + ' main 2>&1';
-          var pushOut = await new Promise(function(res){ cp2.exec(pushCmd, {cwd:"/root/blun",timeout:60000,maxBuffer:500000}, function(e,o,er){ res((o||"")+(er||"")); }); });
-          console.log("[operator] Auto-push: " + pushOut.substring(0,200));
-          // pm2 restart
-          var restart = await new Promise(function(res){ cp2.exec("pm2 restart blun", {timeout:15000}, function(e,o,er){ res((o||"")+(er||"")); }); });
-          console.log("[operator] Auto-deploy done: " + restart.substring(0,100));
+        // Check for real code changes first
+        var diffCheck = await new Promise(function(res){ cp2.exec("cd /root/blun && git diff --name-only HEAD", {timeout:5000}, function(e,o,er){ res((o||"").trim()); }); });
+        var codeFiles = diffCheck.split("\n").filter(function(f){ return f.match(/\.(js|html|css|json)$/) && !f.startsWith("test-"); });
+        if (codeFiles.length === 0) {
+          console.log("[operator] No real code changes, skipping deploy. Only: " + diffCheck.substring(0,200));
           await query("INSERT INTO agent_memory (agent_id, key, content) VALUES ($1, $2, $3) ON CONFLICT (agent_id, key) DO UPDATE SET content = $3, updated_at = NOW()", [agentId, "last_auto_deploy", new Date().toISOString()]);
         } else {
-          console.error("[operator] Auto-deploy blocked — syntax error: " + check.out.substring(0,200));
+          console.log("[operator] Real code changes: " + codeFiles.join(", ").substring(0,200));
+          var check = await new Promise(function(res){ cp2.exec("node -c /root/blun/src/server.js && node -c /root/blun/src/agent-engine.js && node -c /root/blun/src/code-tools.js", {timeout:10000}, function(e,o,er){ res({err:e,out:(o||"")+(er||"")}); }); });
+          if (!check.err) {
+            var gitConn = await queryOne("SELECT config FROM user_connections WHERE type = 'git' AND company_id = $1 ORDER BY id LIMIT 1", [agent.company_id]);
+            var sshKey = "/root/.ssh/id_ed25519_github_pro";
+            var gitUrl = "blun-pro";
+            if (gitConn && gitConn.config) {
+              var cfg = typeof gitConn.config === "string" ? JSON.parse(gitConn.config) : gitConn.config;
+              if (cfg.ssh_key) sshKey = cfg.ssh_key;
+              if (cfg.url) gitUrl = cfg.url;
+            }
+            var pushCmd = 'BLUN_DEPLOYER=dieter git add -A && BLUN_DEPLOYER=dieter git commit -m "Auto-deploy: ' + recentCompleted.c + ' tasks completed" && GIT_SSH_COMMAND="ssh -i ' + sshKey + ' -o StrictHostKeyChecking=no" git push ' + gitUrl + ' main 2>&1';
+            var pushOut = await new Promise(function(res){ cp2.exec(pushCmd, {cwd:"/root/blun",timeout:60000,maxBuffer:500000}, function(e,o,er){ res((o||"")+(er||"")); }); });
+            console.log("[operator] Auto-push: " + pushOut.substring(0,200));
+            var restart = await new Promise(function(res){ cp2.exec("pm2 restart blun", {timeout:15000}, function(e,o,er){ res((o||"")+(er||"")); }); });
+            console.log("[operator] Auto-deploy done: " + restart.substring(0,100));
+            await query("INSERT INTO agent_memory (agent_id, key, content) VALUES ($1, $2, $3) ON CONFLICT (agent_id, key) DO UPDATE SET content = $3, updated_at = NOW()", [agentId, "last_auto_deploy", new Date().toISOString()]);
+          } else {
+            console.error("[operator] Auto-deploy blocked — syntax error: " + check.out.substring(0,200));
+          }
         }
       }
     } catch(deployErr) { console.error("[operator] Auto-deploy error:", deployErr.message); }
