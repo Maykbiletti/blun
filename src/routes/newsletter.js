@@ -2,19 +2,35 @@
 // Newsletter routes
 const express = require("express");
 const { pool } = require("../db");
+const { authenticate } = require("../middleware/auth");
 
 var router = express.Router();
 
-// POST /api/newsletter/subscribe — public, no auth
+// POST /api/newsletter/subscribe — public, no auth, rate-limited
 router.post("/subscribe", async function (req, res) {
   try {
     var { email } = req.body;
-    if (!email || !/^[^@]+@[^@]+\.[^@]+$/.test(email)) {
+
+    // Type and existence check
+    if (!email || typeof email !== 'string') {
       return res.status(400).json({ error: "Please enter a valid email address." });
     }
+
+    email = email.trim().toLowerCase();
+
+    // Length check
+    if (email.length > 100) {
+      return res.status(400).json({ error: "Email address too long." });
+    }
+
+    // Email format validation (strict RFC-ish)
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: "Please enter a valid email address." });
+    }
+
     await pool.query(
       "INSERT INTO newsletter_subscribers (email) VALUES ($1) ON CONFLICT (email) DO UPDATE SET unsubscribed_at = NULL, subscribed_at = NOW()",
-      [email.trim().toLowerCase()]
+      [email]
     );
     res.json({ ok: true, message: "You're in! We'll keep you posted." });
   } catch (err) {
@@ -23,14 +39,26 @@ router.post("/subscribe", async function (req, res) {
   }
 });
 
-// POST /api/newsletter/unsubscribe — public
+// POST /api/newsletter/unsubscribe — public, no auth, rate-limited
 router.post("/unsubscribe", async function (req, res) {
   try {
     var { email } = req.body;
-    if (!email) return res.status(400).json({ error: "Email required." });
+
+    // Type and existence check
+    if (!email || typeof email !== 'string') {
+      return res.status(400).json({ error: "Email required." });
+    }
+
+    email = email.trim().toLowerCase();
+
+    // Length and format check
+    if (email.length > 100 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: "Invalid email address." });
+    }
+
     await pool.query(
       "UPDATE newsletter_subscribers SET unsubscribed_at = NOW() WHERE email = $1",
-      [email.trim().toLowerCase()]
+      [email]
     );
     res.json({ ok: true, message: "You have been unsubscribed." });
   } catch (err) {
@@ -38,9 +66,13 @@ router.post("/unsubscribe", async function (req, res) {
   }
 });
 
-// GET /api/newsletter/subscribers — admin, requires auth (handled by /api middleware)
-router.get("/subscribers", async function (req, res) {
+// GET /api/newsletter/subscribers — admin only (auth required)
+router.get("/subscribers", authenticate, async function (req, res) {
   try {
+    // Check admin role
+    if (!req.user || (req.user.role !== "admin" && req.user.role !== "owner")) {
+      return res.status(403).json({ error: "Admin access required." });
+    }
     var result = await pool.query(
       "SELECT id, email, subscribed_at, unsubscribed_at FROM newsletter_subscribers ORDER BY subscribed_at DESC"
     );
@@ -51,17 +83,25 @@ router.get("/subscribers", async function (req, res) {
   }
 });
 
-// POST /api/newsletter/send — save as draft (admin)
-router.post("/send", async function (req, res) {
+// POST /api/newsletter/send — save as draft (admin only)
+router.post("/send", authenticate, async function (req, res) {
   try {
+    // Check admin role
+    if (!req.user || (req.user.role !== "admin" && req.user.role !== "owner")) {
+      return res.status(403).json({ error: "Admin access required." });
+    }
     var { subject, body, template, scheduled_at } = req.body;
     if (!subject || !body) {
       return res.status(400).json({ error: "Subject and body are required." });
     }
+    // Validate subject/body length
+    if (subject.length > 200 || body.length > 10000) {
+      return res.status(400).json({ error: "Subject or body too long." });
+    }
     var status = scheduled_at ? "scheduled" : "draft";
     var result = await pool.query(
       "INSERT INTO newsletters (subject, body, template, status, scheduled_at) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-      [subject, body, template || "simple", status, scheduled_at || null]
+      [subject.trim(), body.trim(), template || "simple", status, scheduled_at || null]
     );
     res.json({ ok: true, newsletter: result.rows[0] });
   } catch (err) {
@@ -70,9 +110,13 @@ router.post("/send", async function (req, res) {
   }
 });
 
-// GET /api/newsletter/drafts — admin
-router.get("/drafts", async function (req, res) {
+// GET /api/newsletter/drafts — admin only (auth required)
+router.get("/drafts", authenticate, async function (req, res) {
   try {
+    // Check admin role
+    if (!req.user || (req.user.role !== "admin" && req.user.role !== "owner")) {
+      return res.status(403).json({ error: "Admin access required." });
+    }
     var result = await pool.query("SELECT * FROM newsletters ORDER BY created_at DESC LIMIT 50");
     res.json({ newsletters: result.rows });
   } catch (err) {

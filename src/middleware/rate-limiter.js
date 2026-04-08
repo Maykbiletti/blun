@@ -32,17 +32,17 @@ function rateLimiter(req, res, next) {
   let limit = PROTECTED_LIMIT;
 
   // Public endpoints (strict limit)
-  if (req.path === '/contact' ||
-      req.path === '/newsletter/subscribe' ||
-      req.path === '/newsletter/unsubscribe' ||
-      req.path === '/i18n/detect' ||
-      req.path === '/i18n/languages' ||
-      req.path.startsWith('/i18n/')) {
+  if (req.path === '/api/contact' ||
+      req.path === '/api/newsletter/subscribe' ||
+      req.path === '/api/newsletter/unsubscribe' ||
+      req.path === '/api/i18n/detect' ||
+      req.path === '/api/i18n/languages' ||
+      req.path.startsWith('/api/i18n/')) {
     endpointType = 'public';
     limit = PUBLIC_LIMIT;
   }
   // Admin endpoints (very strict)
-  else if (req.path.startsWith('/admin')) {
+  else if (req.path.startsWith('/api/admin')) {
     endpointType = 'admin';
     limit = ADMIN_LIMIT;
   }
