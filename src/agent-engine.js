@@ -508,16 +508,41 @@ async function heartbeat(agentId) {
           // Check if branch has commits ahead of main
           var ahead = await new Promise(function(res){ cp5.exec("cd /root/blun && git log main.." + br + " --oneline", {timeout:5000}, function(e,o){ res((o||"").trim()); }); });
           if (ahead) {
-            console.log("[operator] Merging " + br + " into main: " + ahead.substring(0,100));
+            console.log("[operator] QA review + merge for " + br + ": " + ahead.substring(0,100));
+            // QA Review: Helmut checks the branch before merge
+            await new Promise(function(res){ cp5.exec("cd /root/blun && git checkout " + br, {timeout:5000}, function(e,o,er){ res(true); }); });
+            var brDiff = await new Promise(function(res){ cp5.exec("cd /root/blun && git diff main..." + br, {timeout:10000,maxBuffer:500000}, function(e,o,er){ res((o||"").substring(0,5000)); }); });
+            var qaPrompt = "Du bist Helmut, QA-Lead. Pruefe diesen Code-Diff vom Branch " + br + ":\n\n" + brDiff + "\n\nPruefe auf: Syntax-Fehler, Sicherheitsluecken, fehlende Error-Handling, ob es zum BLUN-Projekt passt. Wenn du Probleme findest, fixe sie direkt mit Edit/Write. Fuehre node -c auf alle geaenderten .js Dateien aus. Antworte am Ende mit QA:PASS oder QA:FAIL.";
+            var qaArgs = ["--print", "-", "--output-format", "text", "--max-turns", "5", "--model", "claude-sonnet-4-20250514"];
+            var qaResult = await new Promise(function(resolve) {
+              var child = cp5.spawn("claude", qaArgs, { cwd: "/root/blun", timeout: 120000, env: Object.assign({}, process.env, { DISABLE_INTERACTIVITY: "1" }) });
+              var out = "";
+              child.stdin.write(qaPrompt);
+              child.stdin.end();
+              child.stdout.on("data", function(d) { if (out.length < 500000) out += d.toString(); });
+              child.stderr.on("data", function(d) { if (out.length < 500000) out += d.toString(); });
+              child.on("close", function(code) { resolve({ output: out, code: code }); });
+              child.on("error", function(err) { resolve({ output: "", code: -1 }); });
+              setTimeout(function() { try { child.kill("SIGTERM"); } catch(e){} }, 120000);
+            });
+            var qaOutput = qaResult.output || "";
+            var qaPassed = qaOutput.indexOf("QA:PASS") !== -1 || qaOutput.indexOf("PASS") !== -1;
+            console.log("[operator] QA result for " + br + ": " + (qaPassed ? "PASS" : "FAIL") + " (" + qaOutput.length + " chars)");
+            // Commit any QA fixes on the branch
+            await new Promise(function(res){ cp5.exec("cd /root/blun && git add -A && git diff --cached --quiet || git commit -m 'QA fixes by Helmut'", {timeout:10000}, function(e,o,er){ res(true); }); });
+            // Merge to main
             await new Promise(function(res){ cp5.exec("cd /root/blun && git checkout main", {timeout:5000}, function(e,o,er){ res(true); }); });
-            var mergeResult = await new Promise(function(res){ cp5.exec("cd /root/blun && git merge " + br + " --no-edit", {timeout:10000}, function(e,o,er){ res({err:e, out:(o||"")+(er||"")}); }); });
-            if (mergeResult.err) {
-              console.error("[operator] Merge conflict on " + br + ": " + mergeResult.out.substring(0,200));
-              await new Promise(function(res){ cp5.exec("cd /root/blun && git merge --abort", {timeout:5000}, function(e,o,er){ res(true); }); });
+            if (qaPassed) {
+              var mergeResult = await new Promise(function(res){ cp5.exec("cd /root/blun && git merge " + br + " --no-edit", {timeout:10000}, function(e,o,er){ res({err:e, out:(o||"")+(er||"")}); }); });
+              if (mergeResult.err) {
+                console.error("[operator] Merge conflict on " + br + ": " + mergeResult.out.substring(0,200));
+                await new Promise(function(res){ cp5.exec("cd /root/blun && git merge --abort", {timeout:5000}, function(e,o,er){ res(true); }); });
+              } else {
+                console.log("[operator] Merged " + br + " (QA passed)");
+                await new Promise(function(res){ cp5.exec("cd /root/blun && git branch -d " + br, {timeout:5000}, function(e,o,er){ res(true); }); });
+              }
             } else {
-              console.log("[operator] Merged " + br + " successfully");
-              // Delete merged branch
-              await new Promise(function(res){ cp5.exec("cd /root/blun && git branch -d " + br, {timeout:5000}, function(e,o,er){ res(true); }); });
+              console.log("[operator] Branch " + br + " NOT merged — QA failed. Keeping branch for rework.");
             }
           }
         }

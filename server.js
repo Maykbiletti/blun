@@ -52,7 +52,11 @@ const { router: companiesRoutes, companyContext } = require("./src/routes/compan
 const { startAllBots, activeBots } = require("./src/channels/telegram");
 
 const PORT = parseInt(process.env.BLUN_PORT || "3200", 10);
-const API_KEY = process.env.BLUN_API_KEY || "blun-dev-key";
+const API_KEY = process.env.BLUN_API_KEY;
+if (!API_KEY) {
+  console.error('FATAL: BLUN_API_KEY environment variable not set. Server cannot start without proper API key.');
+  process.exit(1);
+}
 
 const app = express();
 
@@ -146,9 +150,17 @@ app.use("/api/i18n", i18nRoutes);
 // Auth middleware — accept cookie session OR x-blun-key header
 app.use("/api", function (req, res, next) {
   if (req.path === "/health" || req.path === "/admin/health" || req.path === "/contact" || req.path === "/newsletter/subscribe" || req.path === "/newsletter/unsubscribe") return next();
-  // Allow localhost requests (internal tool calls)
-  var remoteAddr = req.socket.remoteAddress || req.connection.remoteAddress || "";
-  if (remoteAddr.includes("127.0.0.1") || remoteAddr === "::1") { req.user = {id:1, email:"system@blun.ai", role:"admin", name:"Dieter"}; return next(); }
+  // SECURITY: Localhost bypass only in development mode mit zusätzlicher Prüfung
+  if (process.env.NODE_ENV === 'development') {
+    var remoteAddr = req.socket.remoteAddress || req.connection.remoteAddress || "";
+    var userAgent = req.headers['user-agent'] || "";
+    // Nur für echte localhost-Requests und bekannte Development-Tools
+    if ((remoteAddr === "127.0.0.1" || remoteAddr === "::1") &&
+        (userAgent.includes('node') || userAgent.includes('curl') || userAgent.includes('Postman'))) {
+      req.user = {id:1, email:"system@blun.ai", role:"admin", name:"Development"};
+      return next();
+    }
+  }
   // Check API key first (for programmatic access)
   var key = req.headers["x-blun-key"] || req.headers["x-api-key"];
   if (key && key === API_KEY) return next();
