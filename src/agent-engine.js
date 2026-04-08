@@ -568,28 +568,46 @@ async function heartbeat(agentId) {
       var memBudget = (agent.model && (agent.model.startsWith("local:") || agent.model.includes("gemma") || agent.model.includes("llama"))) ? 500 : 8000;
       var memStr = await loadSmartMemory(agentId, pendingTask.task, memBudget);
 
-      var messages = [
-        { role: "system", content: (identityRow ? identityRow.content + "\n\n" : "") + (agent.system_prompt || "Du bist ein hilfreicher Agent.") + skillStr + memStr },
-        { role: "user", content: "Task: " + pendingTask.task + "\n\nWICHTIG: Du MUSST echten Code produzieren und mit [TOOL:WRITE_FILE:/root/blun/dashboard/dateiname.html] oder [TOOL:WRITE_FILE:/root/blun/src/dateiname.js] ins Projekt schreiben. Keine Konzepte, keine Plaene, keine Markdown-Texte. Nur fertiger, funktionierender Code. Wenn du keinen Code schreibst, wird dein Task als gescheitert gewertet." }
-      ];
+      // === CLI-BASED EXECUTION (like Paperclip) ===
+      var sysContext = (identityRow ? identityRow.content + "\n\n" : "") + (agent.system_prompt || "Du bist ein hilfreicher Agent.") + skillStr + "\n\nKONTEXT AUS MEMORY:\n" + memStr;
+      var taskPrompt = sysContext + "\n\nTask: " + pendingTask.task + "\n\nWICHTIG: Du arbeitest direkt im BLUN-Projekt (/root/blun). Schreibe echten, funktionierenden Code. Aendere oder erstelle Dateien unter /root/blun/dashboard/ oder /root/blun/src/. Keine Konzepte oder Markdown — nur Code.";
 
-      var result = await callLLM(agent.model, messages, agentId);
-      tokens = result.tokens;
-      cost = result.cost;
+      // Use Claude CLI for code tasks, API for non-code (operator dispatch etc.)
+      var cp2 = require("child_process");
+      var cliResult = await new Promise(function(resolve) {
+        var escaped = taskPrompt.replace(/'/g, "'\''");
+        var cmd = "claude -p '" + escaped + "' --output-format text --max-turns 3 --model claude-sonnet-4-20250514 2>&1";
+        cp2.exec(cmd, {
+          cwd: "/root/blun",
+          timeout: 180000,
+          maxBuffer: 2000000,
+          env: Object.assign({}, process.env, { DISABLE_INTERACTIVITY: "1" })
+        }, function(err, stdout, stderr) {
+          resolve({ output: (stdout || "") + (stderr || ""), err: err });
+        });
+      });
 
-      // Execute any tools in the response (CHAT_AGENT, FILE_READ, etc.)
-      var toolResult = await executeTools(agentId, pendingTask.task, result.content);
-      var finalContent = result.content;
-      if (toolResult) {
-        finalContent += String.fromCharCode(10) + String.fromCharCode(10) + "Tool-Ergebnisse:" + String.fromCharCode(10) + toolResult;
+      var finalContent = cliResult.output || "CLI returned no output";
+      if (cliResult.err && cliResult.err.killed) finalContent += " [CLI TIMEOUT]";
+      tokens = 0; cost = 0; // CLI manages its own tokens
+      console.log("[agent-cli] " + agent.name + " finished task, output length: " + finalContent.length);
+      // Quality check: did the CLI actually change files?
+      var cp3 = require("child_process");
+      var gitChanges = await new Promise(function(res){ cp3.exec("cd /root/blun && git diff --name-only", {timeout:5000}, function(e,o,er){ res((o||"").trim()); }); });
+      var codeChanged = gitChanges.split("\n").filter(function(f){ return f.match(/\.(js|html|css|json)$/); }).length > 0;
+      if (codeChanged) {
+        await query("UPDATE agent_tasks SET status = $1, result = $2, completed_at = NOW() WHERE id = $3", ["completed", finalContent, pendingTask.id]);
+        console.log("[agent-cli] " + agent.name + " PRODUCED CODE: " + gitChanges.substring(0,200));
+      } else {
+        await query("UPDATE agent_tasks SET status = $1, result = $2, completed_at = NOW() WHERE id = $3", ["completed_no_code", finalContent, pendingTask.id]);
+        console.log("[agent-cli] " + agent.name + " produced NO code changes, marked as completed_no_code");
       }
-      await query("UPDATE agent_tasks SET status = $1, result = $2, completed_at = NOW() WHERE id = $3", ["completed", finalContent, pendingTask.id]);
       await query("INSERT INTO agent_conversations (agent_id, role, content) VALUES ($1, $2, $3)", [agentId, "user", pendingTask.task]);
       await query("INSERT INTO agent_conversations (agent_id, role, content) VALUES ($1, $2, $3)", [agentId, "assistant", finalContent]);
   // Auto-memory: save last activity
   try {
     var today = new Date().toISOString().substring(0,10);
-    var summary = result.content.substring(0,300).replace(/\n/g,' ');
+    var summary = (finalContent || "").substring(0,300).replace(/\n/g,' ');
     await saveAgentMemory(agentId, 'zuletzt_' + today, 'Chat: ' + (typeof message !== 'undefined' && message ? message : (typeof pendingTask !== 'undefined' && pendingTask ? pendingTask.task : '')).substring(0,80) + ' | Antwort: ' + summary);
   } catch(me) { console.error('[auto-memory]', me.message); }
 
@@ -683,7 +701,7 @@ async function chatWithAgent(agentId, message) {
   // Auto-memory: save last activity
   try {
     var today = new Date().toISOString().substring(0,10);
-    var summary = result.content.substring(0,300).replace(/\n/g,' ');
+    var summary = (finalContent || "").substring(0,300).replace(/\n/g,' ');
     await saveAgentMemory(agentId, 'zuletzt_' + today, 'Chat: ' + (typeof message !== 'undefined' && message ? message : (typeof pendingTask !== 'undefined' && pendingTask ? pendingTask.task : '')).substring(0,80) + ' | Antwort: ' + summary);
   } catch(me) { console.error('[auto-memory]', me.message); }
 
