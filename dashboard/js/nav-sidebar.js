@@ -26,7 +26,7 @@ class NavSidebar {
     window.addEventListener('load', () => this.handleRouting());
 
     // Sidebar-Items generieren
-    this.renderSidebar();
+    // this.renderSidebar();
 
     // Initial navigate
     this.handleRouting();
@@ -59,12 +59,10 @@ class NavSidebar {
       const item = document.createElement('div');
       item.className = 'nav-item';
       item.id = `nav-${key}`;
-      item.setAttribute('data-section', key);
+      item.setAttribute('data-page', key);
       item.innerHTML = `<span>${config.icon}</span><span>${config.name}</span>`;
 
-      item.addEventListener('click', () => {
-        window.location.hash = `#${key}`;
-      });
+      item.addEventListener('click', () => { showPage(key); });
 
       navSection.appendChild(item);
     }
@@ -77,8 +75,8 @@ class NavSidebar {
     if (this.activeSection === section) return;
 
     // Update sidebar active state
-    document.querySelectorAll('.nav-item[data-section]').forEach(item => {
-      item.classList.toggle('active', item.getAttribute('data-section') === section);
+    document.querySelectorAll('.nav-item[data-page]').forEach(item => {
+      item.classList.toggle('active', item.getAttribute('data-page') === section);
     });
 
     // Update page visibility
@@ -115,14 +113,14 @@ class NavSidebar {
   hideSection(section) {
     if (this.sections[section]) {
       this.sections[section].hidden = true;
-      this.renderSidebar();
+      // this.renderSidebar();
     }
   }
 
   showSection(section) {
     if (this.sections[section]) {
       this.sections[section].hidden = false;
-      this.renderSidebar();
+      // this.renderSidebar();
     }
   }
 
@@ -131,21 +129,11 @@ class NavSidebar {
   }
 }
 
-// Auto-init wenn DOM bereit
-if (typeof window !== 'undefined') {
-  window.NavSidebar = NavSidebar;
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-      if (!window._navSidebarInstance) {
-        window._navSidebarInstance = new NavSidebar();
-      }
-    });
-  } else {
-    if (!window._navSidebarInstance) {
-      window._navSidebarInstance = new NavSidebar();
-    }
-  }
+// Auto-init wenn DOM bereit
+if (typeof window !== "undefined") {
+  window.NavSidebar = NavSidebar;
+  // auto-init disabled, handled by index.html DOMContentLoaded
 }
 
-if (typeof module !== 'undefined') module.exports = { NavSidebar };
+if (typeof module !== "undefined") module.exports = { NavSidebar };

@@ -1,0 +1,25 @@
+/*
+ * BLUN Design Tokens
+ * ------------------
+ * Platzhalter — wird durch Hannos Token-File ersetzt sobald er committet.
+ * Import: @import './tokens.css' in globals.css
+ *
+ * Bis dahin nutzen wir die Tailwind-Config (tailwind.config.js)
+ * mit den gleichen Farben aus dem bestehenden Admin-Panel.
+ */
+
+:root {
+  --blun-bg: #0a0a0a;
+  --blun-card: #141414;
+  --blun-border: #1e1e1e;
+  --blun-fg: #fafafa;
+  --blun-fg2: #a1a1aa;
+  --blun-fg3: #52525b;
+  --blun-blue: #3b82f6;
+  --blun-blue-bg: rgba(59, 130, 246, 0.08);
+  --blun-green: #22c55e;
+  --blun-red: #ef4444;
+  --blun-yellow: #eab308;
+  --blun-radius: 8px;
+  --blun-radius-lg: 12px;
+}

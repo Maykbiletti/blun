@@ -393,6 +393,11 @@ Profil
           <div id="modalSshList" style="margin-bottom:6px"></div>
           <button class="btn btn-sm btn-outline" style="width:100%" onclick="openAddConnModal('ssh')">+ Add SSH</button>
         </div>
+        <div style="margin-top:12px">
+          <div style="font-weight:600;font-size:13px;margin-bottom:6px">Tailscale VPN</div>
+          <div id="modalTailscaleList" style="margin-bottom:6px"></div>
+          <button class="btn btn-sm btn-outline" style="width:100%" onclick="openAddConnModal('tailscale')">+ Add Tailscale Node</button>
+        </div>
       </div>
 
     </div>
@@ -417,8 +422,6 @@ Profil
 
 </div>
 
-<!-- PAGE: AGENTS (Network Graph) -->
-<div class="page" id="page-agents" style="display:flex;flex-direction:column;overflow:hidden"></div>
 
 <!-- PAGE: OPERATOR -->
 <div class="page" id="page-operator" style="padding:16px">
@@ -1868,12 +1871,15 @@ function loadWsConnections() {
   api('/api/organisator/agents/'+currentAgent.id+'/memory').then(function(mem){
     var gitConns = [];
     var sshConns = [];
+    var tsConns = [];
     Object.keys(mem||{}).forEach(function(k){
       if(k.startsWith('git_repo_')) try{ gitConns.push(Object.assign({_key:k}, JSON.parse(mem[k]))); }catch(e){}
       if(k.startsWith('ssh_conn_')) try{ sshConns.push(Object.assign({_key:k}, JSON.parse(mem[k]))); }catch(e){}
+      if(k.startsWith('tailscale_')) try{ tsConns.push(Object.assign({_key:k}, JSON.parse(mem[k]))); }catch(e){}
     });
     renderWsGitList(gitConns);
     renderWsSshList(sshConns);
+    renderWsTailscaleList(tsConns);
   });
 }
 function renderWsGitList(list) {
@@ -1892,6 +1898,15 @@ function renderWsSshList(list) {
       '<button class="btn btn-sm btn-outline" style="margin-top:4px;color:var(--red)" data-key="'+c._key+'" onclick="wsDelConn(this)">Entfernen</button></div>';
   }).join('') : '<div style="color:var(--tx2);font-size:12px;padding:4px">Noch keine SSH-Verbindungen</div>';
 }
+function renderWsTailscaleList(list) {
+  document.getElementById('modalTailscaleList').innerHTML = list.length ? list.map(function(c){
+    return '<div class="card" style="padding:8px;margin-bottom:6px;font-size:13px">'+
+      '<div style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:'+(c.status==='online'?'var(--green)':'var(--red)')+'"></span><span style="font-weight:600">'+esc(c.name||'Node')+'</span></div>'+
+      '<div style="color:var(--tx2);font-size:11px;margin-top:2px">'+esc(c.tailscale_ip||'')+' ('+esc(c.public_ip||'')+')</div>'+
+      '<div style="color:var(--tx2);font-size:11px">'+esc(c.role||'')+'</div>'+
+      '<button class="btn btn-sm btn-outline" style="margin-top:4px;color:var(--red)" data-key="'+c._key+'" onclick="wsDelConn(this)">Entfernen</button></div>';
+  }).join('') : '<div style="color:var(--tx2);font-size:12px;padding:4px">Noch keine Tailscale Nodes</div>';
+}
 function addWsConnection(type) {
   // Build company list first
   api('/api/organisator/companies').then(function(cos){
@@ -1905,6 +1920,13 @@ function addWsConnection(type) {
       var token = prompt('GitHub Token (optional):') || '';
       data = JSON.stringify({name:name, url:url, token:token, company:coSel});
       key = 'git_repo_'+Date.now();
+    } else if(type==='tailscale') {
+      var name = prompt('Node-Name (z.B. 65er):'); if(!name) return;
+      var tsIp = prompt('Tailscale IP:'); if(!tsIp) return;
+      var pubIp = prompt('Public IP:') || '';
+      var role = prompt('Rolle (z.B. BLUN Dashboard, Trade Bot):') || '';
+      data = JSON.stringify({name:name, tailscale_ip:tsIp, public_ip:pubIp, role:role, status:'online', company:coSel});
+      key = 'tailscale_'+Date.now();
     } else {
       var name = prompt('SSH Name (z.B. 65er):'); if(!name) return;
       var host = prompt('Host/IP:'); if(!host) return;
@@ -2120,58 +2142,14 @@ function initBlunWS() {
 </div>
 
 <script src="/dashboard/js/workspace-prefs.js"></script>
-<script src="/dashboard/js/nav-sidebar.js"></script>
+<script src="/dashboard/js/nav-sidebar.js?v=2"></script>
 <script src="/dashboard/components/canvas-editor.js"></script>
 <script src="/dashboard/components/agent-network.js"></script>
 <script src="/dashboard/js/agent-network-init.js"></script>
 
 <script>
 // R28 Init: Canvas-Editor, Nav-Sidebar, Workspace-Prefs
-document.addEventListener('DOMContentLoaded', function() {
-  // 1. Restore Workspace Prefs
-  if (window.WorkspacePrefs) {
-    window.WorkspacePrefs.restoreWorkspace();
-  }
-
-  // 2. Initialize Nav-Sidebar (Hash Routing)
-  if (window.NavSidebar && !window._navSidebarInstance) {
-    window._navSidebarInstance = new NavSidebar({
-      onNavigate: function(section) {
-        // Track navigation
-        if (window.WorkspacePrefs) {
-          window.WorkspacePrefs.setLastSection(section);
-        }
-      }
-    });
-  }
-
-  // 3. Initialize Canvas-Editor
-  var canvasContainer = document.getElementById('canvasEditorContainer');
-  if (canvasContainer && window.CanvasEditor) {
-    var wsUrl = null; // Optional WebSocket URL
-    var canvasEditor = new CanvasEditor('canvasEditorContainer', wsUrl);
-    window._canvasEditor = canvasEditor;
-
-    // Handle Canvas Accept
-    document.addEventListener('canvas-accept', function(e) {
-      console.log('Canvas content accepted:', e.detail.content);
-      // API call would go here
-    });
-  }
-
-  // 4. Restore Split Ratio if available
-  if (window._canvasEditor && window.WorkspacePrefs) {
-    var ratio = window.WorkspacePrefs.getSplitRatio();
-    if (ratio) {
-      window._canvasEditor.setSplitRatio(ratio);
-    }
-  }
-
-  // 5. Watch Panel Resizes
-  if (window.WorkspacePrefs) {
-    window.WorkspacePrefs.watchPanelResizes(['canvas-chat-panel', 'canvas-preview-panel']);
-  }
-});
+// R28 DOMContentLoaded removed (broke menu)
 </script>
 
-</body></html>
+</body></html><!-- test -->
