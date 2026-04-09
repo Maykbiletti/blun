@@ -878,6 +878,8 @@ function api(path, opts) {
   opts = opts || {};
   var headers = Object.assign({'Content-Type':'application/json'}, opts.headers || {});
   if (TOKEN) headers['Authorization'] = 'Bearer ' + TOKEN;
+  var cid = localStorage.getItem('blun_company');
+  if (cid) headers['x-company-id'] = cid;
   return fetch(path, Object.assign({}, opts, {headers:headers})).then(function(r) {
     if (r.status === 401) { localStorage.removeItem('blun_token'); TOKEN=''; showLogin(); throw new Error('unauthorized'); }
     return r.json();
@@ -1670,23 +1672,22 @@ function renderCompanies() {
     var isActive = (activeCompany == c.id);
     return '<div class="card" onclick="switchCompany('+c.id+',this)" style="cursor:pointer;border:'+(isActive?'2px solid var(--b)':'1px solid var(--brd)')+'"><div class="card-head"><div class="card-title">'+esc(c.name)+(isActive?' <span class=\'badge badge-green\'>Aktiv</span>':'')+'</div><span class="badge badge-blue">'+(c.agent_count||0)+' Agents</span></div>'+
       '<div style="font-size:12px;color:var(--tx2)">'+esc((c.config&&c.config.description)||'')+'</div>'+
-      (c.logo_url?'<img src="'+esc(c.logo_url)+'" style="height:24px;margin-top:8px">':'')+
+      (c.logo_url?'<img src="'+esc(c.logo_url)+'" style="height:32px;margin-top:8px;border-radius:4px">':'')+
+      '<input type="file" id="logoUpload_'+c.id+'" style="display:none" accept="image/*" onchange="uploadLogo('+c.id+',this)">'+(isActive?'<button class="btn btn-sm btn-outline" style="margin-top:6px;font-size:11px" onclick="event.stopPropagation();document.getElementById('logoUpload_'+c.id+'').click()">Logo hochladen</button>':'')+
       '</div>';
   }).join('');
 }
 function switchCompany(id, el) {
   localStorage.setItem('blun_company', id);
   var comp = companies.find(function(c){return c.id===id;});
-  if(comp) {
-    document.title = comp.name + ' — BLUN';
-    // Show only agents of this company
-    var filtered = agents.filter(function(a){return a.company_id===id;});
-    // Re-render with filtered agents
-    renderAgents(filtered);
-    renderChatList(filtered);
-  }
-  // Re-render company list to show active state
+  if(comp) document.title = comp.name + ' — BLUN';
   renderCompanies();
+  loadAll();
+}
+function clearCompanyFilter() {
+  localStorage.removeItem('blun_company');
+  renderCompanies();
+  loadAll();
 }
 function createCompany() {
   var name=document.getElementById('newCompanyName').value.trim(); if(!name) return;
@@ -1696,6 +1697,17 @@ function createCompany() {
   });
 }
 
+
+function uploadLogo(companyId, input) {
+  if (!input.files || !input.files[0]) return;
+  var fd = new FormData();
+  fd.append('logo', input.files[0]);
+  var headers = {};
+  if (TOKEN) headers['Authorization'] = 'Bearer ' + TOKEN;
+  fetch('/api/organisator/companies/' + companyId + '/logo', { method: 'POST', headers: headers, body: fd }).then(function(r){ return r.json(); }).then(function(d) {
+    if (d.ok) { loadAll(); } else { alert(d.error || 'Upload fehlgeschlagen'); }
+  });
+}
 // ===== CREATE AGENT =====
 function createAgent() {
   var name=document.getElementById('newAgentName').value.trim(); if(!name) return; var tmplKey=document.getElementById('newAgentTemplate')&&document.getElementById('newAgentTemplate').value;
