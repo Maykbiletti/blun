@@ -64,10 +64,10 @@ router.get("/agents", async function(req, res) {
     );
     var activeIds = engine.getActiveAgents();
     // Load skills for all agents in one query
-    var allSkills = await query("SELECT as2.agent_id, s.name FROM agent_skills as2 JOIN skills s ON s.id = as2.skill_id WHERE as2.enabled = true");
+    var allSkills = await query("SELECT as2.agent_id, s.name, s.repo_url FROM agent_skills as2 JOIN skills s ON s.id = as2.skill_id WHERE as2.enabled = true");
     var skillMap = {};
-    allSkills.forEach(function(s) { if (!skillMap[s.agent_id]) skillMap[s.agent_id] = []; skillMap[s.agent_id].push(s.name); });
-    agents.forEach(function(a) { a.runtime_active = activeIds.indexOf(a.id) >= 0; a.skills = skillMap[a.id] || []; });
+    allSkills.forEach(function(s) { if (!skillMap[s.agent_id]) skillMap[s.agent_id] = []; skillMap[s.agent_id].push({name:s.name,url:s.repo_url||''}); });
+    agents.forEach(function(a) { a.runtime_active = activeIds.indexOf(a.id) >= 0; var raw=skillMap[a.id]||[]; a.skills=raw.map(function(x){return x.name;}); a.skill_urls={}; raw.forEach(function(x){if(x.url)a.skill_urls[x.name]=x.url;}); });
     res.json(agents);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });

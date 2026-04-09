@@ -229,44 +229,73 @@ module.exports = function(router, query, queryOne) {
 
 
   // Skill Search — searches GitHub repos for SKILL.md files
+    // Department -> default search keywords mapping
+  var deptKeywords = {
+    'Engineering': ['code_review','code_write','bug_report','test_write','api_docs'],
+    'Marketing': ['social_media','marketing_content','landing_page','brand_voice_test'],
+    'Qualitaetskontrolle': ['code_review','test_write','bug_report'],
+    'Management': ['project_plan','meeting_notes','competitor_analysis','pitch_deck'],
+    'Kreativ': ['brainstorm','video_script','image_describe'],
+    'Daten': ['data_analysis','text_summary','translate']
+  };
+
+  // Auto-assign skills by department
+  router.post('/skills/auto-assign/:agentId', async function(req, res) {
+    try {
+      var dept = req.body.department;
+      if (!dept || !deptKeywords[dept]) return res.status(400).json({error:'Unknown department: '+dept});
+      var skillNames = deptKeywords[dept];
+      var installed = 0;
+      for (var i = 0; i < skillNames.length; i++) {
+        var skill = await queryOne("SELECT id FROM skills WHERE name=$1 AND safe=true", [skillNames[i]]);
+        if (skill) {
+          await query("INSERT INTO agent_skills (agent_id, skill_id, installed_by) VALUES ($1,$2,$3) ON CONFLICT (agent_id,skill_id) DO NOTHING", [req.params.agentId, skill.id, 'auto-dept']);
+          installed++;
+        }
+      }
+      res.json({installed: installed, department: dept});
+    } catch(e) { res.status(500).json({error:e.message}); }
+  });
+
+  // Get department keywords
+  router.get('/skills/departments', function(req, res) {
+    res.json(deptKeywords);
+  });
+
   router.get('/skills/search', async function(req, res) {
     try {
       var q = req.query.q || '';
       if (!q || q.length < 2) return res.json([]);
 
-      var https = require('https');
-      var fetch = function(url) {
-        return new Promise(function(resolve, reject) {
-          https.get(url, { headers: { 'User-Agent': 'BLUN-Skill-Search', 'Accept': 'application/json' } }, function(r) {
-            var d = ''; r.on('data', function(c){ d += c; }); r.on('end', function(){
-              try { resolve(JSON.parse(d)); } catch(e) { resolve([]); }
-            });
-          }).on('error', function(){ resolve([]); });
-        });
-      };
-
-      // Search GitHub for SKILL.md files
-      var results = await fetch('https://api.github.com/search/code?q=' + encodeURIComponent(q + ' filename:SKILL.md') + '&per_page=20');
-      var skills = (results.items || []).map(function(item) {
-        return {
-          name: item.repository.full_name + '/' + item.path,
-          repo: item.repository.full_name,
-          path: item.path,
-          url: item.html_url,
-          raw_url: 'https://raw.githubusercontent.com/' + item.repository.full_name + '/main/' + item.path,
-          description: item.repository.description || '',
-          stars: item.repository.stargazers_count || 0
-        };
+      // Search local DB
+      var local = await query("SELECT id, name, description, category, repo_url FROM skills WHERE safe=true AND (name ILIKE $1 OR description ILIKE $1 OR category ILIKE $1) ORDER BY name", ['%'+q+'%']);
+      var results = local.map(function(s) {
+        return { id: s.id, name: s.name, description: s.description||'', category: s.category||'', repo_url: s.repo_url||'', source: 'local' };
       });
 
-      // Also search known repos
-      var knownRepos = [
-        {repo: 'PramodDutta/qaskills', dir: 'seed-skills'},
-        {repo: 'openclaw/skills', dir: 'skills'}
-      ];
+      // Also try GitHub (3s timeout)
+      try {
+        var https = require('https');
+        var ghResults = await new Promise(function(resolve) {
+          var timer = setTimeout(function(){ resolve({}); }, 3000);
+          https.get('https://api.github.com/search/code?q=' + encodeURIComponent(q + ' filename:SKILL.md') + '&per_page=10',
+            { headers: { 'User-Agent': 'BLUN-Skill-Search', 'Accept': 'application/json' } },
+            function(r) { var d=''; r.on('data',function(chunk){d+=chunk;}); r.on('end',function(){ clearTimeout(timer); try{resolve(JSON.parse(d));}catch(e){resolve({});} }); }
+          ).on('error', function(){ clearTimeout(timer); resolve({}); });
+        });
+        (ghResults.items||[]).forEach(function(item) {
+          results.push({
+            name: (item.path||'').replace(/\/SKILL\.md$/,''),
+            description: item.repository.description||'',
+            repo_url: item.html_url||'',
+            source: 'github',
+            repo: item.repository.full_name,
+            raw_url: 'https://raw.githubusercontent.com/' + item.repository.full_name + '/main/' + item.path
+          });
+        });
+      } catch(e) { /* GitHub failed, local results still work */ }
 
-      res.json(skills);
+      res.json(results);
     } catch(e) { res.status(500).json({ error: e.message }); }
   });
-
 };
