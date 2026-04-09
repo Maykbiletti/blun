@@ -1,0 +1,79 @@
+/* BLUN.ai Dark Theme CSS Custom Properties
+   Frontend: Petra | Design & Frontend Team
+   Usage: <body data-theme="dark"> toggles dark mode
+*/
+
+:root {
+  /* Light Theme (Default) */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-tertiary: #f1f5f9;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+  --accent-color: #3b82f6;
+  --accent-hover: #2563eb;
+  --border-color: #e2e8f0;
+  --shadow-color: rgba(15, 23, 42, 0.08);
+}
+
+[data-theme="dark"] {
+  /* Dark Theme Variables */
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-tertiary: #334155;
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --accent-color: #60a5fa;
+  --accent-hover: #3b82f6;
+  --border-color: #475569;
+  --shadow-color: rgba(0, 0, 0, 0.3);
+}
+
+/* Base Elements Dark Mode Support */
+[data-theme="dark"] body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .card,
+[data-theme="dark"] .panel {
+  background-color: var(--bg-secondary);
+  border-color: var(--border-color);
+  box-shadow: 0 1px 3px var(--shadow-color);
+}
+
+[data-theme="dark"] .btn-primary {
+  background-color: var(--accent-color);
+  color: white;
+}
+
+[data-theme="dark"] .btn-primary:hover {
+  background-color: var(--accent-hover);
+}
+
+[data-theme="dark"] input,
+[data-theme="dark"] textarea,
+[data-theme="dark"] select {
+  background-color: var(--bg-tertiary);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder {
+  color: var(--text-muted);
+}
+
+/* Dark Theme Toggle Animation */
+* {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+/* Component-specific dark mode utilities */
+.dark-bg-primary { background-color: var(--bg-primary); }
+.dark-bg-secondary { background-color: var(--bg-secondary); }
+.dark-text-primary { color: var(--text-primary); }
+.dark-text-secondary { color: var(--text-secondary); }
+.dark-border { border-color: var(--border-color); }

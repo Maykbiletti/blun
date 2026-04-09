@@ -1,0 +1,225 @@
+/* Migration Wizard Step-Indicator Styling */
+.migration-wizard {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    margin: 20px 0;
+}
+
+.step-indicator {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 40px;
+    position: relative;
+}
+
+.step-indicator::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: #e0e0e0;
+    transform: translateY(-50%);
+    z-index: 1;
+}
+
+.step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    z-index: 2;
+    background: white;
+    padding: 0 15px;
+}
+
+.step-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 16px;
+    border: 3px solid #e0e0e0;
+    background-color: white;
+    color: #666;
+    transition: all 0.3s ease;
+}
+
+.step-label {
+    margin-top: 10px;
+    font-size: 14px;
+    text-align: center;
+    color: #666;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+/* Abgeschlossene Schritte - Grün */
+.step.completed .step-circle {
+    background-color: #28a745;
+    border-color: #28a745;
+    color: white;
+}
+
+.step.completed .step-circle::after {
+    content: '✓';
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.step.completed .step-label {
+    color: #28a745;
+    font-weight: 600;
+}
+
+/* Aktiver Schritt - Blau hervorheben */
+.step.active .step-circle {
+    background-color: #007bff;
+    border-color: #007bff;
+    color: white;
+    box-shadow: 0 0 0 4px rgba(0, 123, 255, 0.25);
+}
+
+.step.active .step-label {
+    color: #007bff;
+    font-weight: 600;
+}
+
+/* Progress Line für abgeschlossene Bereiche */
+.step-indicator.progress-1::before {
+    background: linear-gradient(to right, #28a745 25%, #e0e0e0 25%);
+}
+
+.step-indicator.progress-2::before {
+    background: linear-gradient(to right, #28a745 50%, #e0e0e0 50%);
+}
+
+.step-indicator.progress-3::before {
+    background: linear-gradient(to right, #28a745 75%, #e0e0e0 75%);
+}
+
+.step-indicator.progress-4::before {
+    background: #28a745;
+}
+
+/* Migration Content Bereiche */
+.migration-content {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 30px;
+    margin-bottom: 20px;
+}
+
+.migration-content h3 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #333;
+    font-size: 20px;
+}
+
+.migration-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #e0e0e0;
+}
+
+.btn-migration {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-migration.primary {
+    background-color: #007bff;
+    color: white;
+}
+
+.btn-migration.primary:hover {
+    background-color: #0056b3;
+}
+
+.btn-migration.secondary {
+    background-color: #6c757d;
+    color: white;
+}
+
+.btn-migration.secondary:hover {
+    background-color: #545b62;
+}
+
+.btn-migration:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .step-indicator {
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .step-indicator::before {
+        display: none;
+    }
+
+    .step {
+        padding: 0;
+    }
+
+    .migration-actions {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .btn-migration {
+        width: 100%;
+    }
+}
+
+/* Animation für Schritt-Übergänge */
+@keyframes stepComplete {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.step.completed .step-circle {
+    animation: stepComplete 0.6s ease-out;
+}
+
+/* Fehlerzustände */
+.step.error .step-circle {
+    background-color: #dc3545;
+    border-color: #dc3545;
+    color: white;
+}
+
+.step.error .step-circle::after {
+    content: '✕';
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.step.error .step-label {
+    color: #dc3545;
+    font-weight: 600;
+}

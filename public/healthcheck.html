@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Health Check</title>
+    <style>
+        body {
+            font-family: monospace;
+            margin: 20px;
+            background: #f0f0f0;
+        }
+        .status {
+            color: #28a745;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        .timestamp {
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="status">✅ BLUN.ai Server OK</div>
+    <div class="timestamp">Timestamp: <span id="timestamp"></span></div>
+
+    <script>
+        // Aktueller Timestamp
+        const now = new Date();
+        document.getElementById('timestamp').textContent = now.toISOString();
+
+        // Page Load Time für Monitoring
+        const loadTime = performance.now();
+        console.log('Health check loaded in', Math.round(loadTime), 'ms');
+    </script>
+</body>
+</html>
