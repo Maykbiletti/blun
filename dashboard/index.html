@@ -1011,7 +1011,7 @@ function renderStats(s) {
 function getOperator() { return agents.find(function(a){return a.role&&(a.role.toLowerCase().indexOf('operator')>=0||a.role.toLowerCase().indexOf('organisator')>=0||a.role.toLowerCase().indexOf('ceo')>=0);}); }
 function agentColor(a) { return COLORS[(a.id||0)%COLORS.length]; }
 function agentInitials(a) { var n=a.name||'?'; var parts=n.split(/\s+/); return parts.length>1?parts[0][0]+parts[1][0]:n.substring(0,2); }
-function agentAvatar(a) { var slug=(a.name||'agent').toLowerCase().replace(/\s+/g,'-'); return '<img src="avatars/'+slug+'.svg" alt="'+esc(a.name)+'" style="width:100%;height:100%;border-radius:50%;object-fit:cover">'; }
+function agentAvatar(a) { var slug=(a.name||'agent').toLowerCase().replace(/\s+/g,'-'); return '<img src="/dashboard/avatars/'+slug+'.svg" alt="'+esc(a.name)+'" style="width:100%;height:100%;border-radius:50%;object-fit:cover">'; }
 
 
 function renderSkillTags(skills, skillUrls) {
