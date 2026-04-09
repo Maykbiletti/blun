@@ -747,6 +747,19 @@ async function heartbeat(agentId) {
       // Load memory
       var memBudget = (agent.model && (agent.model.startsWith("local:") || agent.model.includes("gemma") || agent.model.includes("llama"))) ? 500 : 8000;
       var memStr = await loadSmartMemory(agentId, pendingTask.task, memBudget);
+      // Load auto_memory (decisions/blockers from previous tasks)
+      try {
+        var autoMemRow = await queryOne("SELECT content FROM agent_memory WHERE agent_id = $1 AND key = 'auto_memory'", [agentId]);
+        if (autoMemRow && autoMemRow.content) {
+          var am = JSON.parse(autoMemRow.content);
+          var amStr = '';
+          if (am.decisions && am.decisions.length) amStr += '\nFruehere Entscheidungen: ' + am.decisions.join('; ');
+          if (am.blockers && am.blockers.length) amStr += '\nBekannte Blocker: ' + am.blockers.join('; ');
+          if (am.context && am.context.length) amStr += '\nKontext: ' + am.context.join('; ');
+          if (am.last_task) amStr += '\nLetzter Task: ' + am.last_task;
+          if (amStr) memStr += '\n\n=== AUTO-MEMORY ===\n' + amStr;
+        }
+      } catch(amLoad) { /* silent */ }
 
       // === PAPERCLIP-STYLE CLI EXECUTION ===
       var sysContext = (identityRow ? identityRow.content + "\n\n" : "") + (agent.system_prompt || "Du bist ein hilfreicher Agent.") + skillStr + "\n\nKONTEXT AUS MEMORY:\n" + memStr;
@@ -886,6 +899,46 @@ async function heartbeat(agentId) {
     var summary = (fc || "").substring(0,300).replace(/\n/g,' ');
     await saveAgentMemory(agentId, 'zuletzt_' + today, 'Chat: ' + (typeof message !== 'undefined' && message ? message : (typeof pendingTask !== 'undefined' && pendingTask ? pendingTask.task : '')).substring(0,80) + ' | Antwort: ' + summary);
   } catch(me) { console.error('[auto-memory]', me.message); }
+
+  // === AUTO-MEMORY SKILL: Extract decisions, blockers, context ===
+  try {
+    var fc2 = typeof finalContent !== 'undefined' ? (finalContent || '') : '';
+    if (fc2.length > 50) {
+      var lines = fc2.split('\n');
+      var decisions = [];
+      var blockers = [];
+      var context = [];
+      for (var li = 0; li < lines.length; li++) {
+        var line = lines[li].trim();
+        var lower = line.toLowerCase();
+        if (line.length < 15 || line.length > 300) continue;
+        // Decision patterns
+        if (lower.match(/\b(implemented|created|added|fixed|changed|switched|replaced|built|wrote|deployed|installed|configured|set up|refactored)\b/)) {
+          decisions.push(line.substring(0, 200));
+        }
+        // Blocker patterns
+        if (lower.match(/\b(error|failed|blocked|cannot|broken|missing|timeout|rejected|denied|permission|not found|crash)\b/)) {
+          blockers.push(line.substring(0, 200));
+        }
+        // Context patterns (file paths, configs)
+        if (line.match(/\/(root|src|dashboard|api|config)\//)) {
+          context.push(line.substring(0, 200));
+        }
+      }
+      var autoMem = {
+        decisions: decisions.slice(-5),
+        blockers: blockers.slice(-3),
+        context: context.slice(-3),
+        last_task: (typeof pendingTask !== 'undefined' && pendingTask ? pendingTask.task : '').substring(0, 100),
+        has_code: typeof hasChanges !== 'undefined' ? hasChanges : false,
+        updated: new Date().toISOString()
+      };
+      await saveAgentMemory(agentId, 'auto_memory', JSON.stringify(autoMem));
+      if (decisions.length > 0 || blockers.length > 0) {
+        console.log('[auto-memory] ' + agent.name + ': ' + decisions.length + ' decisions, ' + blockers.length + ' blockers saved');
+      }
+    }
+  } catch(amErr) { console.error('[auto-memory-extract]', amErr.message); }
 
       status = "active";
     } catch (err) {
