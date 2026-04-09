@@ -1,0 +1,348 @@
+/* BLUN Dashboard Mobile Navigation — 60fps Optimized */
+
+/* ── Basis Container ──────────────────────────────────────────── */
+.mobile-nav-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  /* Browser-Kompatibilität: dvh mit vh Fallback */
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  /* Touch-Action optimiert für bessere Swipe-Gesten */
+  touch-action: pan-x pan-y pinch-zoom;
+  -webkit-overflow-scrolling: touch;
+  /* GPU Layer Promotion für 60fps Performance */
+  transform: translateZ(0);
+  will-change: transform;
+  background: var(--blun-bg-primary, #0a0a0f);
+}
+
+/* ── Navigation Track (Swipe Container) ──────────────────────── */
+.nav-track {
+  display: flex;
+  width: 300vw; /* 3 Panels: Menu, Main, Canvas */
+  height: 100%;
+  /* Performance-optimierte Transform */
+  will-change: transform;
+  transform: translate3d(-100vw, 0, 0); /* Start bei Main Panel */
+  transition: transform 280ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* ── Panel Basis ─────────────────────────────────────────────── */
+.nav-panel {
+  width: 100vw;
+  height: 100%;
+  flex-shrink: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  /* Overscroll-Behavior: verhindert Browser-Swipe-Back */
+  overscroll-behavior-x: none;
+  overscroll-behavior-y: contain;
+  position: relative;
+  /* GPU Layer per Panel für Performance */
+  transform: translateZ(0);
+}
+
+/* ── Left Panel: Sidebar Menu ───────────────────────────────── */
+.nav-panel-menu {
+  background: var(--blun-bg-sidebar, #111118);
+  /* Safe Area Support für Notch-Geräte */
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+}
+
+.nav-panel-menu .menu-header {
+  height: 60px;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--blun-text-primary, #e2e8f0);
+}
+
+.nav-panel-menu .menu-items {
+  padding: 16px 0;
+}
+
+/* Thumb-optimierte Menu Items (44px Touch-Target) */
+.nav-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  min-height: 44px;
+  color: var(--blun-text-secondary, #94a3b8);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 150ms ease;
+  -webkit-tap-highlight-color: transparent;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+}
+
+.nav-menu-item:hover,
+.nav-menu-item:focus {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--blun-text-primary, #e2e8f0);
+}
+
+.nav-menu-item:active {
+  background: rgba(255, 255, 255, 0.08);
+  transform: scale(0.98);
+}
+
+.nav-menu-item.active {
+  background: rgba(99, 102, 241, 0.15);
+  color: #6366f1;
+  border-right: 3px solid #6366f1;
+}
+
+.nav-menu-item .icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  font-size: 18px;
+}
+
+/* ── Center Panel: Dashboard Main ───────────────────────────── */
+.nav-panel-main {
+  background: var(--blun-bg-main, #0f0f1a);
+  /* Safe Area Support */
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ── Right Panel: Canvas ────────────────────────────────────── */
+.nav-panel-canvas {
+  background: var(--blun-bg-canvas, #111118);
+  /* Safe Area Support */
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* ── Navigation States ──────────────────────────────────────── */
+.nav-track.show-menu {
+  transform: translate3d(0, 0, 0);
+}
+
+.nav-track.show-main {
+  transform: translate3d(-100vw, 0, 0);
+}
+
+.nav-track.show-canvas {
+  transform: translate3d(-200vw, 0, 0);
+}
+
+/* ── Bottom Navigation Dots (Thumb-optimiert) ───────────────── */
+.nav-dots-container {
+  position: fixed;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 12px;
+  padding: 8px 16px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 24px;
+  z-index: 100;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.nav-dot {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 200ms ease;
+  -webkit-tap-highlight-color: transparent;
+  /* Sichtbarer Punkt */
+  position: relative;
+}
+
+.nav-dot::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4);
+  transition: all 200ms ease;
+}
+
+.nav-dot.active::after {
+  background: #6366f1;
+  width: 24px;
+  border-radius: 4px;
+}
+
+.nav-dot:hover::after {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.nav-dot:active {
+  transform: scale(0.95);
+}
+
+/* ── Swipe Overlay (Touch Feedback) ─────────────────────────── */
+.nav-swipe-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 50;
+}
+
+.nav-swipe-indicator {
+  position: absolute;
+  top: 50%;
+  width: 4px;
+  height: 60px;
+  background: rgba(99, 102, 241, 0.6);
+  border-radius: 2px;
+  transform: translateY(-50%) scaleY(0);
+  transition: transform 200ms ease;
+  backdrop-filter: blur(4px);
+}
+
+.nav-swipe-indicator.left {
+  left: 20px;
+}
+
+.nav-swipe-indicator.right {
+  right: 20px;
+}
+
+.nav-swipe-indicator.show {
+  transform: translateY(-50%) scaleY(1);
+}
+
+/* ── Performance & Accessibility ────────────────────────────── */
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  .nav-track,
+  .nav-menu-item,
+  .nav-dot,
+  .nav-swipe-indicator {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+  .nav-panel-menu {
+    border-right: 2px solid #fff;
+  }
+  .nav-menu-item {
+    border: 1px solid transparent;
+  }
+  .nav-menu-item:focus {
+    border: 1px solid #fff;
+    outline: 2px solid #fff;
+  }
+}
+
+/* Large Text Support */
+@media (prefers-reduced-data: reduce) {
+  .nav-track {
+    transition-duration: 150ms;
+  }
+}
+
+/* ── Responsive Breakpoints ─────────────────────────────────── */
+
+/* Kleine Phones (320-479px) */
+@media (max-width: 479px) {
+  .nav-panel-menu .menu-header {
+    height: 50px;
+    font-size: 15px;
+    padding: 0 16px;
+  }
+  .nav-menu-item {
+    padding: 12px 16px;
+    font-size: 14px;
+  }
+  .nav-dots-container {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+    gap: 8px;
+  }
+}
+
+/* Tablet Portrait (768px+) - Optional Side-by-Side */
+@media (min-width: 768px) and (orientation: portrait) {
+  .mobile-nav-container {
+    /* Optional: Hybrid Layout für große Tablets */
+    position: relative;
+    height: auto;
+  }
+  .nav-track {
+    width: 100%;
+    transform: none !important;
+  }
+  .nav-panel {
+    width: auto;
+    flex: 1;
+  }
+  .nav-panel-menu {
+    max-width: 320px;
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .nav-dots-container {
+    display: none;
+  }
+}
+
+/* Desktop (1024px+) - Vollständige Desktop-Navigation */
+@media (min-width: 1024px) {
+  .mobile-nav-container {
+    display: none; /* Desktop verwendet andere Navigation */
+  }
+}
+
+/* ── Dark/Light Theme Support ───────────────────────────────── */
+@media (prefers-color-scheme: light) {
+  .nav-panel-menu {
+    background: var(--blun-bg-sidebar-light, #f8fafc);
+    color: var(--blun-text-primary-light, #1e293b);
+  }
+  .nav-panel-main {
+    background: var(--blun-bg-main-light, #ffffff);
+  }
+  .nav-panel-canvas {
+    background: var(--blun-bg-canvas-light, #f1f5f9);
+  }
+  .nav-menu-item {
+    color: var(--blun-text-secondary-light, #64748b);
+  }
+  .nav-menu-item:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--blun-text-primary-light, #1e293b);
+  }
+  .nav-dots-container {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+  }
+}
