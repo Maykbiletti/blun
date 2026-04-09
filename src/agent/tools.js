@@ -2,7 +2,7 @@
 const { exec } = require("child_process");
 const { readFile, writeFile } = require("fs/promises");
 const { query } = require("../db");
-const { broadcast } = require("./redis");
+const { broadcast } = require("../redis");
 const crypto = require("crypto");
 
 const tools = new Map();
