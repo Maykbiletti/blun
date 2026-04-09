@@ -586,7 +586,7 @@ async function heartbeat(agentId) {
             var brDiff = await new Promise(function(res){ cp5.exec("cd /root/blun && git diff main..." + br, {timeout:10000,maxBuffer:500000}, function(e,o,er){ res((o||"").substring(0,5000)); }); });
             var qaCwd = require("fs").existsSync(brWorktree) ? brWorktree : "/root/blun";
             var qaPrompt = "Du bist Helmut, QA-Lead. Pruefe diesen Code-Diff vom Branch " + br + ":" + "\n\n" + brDiff + "\n\n" + "CHECKLISTE (ALLE Punkte pruefen!):" + "\n1. SYNTAX: Fuehre node -c auf alle geaenderten .js Dateien aus" + "\n2. SICHERHEIT: Keine XSS, SQL-Injection, fehlende Auth-Checks" + "\n3. INTEGRATION: Sind neue CSS/JS Dateien in dashboard/index.html eingebunden? Neue .css braucht <link>, neue .js in components/ braucht <script>. Wenn nicht: SELBST einbinden!" + "\n4. REFERENZEN: Werden neue Funktionen/Variablen auch aufgerufen? Tote Imports?" + "\n5. VERBOTENE DATEIEN: agent-engine.js, code-tools.js, server.js, .env, package.json — wenn geaendert: QA:FAIL" + "\n6. FUNKTIONSTEST: Stelle sicher dass die Aenderung sichtbar/nutzbar ist (nicht nur Backend ohne Frontend)" + "\nWenn du Probleme findest, fixe sie direkt. Antworte am Ende mit QA:PASS oder QA:FAIL + Begruendung.";
-            var qaArgs = ["--print", "-", "--output-format", "text", "--max-turns", "5", "--model", "claude-sonnet-4-20250514"];
+            var qaArgs = ["--print", "-", "--output-format", "text", "--max-turns", "15", "--model", "claude-sonnet-4-20250514"];
             var qaResult = await new Promise(function(resolve) {
               var child = cp5.spawn("claude", qaArgs, { cwd: qaCwd, timeout: 120000, env: Object.assign({}, process.env, { DISABLE_INTERACTIVITY: "1" }) });
               var out = "";
@@ -750,7 +750,7 @@ async function heartbeat(agentId) {
 
       // === PAPERCLIP-STYLE CLI EXECUTION ===
       var sysContext = (identityRow ? identityRow.content + "\n\n" : "") + (agent.system_prompt || "Du bist ein hilfreicher Agent.") + skillStr + "\n\nKONTEXT AUS MEMORY:\n" + memStr;
-      var taskPrompt = sysContext + "\n\nTask: " + pendingTask.task + "\n\nWICHTIG: Du arbeitest direkt im BLUN-Projekt. Schreibe echten, funktionierenden Code. Aendere oder erstelle Dateien. Keine Konzepte oder Markdown." + "\nVERBOTENE DATEIEN (NIEMALS aendern): agent-engine.js, code-tools.js, server.js, .env, package.json. Schreibe Empfehlung statt Aenderung.";
+      var taskPrompt = sysContext + "\n\nTask: " + pendingTask.task + "\n\nWICHTIG: Schreibe SOFORT Code in die genannte Datei. KEIN Analysieren, kein Erklaeren, kein Planen. Erster Schritt = Write Tool benutzen. Du hast Zugriff auf Read, Write, Edit, Bash. Benutze sie JETZT." + "\nVERBOTENE DATEIEN (NIEMALS aendern): agent-engine.js, code-tools.js, server.js, .env, package.json. Schreibe Empfehlung statt Aenderung.";
 
       // === WORKSPACE ISOLATION: Each agent works in own git worktree ===
       var cp2 = require("child_process");
@@ -790,7 +790,7 @@ async function heartbeat(agentId) {
         cliArgs = ["exec", "--skip-git-repo-check", "--full-auto"];
         if (cliModel) cliArgs.push("--model", cliModel);
       } else {
-        cliArgs = ["--print", "-", "--output-format", "stream-json", "--verbose", "--max-turns", "5"];
+        cliArgs = ["--print", "-", "--output-format", "stream-json", "--verbose", "--max-turns", "15"];
         if (cliModel) cliArgs.push("--model", cliModel);
       }
 
