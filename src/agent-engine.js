@@ -660,7 +660,8 @@ function autoQaReject(filePath, worktreePath) {
           console.log("[agent-cli] Committed in worktree " + worktreePath);
           // Push QA task to Helmut (ID 29)
           try {
-            await query("INSERT INTO agent_tasks (agent_id, task, status, created_at) VALUES (29, $1, 'pending', NOW())", ["QA REVIEW: Branch " + branchName + " von " + agent.name + " hat neue Commits. Pruefe den Code in " + worktreePath + " mit git diff main.." + branchName + ". Bei QA:PASS melde an Operator zum Mergen. Bei QA:FAIL beschreibe die Probleme."]);
+            // QA REVIEWS DISABLED - caused spam spiral
+            // await query("INSERT INTO agent_tasks (agent_id, task, status, created_at) VALUES (29, $1, 'pending', NOW())", ["QA REVIEW: Branch " + branchName + " von " + agent.name + " hat neue Commits. Pruefe den Code in " + worktreePath + " mit git diff main.." + branchName + ". Bei QA:PASS melde an Operator zum Mergen. Bei QA:FAIL beschreibe die Probleme."]);
             console.log("[agent-cli] QA task created for Helmut: " + branchName);
           } catch(qaErr) { console.error("[agent-cli] QA task creation error:", qaErr.message); }
         }
