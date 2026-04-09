@@ -619,15 +619,32 @@ async function heartbeat(agentId) {
       }
     } catch(mergeErr) { console.error("[operator] Merge error:", mergeErr.message); }
 
-    // === AUTO-DEPLOY: If all tasks completed and none pending, push + deploy ===
+    // === AUTO-DEPLOY: Schedule-based deploy system ===
     try {
-      var pendingCount = await queryOne("SELECT count(*) as c FROM agent_tasks WHERE agent_id IN (SELECT id FROM blun_agents WHERE company_id = $1) AND status IN ('pending','in_progress','processing')", [agent.company_id]);
-      var recentCompleted = await queryOne("SELECT count(*) as c FROM agent_tasks WHERE agent_id IN (SELECT id FROM blun_agents WHERE company_id = $1) AND status = 'completed' AND completed_at > NOW() - interval '30 min'", [agent.company_id]);
+      // Deploy schedule from settings (default: 7:00, 10:00, 13:00, 16:00, 19:00)
+      var deploySettingsRow = await queryOne("SELECT content FROM agent_memory WHERE agent_id = $1 AND key = 'deploy_schedule'", [agentId]);
+      var deploySchedule = deploySettingsRow ? JSON.parse(deploySettingsRow.content) : { hours: [7, 10, 13, 16, 19], windowMinutes: 15 };
+      var now = new Date();
+      var currentHour = now.getHours();
+      var currentMin = now.getMinutes();
       var lastDeploy = await queryOne("SELECT content FROM agent_memory WHERE agent_id = $1 AND key = 'last_auto_deploy'", [agentId]);
       var lastDeployTime = lastDeploy ? new Date(lastDeploy.content) : new Date(0);
-      var minutesSinceDeploy = (Date.now() - lastDeployTime.getTime()) / 60000;
 
-      if (recentCompleted && parseInt(recentCompleted.c) >= 3 && minutesSinceDeploy > 30) {
+      // Check if we're in a deploy window
+      var inDeployWindow = false;
+      for (var dh = 0; dh < deploySchedule.hours.length; dh++) {
+        if (currentHour === deploySchedule.hours[dh] && currentMin < (deploySchedule.windowMinutes || 15)) {
+          inDeployWindow = true;
+          break;
+        }
+      }
+      // Also allow deploy if 30min since last and enough work done
+      var minutesSinceDeploy = (Date.now() - lastDeployTime.getTime()) / 60000;
+      var recentCompleted = await queryOne("SELECT count(*) as c FROM agent_tasks WHERE agent_id IN (SELECT id FROM blun_agents WHERE company_id = $1) AND status = 'completed' AND completed_at > NOW() - interval '60 min'", [agent.company_id]);
+      var enoughWork = recentCompleted && parseInt(recentCompleted.c) >= 3;
+
+      if ((inDeployWindow || (enoughWork && minutesSinceDeploy > 60)) && minutesSinceDeploy > 15) {
+        console.log("[operator] Deploy check: window=" + inDeployWindow + " enough=" + enoughWork + " lastDeploy=" + Math.round(minutesSinceDeploy) + "min ago");
         var cp2 = require("child_process");
         // Check for real code changes first
         var diffCheck = await new Promise(function(res){ cp2.exec("cd /root/blun && git diff --name-only HEAD", {timeout:5000}, function(e,o,er){ res((o||"").trim()); }); });
