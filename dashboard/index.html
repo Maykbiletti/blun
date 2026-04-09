@@ -1187,13 +1187,13 @@ function assignOperatorTask() {
       var h=d.length?d.map(function(t){var sc=t.status==='completed'?'green':t.status==='pending'?'amber':'blue';return '<div class="card" style="margin-bottom:6px;padding:8px"><div style="display:flex;align-items:center;gap:8px"><span class="badge badge-'+sc+'">'+esc(t.status)+'</span><span style="font-size:13px">'+esc(t.task)+'</span></div></div>';}).join(''):'<div class="empty">Keine Tasks</div>';
       document.getElementById('opTaskList').innerHTML=h;
     });
-  }).catch(function(e){alert('Fehler: '+e.message);});
+  }).catch(function(e){blunAlert('Fehler: '+e.message, 'error');});
 }
 
 function opInstallSkill() {
   var op=getOperator(); if(!op) return;
   var sel=document.getElementById('opSkillPicker'); if(!sel||!sel.value) return;
-  api('/api/skills/'+sel.value+'/assign/'+op.id,{method:'POST'}).then(function(){loadSkillMatrix();alert('Skill zugewiesen!');}).catch(function(e){alert('Fehler: '+e.message);});
+  api('/api/skills/'+sel.value+'/assign/'+op.id,{method:'POST'}).then(function(){loadSkillMatrix();alert('Skill zugewiesen!');}).catch(function(e){blunAlert('Fehler: '+e.message, 'error');});
 }
 function opSearchSkills() {
   var q = document.getElementById('opSkillSearch').value.trim();
@@ -1216,7 +1216,7 @@ function opQuickAssignSkill(skillId) {
   var op = getOperator(); if (!op) return;
   api('/api/organisator/agents/'+op.id+'/skills/'+skillId, {method:'POST', body:JSON.stringify({by:'search-assign'})}).then(function(){
     alert('Skill zugewiesen!'); loadSkillMatrix();
-  }).catch(function(e){ alert('Fehler: '+e.message); });
+  }).catch(function(e){ blunAlert('Fehler: '+e.message, 'error'); });
 }
 function opAutoAssignByDept() {
   var op = getOperator(); if (!op) return;
@@ -1224,7 +1224,7 @@ function opAutoAssignByDept() {
   if (!dept) { alert('Agent hat keine Abteilung'); return; }
   api('/api/organisator/skills/auto-assign/'+op.id, {method:'POST', body:JSON.stringify({department:dept})}).then(function(r){
     alert(r.installed + ' Skills fuer ' + r.department + ' zugewiesen!'); loadSkillMatrix();
-  }).catch(function(e){ alert('Fehler: '+e.message); });
+  }).catch(function(e){ blunAlert('Fehler: '+e.message, 'error'); });
 }
 function opImportFromSearch(url) {
   api('/api/organisator/skills/import-github',{method:'POST',body:JSON.stringify({url:url})}).then(function(skill){
@@ -1233,7 +1233,7 @@ function opImportFromSearch(url) {
     loadSkillCatalog();
     loadOpSkillPicker();
     opSearchSkills();
-  }).catch(function(e){ alert('Fehler: ' + e.message); });
+  }).catch(function(e){ blunAlert('Fehler: ' + e.message, 'error'); });
 }
 function opImportGithub() {
   var op=getOperator(); if(!op) return;
@@ -1246,7 +1246,7 @@ function opImportGithub() {
     document.getElementById('opGithubUrl').value='';
     loadSkillMatrix(); loadSkillCatalog();
     alert('Skill "'+skill.name+'" importiert und zugewiesen!');
-  }).catch(function(e){btn.textContent='Importieren'; btn.disabled=false; alert('Fehler: '+e.message);});
+  }).catch(function(e){btn.textContent='Importieren'; btn.disabled=false; blunAlert('Fehler: '+e.message, 'error');});
 }
 function loadOpSkillPicker() {
   var op=getOperator(); if(!op) return;
@@ -1286,7 +1286,7 @@ function toggleSkillAssign(agentId, skillId, enable) {
   api('/api/organisator/agents/' + agentId + '/skills/' + skillId + '/toggle', {method:'PUT', body:JSON.stringify({enabled:enable})}).then(function() { loadSkillMatrix(); });
 }
 function autoAssignAllSkills() {
-  if(!confirm('Alle Agents automatisch Skills nach Rolle zuweisen?')) return;
+  if(!await blunConfirm('Alle Agents automatisch Skills nach Rolle zuweisen?')) return;
   api('/api/organisator/skills/matrix').then(function(d) {
     var ags = d.agents || [];
     var promises = ags.map(function(ag) { return api('/api/organisator/agents/' + ag.id + '/skills/auto', {method:'POST'}); });
@@ -1359,46 +1359,72 @@ function saveAgentDetail() {
 }
 
 
-function resetAllTasks() {
-  if (!confirm('Alle Tasks auf pending zuruecksetzen?')) return;
+
+var _blunModalResolve = null;
+function blunConfirm(text) {
+  return new Promise(function(resolve) {
+    _blunModalResolve = resolve;
+    document.getElementById('blunModalIcon').textContent = '⚠️';
+    document.getElementById('blunModalText').textContent = text;
+    document.getElementById('blunModalBtns').innerHTML = '<button class="btn btn-sm btn-outline" onclick="closeBlunModal(false)">Abbrechen</button><button class="btn btn-sm btn-primary" onclick="closeBlunModal(true)">OK</button>';
+    document.getElementById('blunModal').style.display = 'flex';
+  });
+}
+function blunAlert(text, type) {
+  return new Promise(function(resolve) {
+    _blunModalResolve = resolve;
+    var icon = type === 'error' ? '❌' : type === 'success' ? '✅' : 'ℹ️';
+    document.getElementById('blunModalIcon').textContent = icon;
+    document.getElementById('blunModalText').textContent = text;
+    document.getElementById('blunModalBtns').innerHTML = '<button class="btn btn-sm btn-primary" onclick="closeBlunModal(true)">OK</button>';
+    document.getElementById('blunModal').style.display = 'flex';
+  });
+}
+function closeBlunModal(val) {
+  document.getElementById('blunModal').style.display = 'none';
+  if (_blunModalResolve) { _blunModalResolve(val); _blunModalResolve = null; }
+}
+
+async function resetAllTasks() {
+  if (!await blunConfirm('Alle Tasks auf pending zuruecksetzen?')) return;
   api('/api/organisator/tasks/reset', {method:'POST'}).then(function(d){
     loadAll();
-    alert((d.count||0) + ' Tasks zurueckgesetzt');
-  }).catch(function(e){ alert('Fehler: ' + e.message); });
+    blunAlert((d.count||0) + ' Tasks zurueckgesetzt', 'success');
+  }).catch(function(e){ blunAlert('Fehler: ' + e.message, 'error'); });
 }
 
-function bulkStartAgents() {
-  if (!confirm('Alle Agents starten?')) return;
+async function bulkStartAgents() {
+  if (!await blunConfirm('Alle Agents starten?')) return;
   api('/api/organisator/agents/bulk-start', {method:'POST'}).then(function(d){
     loadAll();
-    alert((d.count||'Alle') + ' Agents gestartet');
-  }).catch(function(e){ alert('Fehler: ' + e.message); });
+    blunAlert((d.count||'Alle') + ' Agents gestartet', 'success');
+  }).catch(function(e){ blunAlert('Fehler: ' + e.message, 'error'); });
 }
-function bulkStopAgents() {
-  if (!confirm('Alle Agents stoppen?')) return;
+async function bulkStopAgents() {
+  if (!await blunConfirm('Alle Agents stoppen?')) return;
   api('/api/organisator/agents/bulk-stop', {method:'POST'}).then(function(d){
     loadAll();
-    alert((d.count||'Alle') + ' Agents gestoppt');
-  }).catch(function(e){ alert('Fehler: ' + e.message); });
+    blunAlert((d.count||'Alle') + ' Agents gestoppt', 'success');
+  }).catch(function(e){ blunAlert('Fehler: ' + e.message, 'error'); });
 }
 
-function bulkChangeModel() {
+async function bulkChangeModel() {
   var sel = document.getElementById('bulkModelSelect');
   if (!sel || !sel.value) return;
   var model = sel.value;
-  if (!confirm('Alle Agents auf "' + model + '" umstellen?')) return;
+  if (!await blunConfirm('Alle Agents auf "' + model + '" umstellen?')) return;
   api('/api/organisator/agents/bulk-model', {method:'PUT', body:JSON.stringify({model:model})}).then(function(d){
     loadAll();
-    alert((d.count||'Alle') + ' Agents umgestellt auf ' + model);
-  }).catch(function(e){ alert('Fehler: ' + e.message); });
+    blunAlert((d.count||'Alle') + ' Agents umgestellt auf ' + model, 'success');
+  }).catch(function(e){ blunAlert('Fehler: ' + e.message, 'error'); });
 }
 function initBulkModelSelect() {
   var sel = document.getElementById('bulkModelSelect');
   if (sel) sel.innerHTML = modelOptions('');
 }
 
-function deleteAgent() {
-  if(!currentAgent||!confirm('Agent "'+currentAgent.name+'" wirklich loeschen?')) return;
+async function deleteAgent() {
+  if(!currentAgent||!await blunConfirm('Agent "'+currentAgent.name+'" wirklich loeschen?')) return;
   api('/api/organisator/agents/'+currentAgent.id,{method:'DELETE'}).then(function(){closeModal('agentDetailModal');loadAll();});
 }
 function toggleAgent(id, start) {
@@ -1433,16 +1459,16 @@ function addMemory(agentId) {
   var key = document.getElementById('newMemKey').value.trim();
   var val = document.getElementById('newMemVal').value.trim();
   if(!key||!val) return;
-  api('/api/organisator/agents/'+agentId+'/memory',{method:'POST',body:JSON.stringify({key:key,value:val})}).then(function(){loadAgentMemories(agentId);}).catch(function(e){alert('Fehler: '+e.message);});
+  api('/api/organisator/agents/'+agentId+'/memory',{method:'POST',body:JSON.stringify({key:key,value:val})}).then(function(){loadAgentMemories(agentId);}).catch(function(e){blunAlert('Fehler: '+e.message, 'error');});
 }
 function deleteMemory(agentId, key) {
-  if(!confirm('Erinnerung "'+key+'" loeschen?')) return;
-  api('/api/organisator/agents/'+agentId+'/memory/'+encodeURIComponent(key),{method:'DELETE'}).then(function(){loadAgentMemories(agentId);}).catch(function(e){alert('Fehler: '+e.message);});
+  if(!await blunConfirm('Erinnerung "'+key+'" loeschen?')) return;
+  api('/api/organisator/agents/'+agentId+'/memory/'+encodeURIComponent(key),{method:'DELETE'}).then(function(){loadAgentMemories(agentId);}).catch(function(e){blunAlert('Fehler: '+e.message, 'error');});
 }
 function editMemory(agentId, key, val) {
   var newVal = prompt('Wert bearbeiten:', val.replace(/\\n/g,'\n'));
   if(newVal===null) return;
-  api('/api/organisator/agents/'+agentId+'/memory',{method:'POST',body:JSON.stringify({key:key,value:newVal})}).then(function(){loadAgentMemories(agentId);}).catch(function(e){alert('Fehler: '+e.message);});
+  api('/api/organisator/agents/'+agentId+'/memory',{method:'POST',body:JSON.stringify({key:key,value:newVal})}).then(function(){loadAgentMemories(agentId);}).catch(function(e){blunAlert('Fehler: '+e.message, 'error');});
 }
 
 function loadAgentSkills(id) {
@@ -1474,7 +1500,7 @@ function loadAgentSkills(id) {
 function installSkillFromPicker(agentId) {
   var sel=document.getElementById('skillPicker');
   if(!sel||!sel.value) return;
-  api('/api/skills/'+sel.value+'/assign/'+agentId,{method:'POST'}).then(function(){loadAgentSkills(agentId);}).catch(function(e){alert('Fehler: '+e.message);});
+  api('/api/skills/'+sel.value+'/assign/'+agentId,{method:'POST'}).then(function(){loadAgentSkills(agentId);}).catch(function(e){blunAlert('Fehler: '+e.message, 'error');});
 }
 function installSkillFromGithub(agentId) {
   var url=document.getElementById('skillGithubUrl').value.trim();
@@ -1488,15 +1514,15 @@ function installSkillFromGithub(agentId) {
     alert('Skill importiert und zugewiesen!');
   }).catch(function(e){
     btn.textContent='Von GitHub'; btn.disabled=false;
-    alert('Fehler: '+e.message);
+    blunAlert('Fehler: '+e.message, 'error');
   });
 }
 function autoInstallSkills(agentId) {
-  api('/api/agents/'+agentId+'/skills/auto',{method:'POST'}).then(function(){loadAgentSkills(agentId);}).catch(function(e){alert('Fehler: '+e.message);});
+  api('/api/agents/'+agentId+'/skills/auto',{method:'POST'}).then(function(){loadAgentSkills(agentId);}).catch(function(e){blunAlert('Fehler: '+e.message, 'error');});
 }
 function removeSkill(agentId, skillId) {
-  if(!confirm('Skill entfernen?')) return;
-  api('/api/skills/'+skillId+'/assign/'+agentId,{method:'DELETE'}).then(function(){loadAgentSkills(agentId);}).catch(function(e){alert('Fehler: '+e.message);});
+  if(!await blunConfirm('Skill entfernen?')) return;
+  api('/api/skills/'+skillId+'/assign/'+agentId,{method:'DELETE'}).then(function(){loadAgentSkills(agentId);}).catch(function(e){blunAlert('Fehler: '+e.message, 'error');});
 }
 
 function loadAgentTasks(id) {
@@ -1515,11 +1541,11 @@ function loadAgentTasks(id) {
   });
 }
 function updateTaskStatus(agentId, taskId, newStatus) {
-  api('/api/organisator/agents/'+agentId+'/tasks/'+taskId,{method:'PUT',body:JSON.stringify({status:newStatus})}).then(function(){loadAgentTasks(agentId);}).catch(function(e){alert('Fehler: '+e.message);});
+  api('/api/organisator/agents/'+agentId+'/tasks/'+taskId,{method:'PUT',body:JSON.stringify({status:newStatus})}).then(function(){loadAgentTasks(agentId);}).catch(function(e){blunAlert('Fehler: '+e.message, 'error');});
 }
 function deleteTask(agentId, taskId) {
-  if(!confirm('Task loeschen?')) return;
-  api('/api/organisator/agents/'+agentId+'/tasks/'+taskId,{method:'DELETE'}).then(function(){loadAgentTasks(agentId);}).catch(function(e){alert('Fehler: '+e.message);});
+  if(!await blunConfirm('Task loeschen?')) return;
+  api('/api/organisator/agents/'+agentId+'/tasks/'+taskId,{method:'DELETE'}).then(function(){loadAgentTasks(agentId);}).catch(function(e){blunAlert('Fehler: '+e.message, 'error');});
 }
 
 function renderIssues(agentId) {
@@ -1755,7 +1781,7 @@ function downloadModel(id) {
   api('/api/models/'+encodeURIComponent(id)+'/download',{method:'POST'}).then(function(){alert('Download gestartet fuer '+id);setTimeout(loadModels,2000);}).catch(function(e){alert('Download fehlgeschlagen: '+e.message);});
 }
 function deleteModel(id) {
-  if(!confirm('Modell "'+id+'" wirklich loeschen?')) return;
+  if(!await blunConfirm('Modell "'+id+'" wirklich loeschen?')) return;
   api('/api/models/'+encodeURIComponent(id),{method:'DELETE'}).then(function(){setTimeout(loadModels,1000);}).catch(function(){});
 }
 
@@ -1899,7 +1925,7 @@ function saveAgentWs() {
   })}).then(function(){currentAgent.model=document.getElementById('wsFieldModel').value||currentAgent.model; loadAll();});
 }
 function deleteAgentWs() {
-  if(!currentAgent||!confirm('Agent "'+currentAgent.name+'" loeschen?')) return;
+  if(!currentAgent||!await blunConfirm('Agent "'+currentAgent.name+'" loeschen?')) return;
   api('/api/organisator/agents/'+currentAgent.id,{method:'DELETE'}).then(function(){closeWorkspace();loadAll();});
 }
 function assignTaskWs() {
@@ -2011,7 +2037,7 @@ function wsDeleteMem(btn) {
       .then(function(){
         if(document.getElementById('wsPanel').classList.contains('open')) loadWsMemory(agentId);
         else loadAgentMemories(agentId);
-      }).catch(function(e){alert('Fehler: '+e.message);});
+      }).catch(function(e){blunAlert('Fehler: '+e.message, 'error');});
   });
 }
 
@@ -2080,13 +2106,13 @@ function saveIdentityEdit() {
       currentAgent.system_prompt = content;
       closeModal('identityEditModal');
       _identityEditKey = null;
-    }).catch(function(e){alert('Fehler: '+e.message);});
+    }).catch(function(e){blunAlert('Fehler: '+e.message, 'error');});
   } else {
     api('/api/organisator/agents/'+currentAgent.id+'/memory', {method:'POST', body:JSON.stringify({key:key, value:content})}).then(function(){
       closeModal('identityEditModal');
       _identityEditKey = null;
       loadWsMemory(currentAgent.id);
-    }).catch(function(e){alert('Fehler: '+e.message);});
+    }).catch(function(e){blunAlert('Fehler: '+e.message, 'error');});
   }
 }
 
@@ -2189,7 +2215,7 @@ function assignSkillToAgent(skillId, label) {
   api('/api/skills/'+skillId+'/assign/'+_marketplaceAgentId, {method:'POST'}).then(function(){
     closeModal('skillMarketModal');
     loadWsSkills(_marketplaceAgentId);
-  }).catch(function(e){ alert('Fehler: '+e.message); });
+  }).catch(function(e){ blunAlert('Fehler: '+e.message, 'error'); });
 }
 
 function installFromUrl() {
@@ -2634,4 +2660,13 @@ function initBlunWS() {
   <script src="components/electron-updater.js"></script>
   <script src="components/skill-card.js"></script>
   <script src="components/toast.js"></script>
+
+<div id="blunModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);align-items:center;justify-content:center">
+  <div style="background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:24px;max-width:400px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.5)">
+    <div id="blunModalIcon" style="font-size:28px;margin-bottom:12px"></div>
+    <div id="blunModalText" style="font-size:14px;color:var(--tx);margin-bottom:20px;line-height:1.5"></div>
+    <div id="blunModalBtns" style="display:flex;gap:8px;justify-content:flex-end"></div>
+  </div>
+</div>
+
 </body></html><!-- test -->
