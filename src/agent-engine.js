@@ -847,24 +847,43 @@ async function heartbeat(agentId) {
       var sysContext = (identityRow ? identityRow.content + "\n\n" : "") + (agent.system_prompt || "Du bist ein hilfreicher Agent.") + skillStr + "\n\nKONTEXT AUS MEMORY:\n" + memStr;
       var taskPrompt = sysContext + "\n\nTask: " + pendingTask.task + "\n\nWICHTIG: Schreibe SOFORT Code in die genannte Datei. KEIN Analysieren, kein Erklaeren, kein Planen. Erster Schritt = Write Tool benutzen. Du hast Zugriff auf Read, Write, Edit, Bash. Benutze sie JETZT." + "\nVERBOTENE DATEIEN (NIEMALS aendern): agent-engine.js, code-tools.js, server.js, .env, package.json. Schreibe Empfehlung statt Aenderung.";
 
-      // === WORKSPACE ISOLATION: Each agent works in own git worktree ===
+      // === ISOLATED WORKSPACE (Paperclip-style): Agent gets empty dir, only produces new files ===
       var cp2 = require("child_process");
+      var fs2 = require("fs");
+      var pathMod = require("path");
       var branchName = "agent/" + (agent.name || "agent-" + agentId).toLowerCase().replace(/[^a-z0-9]/g, "-");
       var worktreePath = "/root/blun-worktrees/" + branchName.replace(/\//g, "-");
+      var workspacePath = "/root/blun-workspaces/" + branchName.replace(/\//g, "-");
+      // Ensure worktree exists for committing later
       try {
-        var fs2 = require("fs");
         if (!fs2.existsSync("/root/blun-worktrees")) fs2.mkdirSync("/root/blun-worktrees", {recursive:true});
         if (!fs2.existsSync(worktreePath)) {
-          // Create branch if needed
           var branchExists = await new Promise(function(res){ cp2.exec("cd /root/blun && git branch --list " + branchName, {timeout:5000}, function(e,o){ res((o||"").trim().length > 0); }); });
           if (!branchExists) {
             await new Promise(function(res){ cp2.exec("cd /root/blun && git branch " + branchName + " main", {timeout:5000}, function(e,o,er){ res(true); }); });
           }
-          // Create worktree
           await new Promise(function(res){ cp2.exec("cd /root/blun && git worktree add " + worktreePath + " " + branchName, {timeout:10000}, function(e,o,er){ res(true); }); });
-          console.log("[agent-cli] Created worktree " + worktreePath + " on " + branchName);
         }
       } catch(brErr) { console.error("[agent-cli] Worktree error:", brErr.message); }
+      // Fresh isolated workspace — agent can ONLY create new files here
+      try {
+        if (fs2.existsSync(workspacePath)) cp2.execSync("rm -rf " + workspacePath, {timeout:5000});
+        fs2.mkdirSync(workspacePath, {recursive:true});
+        // Copy ONLY task-relevant files (read-only context)
+        var taskFiles = [];
+        var pathPatterns = (pendingTask.task || "").match(/(?:dashboard|src|shared|electron|blun-mobile)\/[a-zA-Z0-9_.\/-]+/g) || [];
+        for (var pp = 0; pp < pathPatterns.length; pp++) {
+          var srcFile = "/root/blun/" + pathPatterns[pp];
+          if (fs2.existsSync(srcFile)) taskFiles.push(pathPatterns[pp]);
+        }
+        for (var tf = 0; tf < taskFiles.length; tf++) {
+          var destDir = pathMod.dirname(workspacePath + "/" + taskFiles[tf]);
+          fs2.mkdirSync(destDir, {recursive:true});
+          fs2.copyFileSync("/root/blun/" + taskFiles[tf], workspacePath + "/" + taskFiles[tf]);
+        }
+        fs2.writeFileSync(workspacePath + "/WORKSPACE.md", "# Agent Workspace\nIsolierter Workspace. Schreibe neue Dateien hier.\nHauptprojekt: /root/blun (NUR LESEN!)\nNur Dateien in diesem Verzeichnis werden uebernommen.\n");
+        console.log("[agent-cli] Isolated workspace: " + workspacePath + " (" + taskFiles.length + " files copied)");
+      } catch(wsErr) { console.error("[agent-cli] Workspace error:", wsErr.message); workspacePath = worktreePath; }
 
       // Check for existing session to resume (Paperclip-style)
       var sessionRow = await queryOne("SELECT content FROM agent_memory WHERE agent_id = $1 AND key = 'cli_session_id'", [agentId]);
@@ -893,7 +912,7 @@ async function heartbeat(agentId) {
       await acquireCliSlot(agent.name);
       var cliResult = await new Promise(function(resolve) {
         var child = cp2.spawn(cliCmd, cliArgs, {
-          cwd: worktreePath,
+          cwd: workspacePath,
           timeout: 180000,
           env: Object.assign({}, process.env, { DISABLE_INTERACTIVITY: "1" })
         });
@@ -950,12 +969,34 @@ async function heartbeat(agentId) {
       tokens = 0; cost = 0;
       console.log("[agent-cli] " + agent.name + " exit=" + cliResult.code + " session=" + (newSessionId||"none") + " output=" + finalContent.length + "ch");
 
-      // Commit in agent worktree (no checkout switching needed!)
+      // Copy files from isolated workspace to worktree, then commit
       try {
+        // Walk workspace and copy new/changed files to worktree
+        var wsFiles = [];
+        var walkWs = function(dir, base) {
+          try {
+            var items = fs2.readdirSync(dir);
+            for (var wi = 0; wi < items.length; wi++) {
+              if (items[wi] === "WORKSPACE.md" || items[wi] === ".git" || items[wi] === "node_modules") continue;
+              var full = dir + "/" + items[wi];
+              var rel = (base ? base + "/" : "") + items[wi];
+              try { if (fs2.statSync(full).isDirectory()) { walkWs(full, rel); } else { wsFiles.push(rel); } } catch(e) {}
+            }
+          } catch(e) {}
+        };
+        if (workspacePath !== worktreePath) {
+          walkWs(workspacePath, "");
+          for (var wf = 0; wf < wsFiles.length; wf++) {
+            var wsDest = worktreePath + "/" + wsFiles[wf];
+            fs2.mkdirSync(pathMod.dirname(wsDest), {recursive:true});
+            fs2.copyFileSync(workspacePath + "/" + wsFiles[wf], wsDest);
+          }
+          console.log("[agent-cli] Copied " + wsFiles.length + " files from workspace to worktree");
+        }
         var hasChanges = await new Promise(function(res){ cp2.exec("cd " + worktreePath + " && git status --porcelain", {timeout:5000}, function(e,o){ res((o||"").trim().length > 0); }); });
         if (hasChanges) {
           var commitMsg = agent.name + ": " + pendingTask.task.substring(0,60);
-          await new Promise(function(res){ cp2.exec('cd ' + worktreePath + ' && git add -A && git commit -m "' + commitMsg.replace(/"/g, '\\"') + '"', {timeout:10000}, function(e,o,er){ res(true); }); });
+          await new Promise(function(res){ cp2.exec('cd ' + worktreePath + ' && git add -A && git commit -m "' + commitMsg.replace(/"/g, '\"') + '"', {timeout:10000}, function(e,o,er){ res(true); }); });
           console.log("[agent-cli] Committed in worktree " + worktreePath);
           // Push QA task to Helmut (ID 29)
           try {
