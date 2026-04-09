@@ -530,6 +530,14 @@ async function heartbeat(agentId) {
               var dm = dLines[di].match(/\[TOOL:ASSIGN_TASK:(\d+):([^\]]+)\]/i);
               if (dm) {
                 await query("INSERT INTO agent_tasks (agent_id, task, status, created_at) VALUES ($1, $2, 'pending', NOW())", [parseInt(dm[1]), dm[2].trim()]);
+                // Dispatch Quality Check: reject non-code tasks
+                var taskDesc = dm[2].trim().toLowerCase();
+                var isCodeTask = taskDesc.indexOf("erstell") !== -1 || taskDesc.indexOf("bau") !== -1 || taskDesc.indexOf("fix") !== -1 || taskDesc.indexOf("css") !== -1 || taskDesc.indexOf("route") !== -1 || taskDesc.indexOf("component") !== -1 || taskDesc.indexOf("dashboard") !== -1 || taskDesc.indexOf("api") !== -1 || taskDesc.indexOf("html") !== -1 || taskDesc.indexOf("funktion") !== -1 || taskDesc.indexOf("seite") !== -1 || taskDesc.indexOf("button") !== -1 || taskDesc.indexOf("implement") !== -1 || taskDesc.indexOf("add") !== -1 || taskDesc.indexOf("endpoint") !== -1;
+                var isBanned = taskDesc.indexOf("analys") !== -1 || taskDesc.indexOf("report") !== -1 || taskDesc.indexOf("pipeline") !== -1 || taskDesc.indexOf("strategi") !== -1 || taskDesc.indexOf("konzept") !== -1 || taskDesc.indexOf("plan") !== -1 || taskDesc.indexOf("auswert") !== -1 || taskDesc.indexOf("zusammenfass") !== -1;
+                if (isBanned && !isCodeTask) {
+                  console.log("[operator] REJECTED non-code task: " + dm[2].trim().substring(0,80));
+                  continue;
+                }
                 console.log("[operator] Auto-assigned task to agent " + dm[1] + ": " + dm[2].trim().substring(0,60));
               }
             }
@@ -904,7 +912,7 @@ async function chatWithAgent(agentId, message) {
   // Auto-memory: save last activity
   try {
     var today = new Date().toISOString().substring(0,10);
-    var summary = (finalContent || "").substring(0,300).replace(/\n/g,' ');
+    var summary = (result.content || "").substring(0,300).replace(/\n/g,' ');
     await saveAgentMemory(agentId, 'zuletzt_' + today, 'Chat: ' + (typeof message !== 'undefined' && message ? message : (typeof pendingTask !== 'undefined' && pendingTask ? pendingTask.task : '')).substring(0,80) + ' | Antwort: ' + summary);
   } catch(me) { console.error('[auto-memory]', me.message); }
 
