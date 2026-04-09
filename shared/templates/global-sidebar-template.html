@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BLUN — Page Title</title>
+
+    <!-- Global Sidebar CSS -->
+    <link rel="stylesheet" href="/shared/css/global-sidebar.css">
+
+    <!-- Your Page-Specific CSS -->
+    <link rel="stylesheet" href="./your-page.css">
+</head>
+<body>
+    <!-- Global Sidebar wird hier eingefügt -->
+    <nav id="global-sidebar-container"></nav>
+
+    <!-- Your Page Content -->
+    <main class="page-content">
+        <div class="topbar">
+            <h1>Page Title</h1>
+        </div>
+
+        <div class="container">
+            <!-- Your content here -->
+        </div>
+    </main>
+
+    <!-- Global Sidebar Script -->
+    <script src="/shared/components/GlobalSidebar.js"></script>
+
+    <!-- Initialize Global Sidebar -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const sidebar = new GlobalSidebar({
+                container: document.getElementById('global-sidebar-container'),
+                onNavigate: (section) => {
+                    console.log('Navigated to:', section);
+                }
+            });
+
+            // Optional: Set active page
+            sidebar.setActive('billing'); // or 'models', 'websites', 'software'
+        });
+    </script>
+</body>
+</html>

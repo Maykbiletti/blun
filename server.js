@@ -142,7 +142,9 @@ app.use(cookieParser());
 
 // Security middleware — before all routes
 const inputSanitizer = require("./src/middleware/input-sanitizer");
+const inputValidator = require("./src/middleware/input-validator");
 const rateLimiter = require("./src/middleware/rate-limiter");
+app.use(inputValidator);
 app.use(inputSanitizer);
 app.use(rateLimiter);
 

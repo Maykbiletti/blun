@@ -1,8 +1,9 @@
-const { app, BrowserWindow, Tray, Menu, dialog } = require("electron");
+const { app, BrowserWindow, Tray, Menu, dialog, ipcMain } = require("electron");
 const { autoUpdater } = require("electron-updater");
 const path = require("path");
 const { fork } = require("child_process");
 const http = require("http");
+const fs = require("fs");
 
 const SERVER_PORT = 3200;
 const SERVER_URL = "http://localhost:" + SERVER_PORT;
@@ -101,6 +102,222 @@ function createWindow() {
   return mainWindow;
 }
 
+/**
+ * IPC Handler Registry
+ */
+function setupIpcHandlers() {
+  // Handle invoke requests with responses
+  ipcMain.on("ipc:invoke", async (event, data) => {
+    const { id, channel, args } = data;
+    let result = null;
+    let error = null;
+    let success = false;
+
+    try {
+      switch (channel) {
+        // App Control
+        case "app:minimize":
+          if (mainWindow) mainWindow.minimize();
+          success = true;
+          break;
+        case "app:maximize":
+          if (mainWindow) mainWindow.maximize();
+          success = true;
+          break;
+        case "app:restore":
+          if (mainWindow) mainWindow.restore();
+          success = true;
+          break;
+        case "app:close":
+          if (mainWindow) mainWindow.close();
+          success = true;
+          break;
+        case "app:checkUpdates":
+          result = await autoUpdater.checkForUpdates();
+          success = true;
+          break;
+        case "app:restart":
+          app.relaunch();
+          app.exit(0);
+          break;
+
+        // Window Control
+        case "window:setTitle":
+          if (mainWindow) mainWindow.setTitle(args.title || "BLUN");
+          success = true;
+          break;
+        case "window:getInfo":
+          if (mainWindow) {
+            const bounds = mainWindow.getBounds();
+            result = {
+              bounds,
+              isMaximized: mainWindow.isMaximized(),
+              isMinimized: mainWindow.isMinimized(),
+              isFocused: mainWindow.isFocused()
+            };
+          }
+          success = true;
+          break;
+        case "window:focus":
+          if (mainWindow) {
+            mainWindow.focus();
+            mainWindow.show();
+          }
+          success = true;
+          break;
+
+        // File System Operations
+        case "fs:openFile":
+          result = await dialog.showOpenDialog(mainWindow, {
+            properties: ["openFile"],
+            ...args
+          });
+          success = true;
+          break;
+        case "fs:saveFile":
+          result = await dialog.showSaveDialog(mainWindow, args);
+          success = true;
+          break;
+        case "fs:selectDirectory":
+          result = await dialog.showOpenDialog(mainWindow, {
+            properties: ["openDirectory"],
+            ...args
+          });
+          success = true;
+          break;
+        case "fs:read":
+          try {
+            result = fs.readFileSync(args.path, "utf-8");
+            success = true;
+          } catch (err) {
+            error = `Failed to read file: ${err.message}`;
+          }
+          break;
+        case "fs:write":
+          try {
+            fs.writeFileSync(args.path, args.content, "utf-8");
+            success = true;
+          } catch (err) {
+            error = `Failed to write file: ${err.message}`;
+          }
+          break;
+        case "fs:delete":
+          try {
+            fs.unlinkSync(args.path);
+            success = true;
+          } catch (err) {
+            error = `Failed to delete file: ${err.message}`;
+          }
+          break;
+
+        // System Info
+        case "system:getInfo":
+          result = {
+            platform: process.platform,
+            arch: process.arch,
+            nodeVersion: process.version,
+            appVersion: app.getVersion(),
+            appPath: app.getAppPath()
+          };
+          success = true;
+          break;
+
+        // Notifications
+        case "notification:show":
+          await dialog.showMessageBox(mainWindow, {
+            type: args.type || "info",
+            title: args.title,
+            message: args.message,
+            detail: args.detail
+          });
+          success = true;
+          break;
+        case "dialog:messageBox":
+          result = await dialog.showMessageBox(mainWindow, args);
+          success = true;
+          break;
+
+        // Preferences (stored in app.getPath('userData'))
+        case "prefs:get":
+          try {
+            const prefsPath = path.join(app.getPath("userData"), "prefs.json");
+            if (fs.existsSync(prefsPath)) {
+              const prefs = JSON.parse(fs.readFileSync(prefsPath, "utf-8"));
+              result = prefs[args.key] !== undefined ? prefs[args.key] : args.defaultValue;
+            } else {
+              result = args.defaultValue;
+            }
+            success = true;
+          } catch (err) {
+            error = `Failed to get preference: ${err.message}`;
+          }
+          break;
+        case "prefs:set":
+          try {
+            const prefsPath = path.join(app.getPath("userData"), "prefs.json");
+            let prefs = {};
+            if (fs.existsSync(prefsPath)) {
+              prefs = JSON.parse(fs.readFileSync(prefsPath, "utf-8"));
+            }
+            prefs[args.key] = args.value;
+            fs.writeFileSync(prefsPath, JSON.stringify(prefs, null, 2), "utf-8");
+            success = true;
+          } catch (err) {
+            error = `Failed to set preference: ${err.message}`;
+          }
+          break;
+        case "prefs:getAll":
+          try {
+            const prefsPath = path.join(app.getPath("userData"), "prefs.json");
+            if (fs.existsSync(prefsPath)) {
+              result = JSON.parse(fs.readFileSync(prefsPath, "utf-8"));
+            } else {
+              result = {};
+            }
+            success = true;
+          } catch (err) {
+            error = `Failed to get preferences: ${err.message}`;
+          }
+          break;
+
+        // Dev Tools
+        case "dev:openTools":
+          if (mainWindow && IS_DEV) {
+            mainWindow.webContents.openDevTools();
+          }
+          success = true;
+          break;
+        case "dev:reload":
+          if (mainWindow) {
+            mainWindow.reload();
+          }
+          success = true;
+          break;
+
+        default:
+          error = `Unknown IPC channel: ${channel}`;
+      }
+    } catch (err) {
+      error = err.message;
+    }
+
+    // Send response back to renderer
+    event.sender.send("ipc:response", {
+      id,
+      success: success && !error,
+      result,
+      error
+    });
+  });
+
+  // Handle one-way messages
+  ipcMain.on("ipc:message", (event, data) => {
+    const { channel, args } = data;
+    console.log(`[IPC] Message on ${channel}:`, args);
+    // Process one-way messages here if needed
+  });
+}
+
 function createTray() {
   try {
     tray = new Tray(path.join(__dirname, "assets", "icon.png"));
@@ -168,6 +385,7 @@ function setupAutoUpdater() {
 }
 
 app.whenReady().then(function () {
+  setupIpcHandlers();
   createWindow();
   createTray();
 
