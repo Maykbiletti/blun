@@ -619,6 +619,36 @@ async function heartbeat(agentId) {
       }
     } catch(mergeErr) { console.error("[operator] Merge error:", mergeErr.message); }
 
+    // === AUTO-INTEGRATE: Detect new components and add to index.html ===
+    try {
+      var fs4 = require("fs");
+      var cp7 = require("child_process");
+      var indexPath = "/root/blun/dashboard/index.html";
+      var compDir = "/root/blun/dashboard/components/";
+      if (fs4.existsSync(indexPath) && fs4.existsSync(compDir)) {
+        var indexHtml = fs4.readFileSync(indexPath, "utf8");
+        var compFiles = fs4.readdirSync(compDir).filter(function(f) { return f.endsWith(".js"); });
+        var added = [];
+        for (var ci = 0; ci < compFiles.length; ci++) {
+          var scriptTag = 'components/' + compFiles[ci];
+          if (indexHtml.indexOf(scriptTag) === -1) {
+            // Insert before closing </body> tag
+            var insertPoint = indexHtml.lastIndexOf("</body>");
+            if (insertPoint !== -1) {
+              var newTag = '  <script src="components/' + compFiles[ci] + '"></script>\n';
+              indexHtml = indexHtml.substring(0, insertPoint) + newTag + indexHtml.substring(insertPoint);
+              added.push(compFiles[ci]);
+            }
+          }
+        }
+        if (added.length > 0) {
+          fs4.writeFileSync(indexPath, indexHtml);
+          console.log("[auto-integrate] Added " + added.length + " new components to index.html: " + added.join(", "));
+          await new Promise(function(res){ cp7.exec("cd /root/blun && BLUN_DEPLOYER=dieter git add dashboard/index.html && BLUN_DEPLOYER=dieter git commit -m 'Auto-integrate: " + added.join(", ") + "'", {timeout:10000}, function(e,o,er){ res(true); }); });
+        }
+      }
+    } catch(intErr) { console.error("[auto-integrate] Error:", intErr.message); }
+
     // === AUTO-DEPLOY: Schedule-based deploy system ===
     try {
       // Deploy schedule from settings (default: 7:00, 10:00, 13:00, 16:00, 19:00)
