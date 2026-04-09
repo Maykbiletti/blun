@@ -254,10 +254,24 @@ textarea{resize:vertical;min-height:80px}
 <div class="login-box">
 <div class="login-logo">BL<span>UN</span></div>
 <div class="login-sub">Dashboard</div>
+<div id="loginTabs" style="display:flex;gap:0;margin-bottom:16px;border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,.1)">
+<div id="tabLogin" class="login-tab active" onclick="switchAuthTab('login')" style="flex:1;text-align:center;padding:8px;cursor:pointer;font-size:13px;font-weight:600;background:var(--b);color:#fff;transition:.2s">Anmelden</div>
+<div id="tabRegister" class="login-tab" onclick="switchAuthTab('register')" style="flex:1;text-align:center;padding:8px;cursor:pointer;font-size:13px;font-weight:600;background:transparent;color:var(--tx2);transition:.2s">Registrieren</div>
+</div>
+<div id="loginForm">
 <input id="loginEmail" type="email" placeholder="Email" autocomplete="email">
 <input id="loginPw" type="password" placeholder="Passwort" autocomplete="current-password">
 <div id="loginErr" class="login-err"></div>
 <button class="login-btn" onclick="doLogin()">Anmelden</button>
+</div>
+<div id="registerForm" style="display:none">
+<input id="regName" type="text" placeholder="Name" autocomplete="name">
+<input id="regEmail" type="email" placeholder="Email" autocomplete="email">
+<input id="regPw" type="password" placeholder="Passwort (min. 8 Zeichen)" autocomplete="new-password">
+<input id="regPw2" type="password" placeholder="Passwort wiederholen" autocomplete="new-password">
+<div id="regErr" class="login-err"></div>
+<button class="login-btn" onclick="doRegister()">Registrieren</button>
+</div>
 </div>
 </div>
 
@@ -726,7 +740,12 @@ Profil
 <script>
 // ===== STATE =====
 var TOKEN = localStorage.getItem('blun_token') || '';
-if(!TOKEN){ fetch('/auth/me',{credentials:'include'}).then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(d){if(d.user&&d.token){TOKEN=d.token;localStorage.setItem('blun_token',TOKEN);USER=d.user;showApp();}}).catch(function(){showLogin();}); }
+(function(){
+  var headers = TOKEN ? {'Authorization':'Bearer '+TOKEN} : {};
+  fetch('/auth/me',{credentials:'include',headers:headers}).then(function(r){if(!r.ok)throw 0;return r.json();}).then(function(d){
+    if(d.user){TOKEN=d.token||TOKEN;localStorage.setItem('blun_token',TOKEN);USER=d.user;showApp();}else{localStorage.removeItem('blun_token');TOKEN='';showLogin();}
+  }).catch(function(){localStorage.removeItem('blun_token');TOKEN='';showLogin();});
+})();
 var USER = null;
 var agents = [], companies = [], allModels = [], activeProviders = [];
 var currentAgent = null; // for detail modal
@@ -779,6 +798,36 @@ function api(path, opts) {
 }
 
 // ===== AUTH =====
+function switchAuthTab(tab) {
+  var tl = document.getElementById('tabLogin');
+  var tr = document.getElementById('tabRegister');
+  var fl = document.getElementById('loginForm');
+  var fr = document.getElementById('registerForm');
+  if (tab === 'login') {
+    tl.style.background='var(--b)'; tl.style.color='#fff';
+    tr.style.background='transparent'; tr.style.color='var(--tx2)';
+    fl.style.display='block'; fr.style.display='none';
+  } else {
+    tr.style.background='var(--b)'; tr.style.color='#fff';
+    tl.style.background='transparent'; tl.style.color='var(--tx2)';
+    fr.style.display='block'; fl.style.display='none';
+  }
+}
+function doRegister() {
+  var name = document.getElementById('regName').value;
+  var email = document.getElementById('regEmail').value;
+  var pw = document.getElementById('regPw').value;
+  var pw2 = document.getElementById('regPw2').value;
+  document.getElementById('regErr').textContent = '';
+  if (!name || !email || !pw) { document.getElementById('regErr').textContent = 'Alle Felder ausfuellen'; return; }
+  if (pw !== pw2) { document.getElementById('regErr').textContent = 'Passwoerter stimmen nicht ueberein'; return; }
+  if (pw.length < 8) { document.getElementById('regErr').textContent = 'Passwort mind. 8 Zeichen'; return; }
+  fetch('/auth/register', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:name,email:email,password:pw})}).then(function(r){return r.json();}).then(function(d) {
+    if (d.error) { document.getElementById('regErr').textContent = d.error; return; }
+    TOKEN = d.token; localStorage.setItem('blun_token', TOKEN);
+    USER = d.user; showApp();
+  }).catch(function(e) { document.getElementById('regErr').textContent = 'Registrierung fehlgeschlagen'; });
+}
 function doLogin() {
   var email = document.getElementById('loginEmail').value;
   var pw = document.getElementById('loginPw').value;
