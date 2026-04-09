@@ -1011,6 +1011,8 @@ function renderStats(s) {
 function getOperator() { return agents.find(function(a){return a.role&&(a.role.toLowerCase().indexOf('operator')>=0||a.role.toLowerCase().indexOf('organisator')>=0||a.role.toLowerCase().indexOf('ceo')>=0);}); }
 function agentColor(a) { return COLORS[(a.id||0)%COLORS.length]; }
 function agentInitials(a) { var n=a.name||'?'; var parts=n.split(/\s+/); return parts.length>1?parts[0][0]+parts[1][0]:n.substring(0,2); }
+function agentAvatar(a) { var slug=(a.name||'agent').toLowerCase().replace(/\s+/g,'-'); return '<img src="avatars/'+slug+'.svg" alt="'+esc(a.name)+'" style="width:100%;height:100%;border-radius:50%;object-fit:cover">'; }
+
 
 function renderSkillTags(skills, skillUrls) {
   if (!skills || !skills.length) return '';
@@ -1043,7 +1045,7 @@ function renderAgents(filteredAgents) { var agentList = filteredAgents || agents
   if (op) {
     var isOn = op.status==='active'||op.status==='working'||op.runtime_active;
     bannerEl.innerHTML = '<div class="operator-banner" onclick="openAgentDetail('+op.id+')">'+
-      '<div class="operator-av">'+agentInitials(op).toUpperCase()+'</div>'+
+      '<div class="operator-av">'+agentAvatar(op)+'</div>'+
       '<div class="operator-info"><div class="operator-name">'+esc(op.name)+' <span class="badge badge-blue">OPERATOR</span></div>'+
       '<div class="operator-role">'+esc(op.role||'')+'</div>'+
       '<div class="operator-status">'+(isOn?'<span class="status-dot on"></span> Online':'<span class="status-dot off"></span> Offline')+' &middot; '+esc(op.model||'?')+'</div></div>'+
@@ -1072,7 +1074,7 @@ function renderAgents(filteredAgents) { var agentList = filteredAgents || agents
       var isOn = a.status==='active'||a.status==='working'||a.runtime_active;
       var modelTag = (a.model||'').indexOf('local')>=0||(a.model||'').indexOf('gemma')>=0||(a.model||'').indexOf('llama')>=0||(a.model||'').indexOf('deepseek')>=0 ? '<span class="tag" style="color:var(--green)">Lokal</span>' : '<span class="tag" style="color:var(--amber)">API</span>';
       html += '<div class="agent-card" onclick="openAgentDetail('+a.id+')">'+
-        '<div class="agent-av" style="background:'+agentColor(a)+'">'+agentInitials(a).toUpperCase()+(isOn?'<div class="online-dot"></div>':'')+'</div>'+
+        '<div class="agent-av" style="background:'+agentColor(a)+'">'+agentAvatar(a)+(isOn?'<div class="online-dot"></div>':'')+'</div>'+
         '<div class="agent-info"><div class="agent-name">'+esc(a.name)+'</div><div class="agent-role">'+esc(a.role||'')+'</div>'+
         '<div class="agent-meta">'+modelTag+'<span class="tag">'+esc(a.model||'?')+'</span></div>'+
         renderSkillTags(a.skills,a.skill_urls)+'</div>'+
@@ -1087,7 +1089,7 @@ function renderAgents(filteredAgents) { var agentList = filteredAgents || agents
     html += '<div class="dept-section"><div class="dept-head"><h3>'+esc(dept)+'</h3><span class="dept-count">'+list.length+'</span></div><div class="dept-agents">';
     list.forEach(function(a) {
       var isOn = a.status==='active'||a.runtime_active;
-      html += '<div class="agent-card" onclick="openAgentDetail('+a.id+')"><div class="agent-av" style="background:'+agentColor(a)+'">'+agentInitials(a).toUpperCase()+(isOn?'<div class="online-dot"></div>':'')+'</div><div class="agent-info"><div class="agent-name">'+esc(a.name)+'</div><div class="agent-role">'+esc(a.role||'')+'</div></div></div>';
+      html += '<div class="agent-card" onclick="openAgentDetail('+a.id+')"><div class="agent-av" style="background:'+agentColor(a)+'">'+agentAvatar(a)+(isOn?'<div class="online-dot"></div>':'')+'</div><div class="agent-info"><div class="agent-name">'+esc(a.name)+'</div><div class="agent-role">'+esc(a.role||'')+'</div></div></div>';
     });
     html += '</div></div>';
   });
@@ -1098,7 +1100,7 @@ function renderAgents(filteredAgents) { var agentList = filteredAgents || agents
 function renderOperatorPage() {
   var op = getOperator();
   if (!op) { document.getElementById('operatorDetail').innerHTML='<div class="empty"><div class="empty-icon">⭐</div>Kein Operator eingerichtet.<br><button class="btn btn-primary" style="margin-top:12px" onclick="openModal(\'agentModal\')">Operator erstellen</button></div>'; return; }
-  var html = '<div class="detail-header"><div class="detail-av" style="background:var(--b)">'+agentInitials(op).toUpperCase()+'</div><div><div style="font-size:20px;font-weight:800">'+esc(op.name)+' <span class="badge badge-blue">OPERATOR</span></div><div style="color:var(--tx2);font-size:13px">'+esc(op.role||'')+'</div></div></div>';
+  var html = '<div class="detail-header"><div class="detail-av" style="background:var(--b)">'+agentAvatar(op)+'</div><div><div style="font-size:20px;font-weight:800">'+esc(op.name)+' <span class="badge badge-blue">OPERATOR</span></div><div style="color:var(--tx2);font-size:13px">'+esc(op.role||'')+'</div></div></div>';
   html += '<div class="detail-tabs"><div class="detail-tab active" onclick="opTab(\'settings\')">Einstellungen</div><div class="detail-tab" onclick="opTab(\'memory\')">Erinnerungen</div><div class="detail-tab" onclick="opTab(\'chats\')">Chats</div><div class="detail-tab" onclick="opTab(\'tasks\')">Tasks</div><div class="detail-tab" onclick="opTab(\'skills\')">Skills</div></div>';
   html += '<div id="opSec-settings" class="detail-section active">';
   html += '<div class="card" style="margin-bottom:12px"><div class="detail-field"><label>Name</label><input id="opName" value="'+esc(op.name)+'"></div>';
@@ -1492,7 +1494,7 @@ function renderChatList() {
 }
 function chatAgentItem(a, isOp) {
   var isOn=a.status==='active'||a.runtime_active;
-  return '<div class="agent-card'+(isOp?' operator':'')+'" style="margin-bottom:4px" onclick="openChat('+a.id+')"><div class="agent-av" style="background:'+agentColor(a)+'">'+agentInitials(a).toUpperCase()+(isOn?'<div class="online-dot"></div>':'')+'</div><div class="agent-info"><div class="agent-name">'+esc(a.name)+(isOp?' <span class="badge badge-blue" style="font-size:9px">OP</span>':'')+'</div><div class="agent-role">'+esc(a.role||'')+'</div></div></div>';
+  return '<div class="agent-card'+(isOp?' operator':'')+'" style="margin-bottom:4px" onclick="openChat('+a.id+')"><div class="agent-av" style="background:'+agentColor(a)+'">'+agentAvatar(a)+(isOn?'<div class="online-dot"></div>':'')+'</div><div class="agent-info"><div class="agent-name">'+esc(a.name)+(isOp?' <span class="badge badge-blue" style="font-size:9px">OP</span>':'')+'</div><div class="agent-role">'+esc(a.role||'')+'</div></div></div>';
 }
 function filterChatAgents(q) {
   q=q.toLowerCase();
@@ -1785,7 +1787,7 @@ function openAgentWorkspace(id) {
   // Header
   var av = document.getElementById('wsAv');
   av.style.background = agentColor(currentAgent);
-  av.textContent = agentInitials(currentAgent).toUpperCase();
+  av.innerHTML = agentAvatar(currentAgent);
   document.getElementById('wsName').textContent = currentAgent.name;
   document.getElementById('wsRole').textContent = currentAgent.role || '';
   // Info form

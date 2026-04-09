@@ -11,7 +11,7 @@ var _blunCacheTs = 0;
 async function getBlunAgents() {
   if (_blunCache && Date.now() - _blunCacheTs < 30000) return _blunCache;
   try {
-    _blunCache = await query("SELECT name, role, model, department, system_prompt, personality, heartbeat_interval FROM blun_agents");
+    _blunCache = await query("SELECT id, name, role, model, department, system_prompt, personality, heartbeat_interval FROM blun_agents");
     _blunCacheTs = Date.now();
   } catch(e) { _blunCache = []; }
   return _blunCache;
@@ -31,7 +31,7 @@ async function pcFetch(path, opts) {
 function transformAgent(pa, blunData) {
   var old = blunData ? blunData.find(function(b) { return b.name.toLowerCase() === pa.name.toLowerCase(); }) : null;
   return {
-    id: pa.urlKey || pa.id,
+    id: old ? old.id : pa.urlKey || pa.id,
     pc_id: pa.id,
     name: pa.name,
     role: old ? old.role : (pa.title || pa.role || "general"),
@@ -63,7 +63,7 @@ async function getAgents() {
 
 async function getAgent(idOrKey) {
   var agents = await getAgents();
-  return agents.find(function(a) { return a.id === idOrKey || a.pc_id === idOrKey || a.name.toLowerCase() === (idOrKey + "").toLowerCase(); });
+  return agents.find(function(a) { return a.id == idOrKey || a.pc_id === idOrKey || a.name.toLowerCase() === (idOrKey + "").toLowerCase(); });
 }
 
 async function createAgent(data) {
