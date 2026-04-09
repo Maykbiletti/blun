@@ -1,0 +1,326 @@
+/* Task Timeline - Dark Theme */
+.task-timeline {
+  background: #1a1a1a;
+  color: #e0e0e0;
+  padding: 20px;
+  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.timeline-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  position: relative;
+}
+
+.timeline-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.timeline-header h1 {
+  color: #fff;
+  font-size: 2.5rem;
+  margin: 0;
+  font-weight: 300;
+}
+
+.timeline-header p {
+  color: #888;
+  font-size: 1.1rem;
+  margin-top: 10px;
+}
+
+/* Vertikale Timeline-Linie */
+.timeline-track {
+  position: relative;
+  padding-left: 60px;
+}
+
+.timeline-track::before {
+  content: '';
+  position: absolute;
+  left: 25px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(to bottom, #333, #555, #333);
+  border-radius: 1px;
+}
+
+/* Timeline Items */
+.timeline-item {
+  position: relative;
+  margin-bottom: 30px;
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+/* Dots für verschiedene Status */
+.timeline-dot {
+  position: absolute;
+  left: -35px;
+  top: 20px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 3px solid #1a1a1a;
+  z-index: 2;
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.1);
+  transition: all 0.3s ease;
+}
+
+.timeline-dot.done {
+  background: #4ade80;
+  box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.2), 0 0 20px rgba(74, 222, 128, 0.3);
+}
+
+.timeline-dot.running {
+  background: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2), 0 0 20px rgba(96, 165, 250, 0.3);
+  animation: pulse 2s infinite;
+}
+
+.timeline-dot.pending {
+  background: #6b7280;
+  box-shadow: 0 0 0 3px rgba(107, 114, 128, 0.2);
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.2); opacity: 0.8; }
+}
+
+/* Timeline Karten */
+.timeline-card {
+  background: #2a2a2a;
+  border: 1px solid #404040;
+  border-radius: 12px;
+  padding: 24px;
+  flex: 1;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+}
+
+.timeline-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.4);
+  border-color: #555;
+}
+
+.timeline-card.done {
+  border-left: 4px solid #4ade80;
+  background: linear-gradient(135deg, #2a2a2a, #1e3a1e);
+}
+
+.timeline-card.running {
+  border-left: 4px solid #60a5fa;
+  background: linear-gradient(135deg, #2a2a2a, #1e2a3a);
+}
+
+.timeline-card.pending {
+  border-left: 4px solid #6b7280;
+  background: linear-gradient(135deg, #2a2a2a, #2a2a2a);
+}
+
+/* Karten Content */
+.timeline-card-header {
+  display: flex;
+  justify-content: between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  gap: 12px;
+}
+
+.timeline-card-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #fff;
+  margin: 0;
+  flex: 1;
+}
+
+.timeline-card-status {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.timeline-card-status.done {
+  background: rgba(74, 222, 128, 0.2);
+  color: #4ade80;
+  border: 1px solid rgba(74, 222, 128, 0.3);
+}
+
+.timeline-card-status.running {
+  background: rgba(96, 165, 250, 0.2);
+  color: #60a5fa;
+  border: 1px solid rgba(96, 165, 250, 0.3);
+}
+
+.timeline-card-status.pending {
+  background: rgba(107, 114, 128, 0.2);
+  color: #9ca3af;
+  border: 1px solid rgba(107, 114, 128, 0.3);
+}
+
+.timeline-card-description {
+  color: #b0b0b0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.timeline-card-meta {
+  display: flex;
+  gap: 16px;
+  font-size: 0.85rem;
+  color: #888;
+}
+
+.timeline-card-meta span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.timeline-card-meta .icon {
+  font-size: 0.9rem;
+  opacity: 0.7;
+}
+
+/* Progress Bar */
+.timeline-progress {
+  margin-top: 16px;
+  background: #404040;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.timeline-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.timeline-progress-fill.done {
+  width: 100%;
+  background: linear-gradient(90deg, #4ade80, #22c55e);
+}
+
+.timeline-progress-fill.running {
+  background: linear-gradient(90deg, #60a5fa, #3b82f6);
+  animation: progress-shimmer 2s infinite;
+}
+
+.timeline-progress-fill.pending {
+  width: 0%;
+  background: #6b7280;
+}
+
+@keyframes progress-shimmer {
+  0% { background-position: -100px 0; }
+  100% { background-position: 100px 0; }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .task-timeline {
+    padding: 15px;
+  }
+
+  .timeline-track {
+    padding-left: 40px;
+  }
+
+  .timeline-track::before {
+    left: 15px;
+  }
+
+  .timeline-dot {
+    left: -25px;
+    width: 16px;
+    height: 16px;
+  }
+
+  .timeline-card {
+    padding: 16px;
+  }
+
+  .timeline-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .timeline-header h1 {
+    font-size: 2rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .timeline-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .timeline-card-meta {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+/* Scroll-Animationen */
+.timeline-item {
+  opacity: 0;
+  transform: translateX(30px);
+  animation: slideInTimeline 0.6s ease forwards;
+}
+
+.timeline-item:nth-child(odd) {
+  animation-delay: 0.1s;
+}
+
+.timeline-item:nth-child(even) {
+  animation-delay: 0.2s;
+}
+
+@keyframes slideInTimeline {
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Hover-Effekte für bessere UX */
+.timeline-dot:hover {
+  transform: scale(1.3);
+}
+
+.timeline-card-title:hover {
+  color: #60a5fa;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+/* Dark Theme Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1a1a1a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #404040;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
