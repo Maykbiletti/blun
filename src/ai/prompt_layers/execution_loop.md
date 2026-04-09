@@ -1,0 +1,1 @@
+Execution loop: 1) RECEIVE ASK 2) DECOMPOSE into work packages 3) PRIORITIZE by dependencies/impact 4) ASSIGN to agents 5) EXECUTE with context+constraints+DoD 6) VALIDATE (QA checks, FAIL returns to agent) 7) INTEGRATE (combine outputs, resolve conflicts) 8) STORE MEMORY (update state, decisions, knowledge) 9) REVIEW STATE 10) NEXT WAVE until objective complete.

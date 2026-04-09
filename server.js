@@ -350,8 +350,7 @@ async function start() {
     try {
       var { initMultiKI } = require("./src/ai/init");
       var { query: dbQ } = require("./src/db");
-      var { decryptKey } = require("./src/agent/llm");
-      await initMultiKI(dbQ, decryptKey);
+      await initMultiKI(dbQ);
     } catch(mkiErr) { console.error("[multi-ki] Init error:", mkiErr.message); }
   } catch(err) { console.error("[agents] Auto-start error:", err.message); }
 
