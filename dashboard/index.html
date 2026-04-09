@@ -929,7 +929,7 @@ function renderOperatorPage() {
   html += '<div id="opSec-memory" class="detail-section"><div id="opMemList"><div class="spinner"></div></div></div>';
   html += '<div id="opSec-chats" class="detail-section" style="display:none;flex-direction:column;flex:1;overflow:hidden"><div id="opChatHistory" style="display:flex;flex-direction:column;flex:1;overflow:hidden"><div class="spinner"></div></div></div>';
   html += '<div id="opSec-tasks" class="detail-section"><div id="opTaskList"><div class="spinner"></div></div><div style="display:flex;gap:8px;margin-top:12px"><input id="opNewTaskInput" placeholder="Neuen Task fuer '+esc(op.name)+' erstellen..."><button class="btn btn-sm btn-primary" onclick="assignOperatorTask()">Zuweisen</button></div></div>';
-  html += '<div id="opSec-skills" class="detail-section"><div class="card" style="margin-bottom:12px;padding:16px"><div style="font-size:16px;font-weight:700;margin-bottom:12px">Skill-Verwaltung</div><div style="display:flex;gap:8px;margin-bottom:12px"><button class="btn btn-sm btn-primary" onclick="loadSkillMatrix()">Skill-Matrix laden</button><button class="btn btn-sm btn-outline" onclick="autoAssignAllSkills()">Auto-Assign alle</button></div><div id="opSkillMatrix"><div style="color:var(--tx2);font-size:13px">Klicke Skill-Matrix laden</div></div></div><div class="card" style="padding:16px"><div style="font-size:14px;font-weight:700;margin-bottom:8px">Skill-Katalog</div><div id="opSkillCatalog"><div class="spinner"></div></div></div></div>';
+  html += '<div id="opSec-skills" class="detail-section"><div class="card" style="margin-bottom:12px;padding:16px"><div style="font-size:16px;font-weight:700;margin-bottom:12px">Skill-Verwaltung</div><div style="display:flex;gap:8px;margin-bottom:12px"><button class="btn btn-sm btn-primary" onclick="loadSkillMatrix()">Skill-Matrix laden</button><button class="btn btn-sm btn-outline" onclick="autoAssignAllSkills()">Auto-Assign alle</button></div><div style="display:flex;gap:8px;margin-bottom:8px"><select id="opSkillPicker" style="flex:1"><option value="">-- Skill waehlen --</option></select><button class="btn btn-sm btn-primary" onclick="opInstallSkill()">Zuweisen</button></div><div style="display:flex;gap:8px;margin-bottom:12px"><input id="opGithubUrl" placeholder="GitHub SKILL.md URL einfuegen..." style="flex:1"><button class="btn btn-sm btn-outline" onclick="opImportGithub()">Importieren</button></div><div id="opSkillMatrix"><div style="color:var(--tx2);font-size:13px">Klicke Skill-Matrix laden</div></div></div><div class="card" style="padding:16px"><div style="font-size:14px;font-weight:700;margin-bottom:8px">Skill-Katalog</div><div id="opSkillCatalog"><div class="spinner"></div></div></div></div>';
   var od=document.getElementById('operatorDetail'); od.innerHTML=html; od.style.display='flex'; od.style.flexDirection='column'; od.style.flex='1'; od.style.overflow='hidden';
   // Load memory + tasks
   api('/api/organisator/agents/'+op.id+'/memory').then(function(d) {
@@ -953,7 +953,7 @@ function opTab(name) {
   event.target.classList.add('active');
   var s=document.getElementById('opSec-'+name);
   if(s){s.classList.add('active');s.style.display=name==='chats'?'flex':'block';}
-  if(name==='skills'){loadSkillCatalog();loadSkillMatrix();}
+  if(name==='skills'){loadSkillCatalog();loadSkillMatrix();loadOpSkillPicker();}
 }
 function sendOperatorChat() {
   var op=getOperator(); if(!op) return;
@@ -985,6 +985,32 @@ function assignOperatorTask() {
   }).catch(function(e){alert('Fehler: '+e.message);});
 }
 
+function opInstallSkill() {
+  var op=getOperator(); if(!op) return;
+  var sel=document.getElementById('opSkillPicker'); if(!sel||!sel.value) return;
+  api('/api/skills/'+sel.value+'/assign/'+op.id,{method:'POST'}).then(function(){loadSkillMatrix();alert('Skill zugewiesen!');}).catch(function(e){alert('Fehler: '+e.message);});
+}
+function opImportGithub() {
+  var op=getOperator(); if(!op) return;
+  var url=document.getElementById('opGithubUrl').value.trim(); if(!url) return;
+  var btn=event.target; btn.textContent='Lade...'; btn.disabled=true;
+  api('/api/organisator/skills/import-github',{method:'POST',body:JSON.stringify({url:url})}).then(function(skill){
+    return api('/api/skills/'+(skill.id)+'/assign/'+op.id,{method:'POST'}).then(function(){return skill;});
+  }).then(function(skill){
+    btn.textContent='Importieren'; btn.disabled=false;
+    document.getElementById('opGithubUrl').value='';
+    loadSkillMatrix(); loadSkillCatalog();
+    alert('Skill "'+skill.name+'" importiert und zugewiesen!');
+  }).catch(function(e){btn.textContent='Importieren'; btn.disabled=false; alert('Fehler: '+e.message);});
+}
+function loadOpSkillPicker() {
+  var op=getOperator(); if(!op) return;
+  api('/api/skills').then(function(all){
+    var picker=document.getElementById('opSkillPicker'); if(!picker) return;
+    picker.innerHTML='<option value="">-- Skill waehlen --</option>';
+    (all||[]).forEach(function(s){picker.innerHTML+='<option value="'+s.id+'">'+esc(s.name)+' ('+esc(s.category)+')</option>';});
+  });
+}
 function loadSkillMatrix() {
   document.getElementById('opSkillMatrix').innerHTML = '<div class="spinner"></div>';
   api('/api/organisator/skills/matrix').then(function(d) {
