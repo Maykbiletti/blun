@@ -187,13 +187,16 @@ textarea{resize:vertical;min-height:80px}
 
 /* RESPONSIVE */
 @media(max-width:768px){
-  .sidebar{position:fixed;z-index:100;transform:translateX(-100%);transition:transform .2s}
+  .sidebar{position:fixed;z-index:100;transform:translateX(-100%);transition:transform .25s ease;width:280px;top:0;bottom:0;left:0;background:var(--bg2);box-shadow:4px 0 20px rgba(0,0,0,.5)}
   .sidebar.open{transform:translateX(0)}
+  #menuBtn{display:flex!important;align-items:center;justify-content:center}
   .split-left{width:100%}
   .split-right{display:none}
   .split-right.active{display:flex;position:absolute;inset:0;z-index:10;background:var(--bg)}
   .dept-agents{grid-template-columns:1fr}
   .topbar-search{display:none}
+  .sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99}
+  .sidebar-overlay.show{display:block}
 }
 #loginView{display:none}
 
@@ -248,6 +251,7 @@ textarea{resize:vertical;min-height:80px}
 <div id="appShell" class="shell" style="display:none">
 
 <!-- SIDEBAR -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeMobileSidebar()"></div>
 <nav class="sidebar" id="sidebar">
 <div class="sidebar-head">
 <div class="sidebar-logo">BL<span>UN</span></div>
@@ -315,7 +319,7 @@ Profil
 <!-- MAIN CONTENT -->
 <div class="main">
 <div class="topbar">
-<button class="btn-icon" id="menuBtn" onclick="document.getElementById('sidebar').classList.toggle('open')" style="display:none">
+<button class="btn-icon" id="menuBtn" onclick="toggleMobileSidebar()" style="display:none">
 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
 </button>
 <div class="topbar-title" id="topbarTitle">Agents</div>
@@ -786,6 +790,16 @@ function showApp() {
 }
 
 // ===== NAVIGATION =====
+function toggleMobileSidebar() {
+  var sb = document.getElementById('sidebar');
+  var ov = document.getElementById('sidebarOverlay');
+  if (sb.classList.contains('open')) { closeMobileSidebar(); } else { sb.classList.add('open'); if(ov) ov.classList.add('show'); }
+}
+function closeMobileSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  var ov = document.getElementById('sidebarOverlay');
+  if(ov) ov.classList.remove('show');
+}
 function showPage(name) {
   if(name !== 'agents') {
     // Close workspace when leaving agents page
