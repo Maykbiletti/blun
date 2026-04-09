@@ -189,7 +189,7 @@ app.use("/api/website-wizard", websiteWizardRoutes);
 app.get("/api/rate-limit-status", function(req, res) { try { var engine = require("./src/agent-engine"); res.json(engine.getRateLimitStatus ? engine.getRateLimitStatus() : {}); } catch(e) { res.json({ error: e.message }); } });
 
 // Multi-KI Status + Query API
-app.get("/api/multi-ki/status", authMiddleware, async function(req, res) {
+app.get("/api/multi-ki/status", async function(req, res) {
   try {
     var ai = require("./src/ai/ai-provider");
     var providers = Object.keys(ai.PROVIDERS);
@@ -198,7 +198,7 @@ app.get("/api/multi-ki/status", authMiddleware, async function(req, res) {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post("/api/multi-ki/query", authMiddleware, async function(req, res) {
+app.post("/api/multi-ki/query", async function(req, res) {
   try {
     var ai = require("./src/ai/ai-provider");
     var result = await ai.query({ prompt: req.body.prompt, role: req.body.role, taskType: req.body.taskType, priority: req.body.priority, localOnly: req.body.localOnly, model: req.body.model, maxTokens: req.body.maxTokens, temperature: req.body.temperature });
