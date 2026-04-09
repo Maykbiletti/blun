@@ -459,7 +459,29 @@ async function loadSmartMemory(agentId, userMessage, maxChars) {
       totalChars += rows[i].value.length;
     }
   }
-  // Second pass: keyword match from user message
+  // Second pass: fuzzy search via pg_trgm (semantic-like matching)
+  if (msg.length > 5) {
+    try {
+      var fuzzyRows = await query(
+        "SELECT key, content as value, updated_at, similarity(content, $2) as sim FROM agent_memory WHERE agent_id = $1 AND similarity(content, $2) > 0.05 ORDER BY sim DESC LIMIT 10",
+        [agentId, userMessage.substring(0, 200)]
+      );
+      for (var fi = 0; fi < fuzzyRows.length; fi++) {
+        if (selected.indexOf(fuzzyRows[fi]) !== -1) continue;
+        if (totalChars >= maxChars) break;
+        // Check not already selected by key
+        var alreadyIn = false;
+        for (var si = 0; si < selected.length; si++) {
+          if (selected[si].key === fuzzyRows[fi].key) { alreadyIn = true; break; }
+        }
+        if (!alreadyIn && totalChars + fuzzyRows[fi].value.length < maxChars) {
+          selected.push(fuzzyRows[fi]);
+          totalChars += fuzzyRows[fi].value.length;
+        }
+      }
+    } catch(fzErr) { /* fallback to keyword match if pg_trgm fails */ }
+  }
+  // Fallback: keyword match from user message
   var words = msg.split(/\s+/).filter(function(w) { return w.length > 3; });
   for (var i = 0; i < rows.length; i++) {
     if (selected.indexOf(rows[i]) !== -1) continue;
@@ -487,11 +509,31 @@ async function loadSmartMemory(agentId, userMessage, maxChars) {
   return "\n\nDein Gedaechtnis (" + selected.length + "/" + rows.length + " Erinnerungen geladen):\n" + selected.map(function(r) { return r.key + ": " + r.value; }).join("\n");
 }
 
-async function saveAgentMemory(agentId, key, value) {
+async function saveAgentMemory(agentId, key, value, tags, category) {
+  var tagArr = tags || [];
+  var cat = category || 'general';
+  if (typeof tagArr === 'string') tagArr = tagArr.split(',').map(function(t){return t.trim();});
   await query(
-    "INSERT INTO agent_memory (agent_id, key, content, updated_at) VALUES ($1, $2, $3, NOW()) ON CONFLICT (agent_id, key) DO UPDATE SET content = $3, updated_at = NOW()",
-    [agentId, key, value]
+    "INSERT INTO agent_memory (agent_id, key, content, tags, category, updated_at) VALUES ($1, $2, $3, $4, $5, NOW()) ON CONFLICT (agent_id, key) DO UPDATE SET content = $3, tags = $4, category = $5, updated_at = NOW()",
+    [agentId, key, value, tagArr, cat]
   );
+}
+
+async function searchAgentMemory(agentId, searchQuery, limit) {
+  limit = limit || 5;
+  var rows = await query(
+    "SELECT key, content as value, tags, category, similarity(content, $2) as relevance FROM agent_memory WHERE agent_id = $1 AND (similarity(content, $2) > 0.05 OR content ILIKE $3) ORDER BY relevance DESC NULLS LAST LIMIT $4",
+    [agentId, searchQuery.substring(0, 200), '%' + searchQuery.substring(0, 50) + '%', limit]
+  );
+  return rows;
+}
+
+async function searchMemoryByTag(agentId, tag) {
+  var rows = await query(
+    "SELECT key, content as value, tags, category FROM agent_memory WHERE agent_id = $1 AND $2 = ANY(tags) ORDER BY updated_at DESC",
+    [agentId, tag]
+  );
+  return rows;
 }
 
 async function heartbeat(agentId) {
@@ -933,7 +975,10 @@ async function heartbeat(agentId) {
         has_code: typeof hasChanges !== 'undefined' ? hasChanges : false,
         updated: new Date().toISOString()
       };
-      await saveAgentMemory(agentId, 'auto_memory', JSON.stringify(autoMem));
+      var autoTags = ['auto_memory'];
+      if (autoMem.has_code) autoTags.push('code_change');
+      if (autoMem.blockers.length > 0) autoTags.push('has_blockers');
+      await saveAgentMemory(agentId, 'auto_memory', JSON.stringify(autoMem), autoTags, 'auto');
       if (decisions.length > 0 || blockers.length > 0) {
         console.log('[auto-memory] ' + agent.name + ': ' + decisions.length + ' decisions, ' + blockers.length + ' blockers saved');
       }
