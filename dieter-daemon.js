@@ -236,6 +236,8 @@ var TASK_DEPT_MAP = {
 
 async function autoSwitchDepartment(db, agentId, taskTitle) {
   var title = (taskTitle || "").toLowerCase();
+  // Skip dept switch for QA review tasks — those are temporary assignments
+  if (title.indexOf("qa") !== -1 || title.indexOf("review") !== -1) return;
   var newDept = null;
   var keys = Object.keys(TASK_DEPT_MAP);
   for (var k = 0; k < keys.length; k++) {
@@ -290,9 +292,10 @@ async function distributeTasks(db) {
 
   for (var i = 0; i < pending.rows.length; i++) {
     var task = pending.rows[i];
-    // Fair distribution: reassign if target agent is busy
+    // Fair distribution: reassign if target agent is busy (but NOT QA tasks)
     var idleAgents = await getIdleAgents(db);
-    if (task.agent_id) {
+    var isQaTask = (task.task || "").toLowerCase().indexOf("qa") !== -1 || (task.task || "").toLowerCase().indexOf("review") !== -1;
+    if (task.agent_id && !isQaTask) {
       var targetIdle = idleAgents.some(function(a) { return a.id === task.agent_id; });
       if (!targetIdle && idleAgents.length > 0) {
         var next = pickNextIdle(idleAgents);
