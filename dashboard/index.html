@@ -888,14 +888,14 @@ function agentInitials(a) { var n=a.name||'?'; var parts=n.split(/\s+/); return 
 function renderSkillTags(skills, skillUrls) {
   if (!skills || !skills.length) return '';
   var urls = skillUrls || {};
-  var html = '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:3px">';
+  var html = '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:3px" onclick="event.stopPropagation()">';
   var show = skills.slice(0,3);
   for (var i = 0; i < show.length; i++) {
     var s = show[i];
     if (urls[s]) {
-      html += '<a href="' + esc(urls[s]) + '" target="_blank" style="font-size:9px;padding:1px 5px;background:rgba(59,130,246,.15);color:var(--b);border-radius:4px;text-decoration:none;cursor:pointer" title="Repo oeffnen">' + esc(s) + '</a>';
+      html += '<span style="font-size:9px;padding:1px 5px;background:rgba(59,130,246,.15);color:var(--b);border-radius:4px;cursor:pointer;text-decoration:underline" onclick="event.stopPropagation();window.open(\'' + esc(urls[s]) + '\',\'_blank\')" title="Repo: '+esc(urls[s])+'">' + esc(s) + '</span>';
     } else {
-      html += '<span style="font-size:9px;padding:1px 5px;background:rgba(59,130,246,.15);color:var(--b);border-radius:4px;cursor:pointer" onclick="openSkillDetail(\'' + esc(s) + '\')" title="Details">' + esc(s) + '</span>';
+      html += '<span style="font-size:9px;padding:1px 5px;background:rgba(59,130,246,.15);color:var(--b);border-radius:4px;cursor:pointer" onclick="event.stopPropagation();openSkillDetail(\'' + esc(s) + '\')" title="Details">' + esc(s) + '</span>';
     }
   }
   if (skills.length > 3) html += '<span style="font-size:9px;color:var(--tx2)">+' + (skills.length - 3) + '</span>';
@@ -903,7 +903,10 @@ function renderSkillTags(skills, skillUrls) {
   return html;
 }
 function openSkillDetail(name) {
-  alert('Skill: ' + name + '\nKein Repo hinterlegt. Repo-URL kann im Skill-Editor gesetzt werden.');
+  var op = getOperator();
+  var skills = op ? (op.skills||[]) : [];
+  var idx = skills.indexOf(name);
+  alert('Skill: ' + name + '\nInstalliert auf: ' + (op?op.name:'?') + '\nKlicke auf Skill-Verwaltung um Repo-URL zu setzen.');
 }
 function renderAgents(filteredAgents) { var agentList = filteredAgents || agents;
   var op = getOperator();
