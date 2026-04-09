@@ -55,6 +55,8 @@ function transformAgent(pa, blunData) {
   };
 }
 
+function invalidateCache() { _blunCache = null; _blunCacheTs = 0; }
+
 async function getAgents() {
   var agents = await pcFetch("/api/companies/" + COMPANY_ID + "/agents");
   var blunData = await getBlunAgents();
@@ -93,4 +95,4 @@ async function chatWithAgent(pcId, message) {
   });
 }
 
-module.exports = { pcFetch, getAgents, getAgent, createAgent, startAgent, stopAgent, chatWithAgent, transformAgent, COMPANY_ID, PAPERCLIP_BASE };
+module.exports = { invalidateCache, pcFetch, getAgents, getAgent, createAgent, startAgent, stopAgent, chatWithAgent, transformAgent, COMPANY_ID, PAPERCLIP_BASE };

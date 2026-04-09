@@ -86,6 +86,7 @@ router.put("/agents/bulk-model", async function(req, res) {
     var { model } = req.body;
     if (!model) return res.status(400).json({ error: "model required" });
     var result = await query("UPDATE blun_agents SET model = $1, updated_at = NOW()", [model]);
+    pc.invalidateCache();
     res.json({ ok: true, count: result.rowCount || 15 });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -98,6 +99,7 @@ router.put("/agents/:id", async function(req, res) {
       [name, role, model, system_prompt, personality, heartbeat_interval, company_id, department, req.params.id]
     );
     if (!agent) return res.status(404).json({ error: "Not found" });
+    pc.invalidateCache();
     res.json(agent);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
