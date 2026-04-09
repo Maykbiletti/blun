@@ -1,9 +1,6 @@
 // BLUN Agent System — Agent-to-Agent Messaging
-// Extracted from agent-engine.js
+const { query, queryOne } = require("../db");
 
-var { query, queryOne } = require("../db");
-
-// === AGENT-TO-AGENT MESSAGING ===
 async function sendAgentMessage(fromId, toId, subject, content, priority, replyTo) {
   var msg = await queryOne(
     "INSERT INTO agent_messages (from_agent_id, to_agent_id, subject, content, priority, in_reply_to) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
@@ -61,7 +58,6 @@ async function getUnreadSummary(agentId) {
   await query("UPDATE agent_messages SET status = 'read' WHERE to_agent_id = $1 AND status = 'unread'", [agentId]);
   return '\nNachrichten von anderen Agents:\n' + lines.join('\n');
 }
-
 
 
 module.exports = { sendAgentMessage, getAgentInbox, markMessageRead, replyToMessage, broadcastMessage, getUnreadSummary };

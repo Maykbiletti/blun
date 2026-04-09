@@ -1,26 +1,11 @@
 // BLUN Agent System — LLM Router, Rate Limiter, CLI Adapters
 // Extracted from agent-engine.js
+const { query, queryOne } = require("../db");
+const child_process = require("child_process");
+var modelsRouter = require("../routes/models");
+const LLAMA_URL = process.env.LLAMA_URL || "http://127.0.0.1:8090";
+const agentSessions = {};
 
-var crypto = require("crypto");
-var cp = require("child_process");
-var { query, queryOne } = require("../db");
-
-const ENC_KEY = process.env.BLUN_ENCRYPTION_KEY || "blun-dev-encryption-key-32chars!";
-
-function decryptKey(data) {
-  var parts = data.split(":");
-  var iv = Buffer.from(parts[0], "hex");
-  var tag = Buffer.from(parts[1], "hex");
-  var encrypted = parts[2];
-  var decipher = crypto.createDecipheriv("aes-256-gcm", Buffer.from(ENC_KEY, "utf8").slice(0, 32), iv);
-  decipher.setAuthTag(tag);
-  return decipher.update(encrypted, "hex", "utf8") + decipher.final("utf8");
-}
-
-
-
-// === Load Balancer: 4 llama-server instances ===
-var modelsRouter = require("./routes/models");
 function getLLMPools() {
   var pools = [];
   var running = modelsRouter.running || {};
@@ -48,14 +33,19 @@ function pickPool() {
   }
   return best;
 }
-// === End Load Balancer ===
 
-
-
+function decryptKey(data) {
+  var parts = data.split(":");
+  var iv = Buffer.from(parts[0], "hex");
+  var tag = Buffer.from(parts[1], "hex");
+  var encrypted = parts[2];
+  var decipher = crypto.createDecipheriv("aes-256-gcm", Buffer.from(ENC_KEY, "utf8").slice(0, 32), iv);
+  decipher.setAuthTag(tag);
+  return decipher.update(encrypted, "hex", "utf8") + decipher.final("utf8");
+}
 
 // ===== RATE LIMIT WATCHER (Proactive) =====
 // Tracks remaining quota per provider, pauses BEFORE hitting 429
-const agentSessions = {};  // Track CLI session IDs per agent for --resume
 
 const rateLimitState = {
   anthropic: { blocked: false, retryAfter: 0, remaining: null, limit: null, resetAt: 0, usage: 0, windowStart: Date.now() },
@@ -232,12 +222,6 @@ async function fetchWithRateLimit(url, options, provider) {
 
 // ===== END RATE LIMIT WATCHER =====
 
-// Active agent loops: agentId -> { timer, running }
-const activeAgents = new Map();
-
-// ===== CLI SUBPROCESS ADAPTERS =====
-var child_process = require("child_process");
-
 async function callCLI(cliPath, args, env, input, timeoutMs) {
   return new Promise(function(resolve, reject) {
     // Sandbox: only pass safe env vars to CLI subprocesses — no DB creds, encryption keys, etc.
@@ -332,7 +316,6 @@ async function callClaudeCLI(messages, apiKey, model, agentId) {
   }
   return { content: (content || result).trim(), tokens: 3000, cost: 0 };
 }
-
 
 async function callLLM(model, messages, agentId) {
   var isLocal = model.startsWith("local:") || model.includes("llama") || model.includes("tiny") || model.includes("mistral") || model.includes("phi") || model.includes("deepseek") || model.includes("gemma") || model.includes("qwen");
@@ -469,4 +452,4 @@ async function callLLM(model, messages, agentId) {
   return { content: content, tokens: tokens, cost: cost };
 }
 
-module.exports = { callLLM, callClaudeCLI, callCodexCLI, callCLI, getRateLimitStatus, acquireCliSlot, releaseCliSlot, pauseCli, getCliRateLimitStatus, decryptKey, fetchWithRateLimit, isRateLimited, setRateLimited, getProvider };
+module.exports = { callLLM, callClaudeCLI, callCodexCLI, callCLI, getRateLimitStatus, acquireCliSlot, releaseCliSlot, pauseCli, getCliRateLimitStatus, decryptKey, fetchWithRateLimit, isRateLimited, setRateLimited, getProvider, getLLMPools, pickPool, agentSessions };

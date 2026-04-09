@@ -1,10 +1,7 @@
-// BLUN Agent System — Code Graph for smart task assignment
-// Extracted from agent-engine.js
-
-var { query, queryOne } = require("../db");
+// BLUN Agent System — Code Graph
+const { query, queryOne } = require("../db");
 var fs = require("fs");
 
-// === CODE GRAPH for smart task assignment ===
 async function indexFileToGraph(filePath, content) {
   var imports = [];
   var reqMatches = content.match(/require\(["']([^"']+)["']\)/g) || [];
@@ -54,5 +51,6 @@ async function suggestAgentForFile(filePath) {
   var agent = await queryOne("SELECT id, name FROM blun_agents WHERE department = $1 AND status = 'active' ORDER BY RANDOM() LIMIT 1", [dept]);
   return agent;
 }
+
 
 module.exports = { indexFileToGraph, findRelatedFiles, suggestAgentForFile };

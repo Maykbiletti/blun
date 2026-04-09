@@ -1,11 +1,14 @@
 // BLUN Agent System — Visual QA Pipeline
-// Extracted from agent-engine.js
-
-var { query, queryOne } = require("../db");
+const { query, queryOne } = require("../db");
 
 var _saveAgentMemory = null;
 var _sendAgentMessage = null;
-function setDeps(deps) { _saveAgentMemory = deps.saveAgentMemory; _sendAgentMessage = deps.sendAgentMessage; }
+var _callLLM = null;
+function setDeps(deps) {
+  _saveAgentMemory = deps.saveAgentMemory;
+  _sendAgentMessage = deps.sendAgentMessage;
+  _callLLM = deps.callLLM;
+}
 
 // === VISUAL QA: Screenshot + AI Analysis Pipeline ===
 async function visualQACheck(agentId, url, description) {
@@ -87,7 +90,6 @@ async function autoVisualQA(agentId, taskResult) {
   }
   return result;
 }
-
 
 
 module.exports = { visualQACheck, autoVisualQA, setDeps };

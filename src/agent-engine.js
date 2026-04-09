@@ -1,474 +1,72 @@
 // BLUN - AI Organisator | MIT License
+// Thin wrapper — modules in src/agent/
 var codeTools = require("./code-tools");
 var { callClaudeCLIStream } = require("./claude-stream");
-/**
- * Agent Runtime Engine — heartbeat-driven agent loop with LLM integration.
- */
 
 const { query, queryOne } = require("./db");
 const { v4: uuid } = require("uuid");
 
-const LLAMA_URL = process.env.LLAMA_URL || "http://127.0.0.1:8090";
-// === Load Balancer: 4 llama-server instances ===
-var modelsRouter = require("./routes/models");
-function getLLMPools() {
-  var pools = [];
-  var running = modelsRouter.running || {};
-  Object.keys(running).forEach(function(id) {
-    if (running[id] && running[id].port) {
-      pools.push({ port: running[id].port, name: id, busy: 0, max: 2 });
-    }
-  });
-  var ext = modelsRouter.externalRunning || {};
-  Object.keys(ext).forEach(function(filename) {
-    if (ext[filename] && ext[filename].port) {
-      pools.push({ port: ext[filename].port, name: filename, busy: 0, max: 2 });
-    }
-  });
-  if (pools.length === 0) {
-    pools.push({ port: 8091, name: "gemma-4-31b", busy: 0, max: 2 });
-  }
-  return pools;
-}
-function pickPool() {
-  var pools = getLLMPools();
-  var best = pools[0];
-  for (var i = 1; i < pools.length; i++) {
-    if (pools[i].busy < best.busy) best = pools[i];
-  }
-  return best;
-}
-// === End Load Balancer ===
+// === MODULE IMPORTS ===
+var llm = require("./agent/llm");
+var perf = require("./agent/performance");
+var messaging = require("./agent/messaging");
+var codeGraph = require("./agent/code-graph");
+var visualQA = require("./agent/visual-qa");
+var memLayers = require("./agent/memory-layers");
+var dream = require("./agent/dream");
+var skillsLoader = require("./agent/skills-loader");
 
-const crypto = require("crypto");
-const ENC_KEY = process.env.BLUN_ENCRYPTION_KEY || "blun-dev-encryption-key-32chars!";
+// Re-export from modules
+var callLLM = llm.callLLM;
+var callClaudeCLI = llm.callClaudeCLI;
+var callCodexCLI = llm.callCodexCLI;
+var callCLI = llm.callCLI;
+var getRateLimitStatus = llm.getRateLimitStatus;
+var acquireCliSlot = llm.acquireCliSlot;
+var releaseCliSlot = llm.releaseCliSlot;
+var pauseCli = llm.pauseCli;
+var decryptKey = llm.decryptKey;
+var fetchWithRateLimit = llm.fetchWithRateLimit;
 
-function decryptKey(data) {
-  var parts = data.split(":");
-  var iv = Buffer.from(parts[0], "hex");
-  var tag = Buffer.from(parts[1], "hex");
-  var encrypted = parts[2];
-  var decipher = crypto.createDecipheriv("aes-256-gcm", Buffer.from(ENC_KEY, "utf8").slice(0, 32), iv);
-  decipher.setAuthTag(tag);
-  return decipher.update(encrypted, "hex", "utf8") + decipher.final("utf8");
-}
+var selfHealTask = perf.selfHealTask;
+var mentorReview = perf.mentorReview;
+var awardXP = perf.awardXP;
+var scoreTask = perf.scoreTask;
+var updatePerformance = perf.updatePerformance;
+var routeTask = perf.routeTask;
+var splitTask = perf.splitTask;
+var getLeaderboard = perf.getLeaderboard;
+var autoScoreTask = perf.autoScoreTask;
 
+var sendAgentMessage = messaging.sendAgentMessage;
+var getAgentInbox = messaging.getAgentInbox;
+var markMessageRead = messaging.markMessageRead;
+var replyToMessage = messaging.replyToMessage;
+var broadcastMessage = messaging.broadcastMessage;
+var getUnreadSummary = messaging.getUnreadSummary;
 
-// ===== RATE LIMIT WATCHER (Proactive) =====
-// Tracks remaining quota per provider, pauses BEFORE hitting 429
-const agentSessions = {};  // Track CLI session IDs per agent for --resume
+var indexFileToGraph = codeGraph.indexFileToGraph;
+var findRelatedFiles = codeGraph.findRelatedFiles;
+var suggestAgentForFile = codeGraph.suggestAgentForFile;
 
-const rateLimitState = {
-  anthropic: { blocked: false, retryAfter: 0, remaining: null, limit: null, resetAt: 0, usage: 0, windowStart: Date.now() },
-  openai: { blocked: false, retryAfter: 0, remaining: null, limit: null, resetAt: 0, usage: 0, windowStart: Date.now() },
-  google: { blocked: false, retryAfter: 0, remaining: null, limit: null, resetAt: 0, usage: 0, windowStart: Date.now() },
-  local: { blocked: false, retryAfter: 0, remaining: null, limit: null, resetAt: 0, usage: 0, windowStart: Date.now() }
-};
-const PAUSE_THRESHOLD = 0.2; // Pause when only 20% of quota remaining
+var visualQACheck = visualQA.visualQACheck;
+var autoVisualQA = visualQA.autoVisualQA;
 
-function getProvider(model) {
-  if (model.startsWith("claude")) return "anthropic";
-  if (model.startsWith("gpt") || model.startsWith("o1") || model.startsWith("o3") || model.startsWith("o4")) return "openai";
-  if (model.includes("gemini") || model.includes("gemma")) return "google";
-  return "local";
-}
+var saveLayeredMemory = memLayers.saveLayeredMemory;
+var loadLayeredMemory = memLayers.loadLayeredMemory;
+var promoteMemory = memLayers.promoteMemory;
+var filterNoiseFromDecisions = memLayers.filterNoiseFromDecisions;
 
-function isRateLimited(provider) {
-  var state = rateLimitState[provider];
-  if (!state) return false;
+var dreamCycle = dream.dreamCycle;
+var startDreamCycle = dream.startDreamCycle;
+var stopDreamCycle = dream.stopDreamCycle;
 
-  // Hard block (from 429)
-  if (state.blocked) {
-    if (Date.now() > state.retryAfter) {
-      state.blocked = false;
-      console.log("[rate-limit] " + provider + " cooldown ended, resuming requests");
-      return false;
-    }
-    return true;
-  }
+// Wire circular dependencies
 
-  // Proactive pause: if we know the quota and it's low
-  if (state.remaining !== null && state.limit !== null && state.limit > 0) {
-    var pct = state.remaining / state.limit;
-    if (pct <= PAUSE_THRESHOLD && state.remaining < 5) {
-      var resetIn = Math.max(0, state.resetAt - Date.now());
-      if (resetIn > 0) {
-        console.log("[rate-limit] " + provider + " Mittagspause! Nur noch " + state.remaining + "/" + state.limit + " Requests (" + Math.round(pct*100) + "%). Pause " + Math.round(resetIn/1000) + "s bis Reset.");
-        state.blocked = true;
-        state.retryAfter = state.resetAt;
-        return true;
-      }
-    }
-  }
-
-  return false;
-}
-
-// === CLI CONCURRENCY LIMITER ===
-var cliConcurrency = { active: 0, max: 10, queued: 0, totalToday: 0, lastReset: Date.now(), paused: false, pauseUntil: 0 };
-
-async function acquireCliSlot(agentName) {
-  // Reset daily counter
-  if (Date.now() - cliConcurrency.lastReset > 3600000) {
-    cliConcurrency.totalToday = 0;
-    cliConcurrency.lastReset = Date.now();
-  }
-  // Check if paused (ratelimit hit)
-  if (cliConcurrency.paused && Date.now() < cliConcurrency.pauseUntil) {
-    var waitSec = Math.ceil((cliConcurrency.pauseUntil - Date.now()) / 1000);
-    console.log("[ratelimit] CLI paused, " + agentName + " wartet " + waitSec + "s...");
-    await new Promise(function(r) { setTimeout(r, waitSec * 1000); });
-    cliConcurrency.paused = false;
-  }
-  // Wait for slot
-  while (cliConcurrency.active >= cliConcurrency.max) {
-    cliConcurrency.queued++;
-    console.log("[ratelimit] " + agentName + " wartet auf CLI-Slot (" + cliConcurrency.active + "/" + cliConcurrency.max + " aktiv, " + cliConcurrency.queued + " queued)");
-    await new Promise(function(r) { setTimeout(r, 5000); });
-    cliConcurrency.queued--;
-  }
-  cliConcurrency.active++;
-  cliConcurrency.totalToday++;
-  console.log("[ratelimit] " + agentName + " got CLI slot (" + cliConcurrency.active + "/" + cliConcurrency.max + " aktiv)");
-}
-
-function releaseCliSlot(agentName) {
-  cliConcurrency.active = Math.max(0, cliConcurrency.active - 1);
-  console.log("[ratelimit] " + agentName + " released CLI slot (" + cliConcurrency.active + "/" + cliConcurrency.max + " aktiv)");
-}
-
-function pauseCli(seconds) {
-  cliConcurrency.paused = true;
-  cliConcurrency.pauseUntil = Date.now() + seconds * 1000;
-  console.log("[ratelimit] CLI paused for " + seconds + "s (Ratelimit-Schutz)");
-}
-
-function getCliRateLimitStatus() {
-  return { active: cliConcurrency.active, max: cliConcurrency.max, queued: cliConcurrency.queued, totalHour: cliConcurrency.totalToday, paused: cliConcurrency.paused };
-}
-
-// Get rate limit status for dashboard API
-function getRateLimitStatus() {
-  var status = {};
-  var providers = ["anthropic", "openai", "google", "local"];
-  for (var i = 0; i < providers.length; i++) {
-    var p = providers[i];
-    var s = rateLimitState[p];
-    var pct = (s.remaining !== null && s.limit) ? Math.round((s.remaining / s.limit) * 100) : null;
-    var signal = "green";
-    if (s.blocked) signal = "red";
-    else if (pct !== null && pct <= 40) signal = "yellow";
-    else if (pct !== null && pct <= 20) signal = "red";
-    status[p] = {
-      signal: signal,
-      remaining: s.remaining,
-      limit: s.limit,
-      blocked: s.blocked,
-      retryAfter: s.blocked ? Math.max(0, Math.round((s.retryAfter - Date.now()) / 1000)) : 0,
-      percent: pct
-    };
-  }
-  return status;
-}
-
-function setRateLimited(provider, retryAfterSec) {
-  var waitMs = (retryAfterSec || 60) * 1000;
-  rateLimitState[provider] = { blocked: true, retryAfter: Date.now() + waitMs };
-  console.log("[rate-limit] " + provider + " hit 429 — pausing for " + (retryAfterSec || 60) + "s");
-}
-
-async function fetchWithRateLimit(url, options, provider) {
-  // Check if provider is currently blocked
-  if (isRateLimited(provider)) {
-    var waitSec = Math.ceil((rateLimitState[provider].retryAfter - Date.now()) / 1000);
-    console.log("[rate-limit] " + provider + " Mittagspause laeuft noch " + waitSec + "s...");
-    await new Promise(function(r) { setTimeout(r, waitSec * 1000 + 500); });
-    // Reset after waiting
-    rateLimitState[provider].blocked = false;
-  }
-
-  var resp = await fetch(url, options);
-
-  // Read rate limit headers from response
-  var state = rateLimitState[provider];
-  var rlRemaining = resp.headers.get("x-ratelimit-remaining") || resp.headers.get("x-ratelimit-limit-requests-remaining");
-  var rlLimit = resp.headers.get("x-ratelimit-limit") || resp.headers.get("x-ratelimit-limit-requests");
-  var rlReset = resp.headers.get("x-ratelimit-reset") || resp.headers.get("x-ratelimit-reset-requests");
-  // Anthropic specific
-  if (!rlRemaining) rlRemaining = resp.headers.get("anthropic-ratelimit-requests-remaining");
-  if (!rlLimit) rlLimit = resp.headers.get("anthropic-ratelimit-requests-limit");
-  if (!rlReset) rlReset = resp.headers.get("anthropic-ratelimit-requests-reset");
-
-  if (rlRemaining !== null) state.remaining = parseInt(rlRemaining);
-  if (rlLimit !== null) state.limit = parseInt(rlLimit);
-  if (rlReset) {
-    var resetDate = new Date(rlReset);
-    if (!isNaN(resetDate.getTime())) state.resetAt = resetDate.getTime();
-    else {
-      // Could be seconds
-      var secs = parseInt(rlReset);
-      if (!isNaN(secs)) state.resetAt = Date.now() + secs * 1000;
-    }
-  }
-  state.usage++;
-
-  if (resp.status === 429) {
-    var retryHeader = resp.headers.get("retry-after");
-    var waitTime = retryHeader ? parseInt(retryHeader) : 60;
-    if (isNaN(waitTime) || waitTime < 5) waitTime = 60;
-    setRateLimited(provider, waitTime);
-
-    console.log("[rate-limit] " + provider + " 429! Mittagspause " + waitTime + "s...");
-    await new Promise(function(r) { setTimeout(r, waitTime * 1000); });
-    resp = await fetch(url, options);
-
-    if (resp.status === 429) {
-      setRateLimited(provider, waitTime * 2);
-      throw new Error("Rate limited by " + provider + " — Mittagspause " + (waitTime * 2) + "s.");
-    }
-  }
-
-  return resp;
-}
-
-// ===== END RATE LIMIT WATCHER =====
-
-// Active agent loops: agentId -> { timer, running }
+// Active agent loops
 const activeAgents = new Map();
 
-// ===== CLI SUBPROCESS ADAPTERS =====
-var child_process = require("child_process");
-
-async function callCLI(cliPath, args, env, input, timeoutMs) {
-  return new Promise(function(resolve, reject) {
-    // Sandbox: only pass safe env vars to CLI subprocesses — no DB creds, encryption keys, etc.
-    var safeBaseEnv = {
-      PATH: process.env.PATH,
-      HOME: process.env.HOME || "/tmp",
-      LANG: process.env.LANG || "en_US.UTF-8",
-      NODE_ENV: process.env.NODE_ENV || "production",
-    };
-    var proc = child_process.spawn(cliPath, args, {
-      env: Object.assign({}, safeBaseEnv, env),
-      cwd: "/tmp",
-      stdio: ["pipe", "pipe", "pipe"]
-    });
-    var out = "", err = "";
-    proc.stdout.on("data", function(d){ out += d.toString(); });
-    proc.stderr.on("data", function(d){ err += d.toString(); });
-    proc.on("close", function(code) {
-      if (out.trim()) resolve(out.trim());
-      else reject(new Error("CLI error: " + (err||"no output") + " (exit " + code + ")"));
-    });
-    var timer = setTimeout(function(){ proc.kill(); reject(new Error("CLI timeout")); }, timeoutMs || 90000);
-    proc.on("close", function(){ clearTimeout(timer); });
-    if (input) { proc.stdin.write(input); } proc.stdin.end();
-  });
-}
-
-
-async function callCodexCLI(messages, model) {
-  // Build prompt from messages - pass via stdin for long content
-  var systemMsg = messages.find(function(m){return m.role==="system";});
-  var userMsg = messages.filter(function(m){return m.role!=="system";}).map(function(m){return m.role+": "+m.content;}).join("\n\n");
-  // For Codex exec: keep prompt focused and short - extract key identity from system
-  // Long personality texts confuse codex exec (task mode, not chat mode)
-  var sysContent = systemMsg ? systemMsg.content : "Du bist ein hilfreicher Agent.";
-  // Keep only first 400 chars of system content for Codex (key identity info)
-  var sysShort = sysContent.substring(0, 400);
-  var prompt = sysShort + "\n\nUser: " + userMsg + "\nAntworte natuerlich als diese Persona (1-3 Saetze):";
-
-  var result = await callCLI("codex", ["exec", "--skip-git-repo-check", prompt], {}, null, 90000);
-  // Extract just the response (codex adds session info, strip it)
-  var lines = result.split("\n");
-  var responseStart = false;
-  var responseLines = [];
-  for (var i = 0; i < lines.length; i++) {
-    if (lines[i] === "codex") { responseStart = true; continue; }
-    if (responseStart && lines[i].startsWith("tokens used")) break;
-    if (responseStart) responseLines.push(lines[i]);
-  }
-  var response = responseLines.join("\n").trim() || result.split("\n").pop().trim();
-  return { content: response, tokens: 5000, cost: 0 }; // Codex uses ChatGPT Pro subscription
-}
-
-async function callClaudeCLI(messages, apiKey, model, agentId) {
-  var systemMsg = messages.find(function(m){return m.role==="system";});
-  var userMsg = messages.filter(function(m){return m.role!=="system";}).map(function(m){return m.role+": "+m.content;}).join("\n\n");
-  var prompt = (systemMsg ? "Context: " + systemMsg.content + "\n\n" : "") + userMsg;
-  var env = apiKey ? { ANTHROPIC_API_KEY: apiKey } : {};
-  var args = ["--print", "-"];
-  if (model) args.push("--model", model);
-  // Resume existing session for this agent if available
-  var sessionKey = "agent_" + (agentId || "default");
-  if (agentSessions[sessionKey]) {
-    args.push("--resume", agentSessions[sessionKey]);
-  }
-  var result = await callCLI("claude", args, env, prompt, 60000);
-  // Parse stream-json: extract session_id and final text
-  var content = "";
-  var lines = result.split("\n");
-  for (var i = 0; i < lines.length; i++) {
-    var line = lines[i].trim();
-    if (!line) continue;
-    try {
-      var evt = JSON.parse(line);
-      if (evt.type === "system" && evt.session_id) {
-        agentSessions[sessionKey] = evt.session_id;
-      }
-      if (evt.type === "assistant" && evt.message && evt.message.content) {
-        for (var j = 0; j < evt.message.content.length; j++) {
-          if (evt.message.content[j].type === "text") {
-            content = evt.message.content[j].text;
-          }
-        }
-      }
-      if (evt.type === "result" && evt.result) {
-        content = evt.result;
-      }
-    } catch(e) {
-      // Not JSON, might be raw text
-      if (!line.startsWith("{")) content += line + "\n";
-    }
-  }
-  return { content: (content || result).trim(), tokens: 3000, cost: 0 };
-}
-
-
-async function callLLM(model, messages, agentId) {
-  var isLocal = model.startsWith("local:") || model.includes("llama") || model.includes("tiny") || model.includes("mistral") || model.includes("phi") || model.includes("deepseek") || model.includes("gemma") || model.includes("qwen");
-  if (model.startsWith("local:")) model = model.replace("local:", "");
-
-  var url, headers, body;
-
-  // Route CLI-based models: gpt-* via Codex CLI, claude-* via Claude CLI
-  // Haiku: skip CLI, use direct API (much faster)
-  if (model.startsWith("claude") && !model.includes("api:")) {
-    // Get API key from ai_connections
-    var cliApiKey = null;
-    var isOAuthToken = false;
-    try {
-      var cliConn = await queryOne("SELECT api_key_encrypted FROM ai_connections WHERE provider = 'anthropic' AND status = 'active' LIMIT 1", []);
-      if (cliConn) {
-        cliApiKey = decryptKey(cliConn.api_key_encrypted);
-        try { var od = JSON.parse(cliApiKey); if (od.accessToken || od.access_token) { cliApiKey = od.accessToken || od.access_token; isOAuthToken = true; } } catch(e) {}
-      }
-    } catch(e) {}
-    // OAuth: CLI uses its own ~/.claude/.credentials.json — dont pass API key
-    // Plain API key: pass it via ANTHROPIC_API_KEY env
-    var passKey = isOAuthToken ? null : cliApiKey;
-    console.log("[callLLM] Claude " + (isOAuthToken ? "OAuth (CLI own credentials)" : "API key") + " for " + model);
-    try { return await callClaudeCLI(messages, passKey, model, agentId); } catch(e) {
-      console.error("[claude-cli] " + e.message + " -- Fallback auf Codex CLI");
-    }
-    try { return await callCodexCLI(messages, 'gpt-4o'); } catch(e2) {
-      console.error("[codex-cli] Fallback fehlgeschlagen: " + e2.message);
-      return { content: "Alle Modelle im Rate Limit.", tokens: 0, cost: 0 };
-    }
-  }
-  var modelLow = model.toLowerCase();
-  if (model.startsWith("codex:") || modelLow.startsWith("gpt-") || model.toUpperCase().startsWith("GPT-") || modelLow.startsWith("o1") || modelLow.startsWith("o3") || modelLow.startsWith("o4")) {
-    var cleanModel = model.replace("codex:", "");
-    // Codex CLI first (uses ChatGPT Pro subscription via ~/.codex/auth.json)
-    console.log("[callLLM] Codex CLI for " + cleanModel);
-    try { return await callCodexCLI(messages, cleanModel); } catch(e) {
-      console.error("[codex-cli] " + e.message + " -- trying REST API fallback");
-      // REST API fallback only with real API key (not OAuth)
-      try {
-        var oaiConn = await queryOne("SELECT api_key_encrypted FROM ai_connections WHERE provider = 'openai' AND status = 'active' LIMIT 1", []);
-        if (oaiConn) {
-          var oaiKey = decryptKey(oaiConn.api_key_encrypted);
-          var isOai = false;
-          try { var oj = JSON.parse(oaiKey); isOai = true; if (oj.access_token || oj.accessToken) oaiKey = oj.access_token || oj.accessToken; } catch(pe) {}
-          if (!isOai && oaiKey && oaiKey.startsWith("sk-")) {
-            var fetch = require("node-fetch");
-            var oaiBody = { model: cleanModel, messages: messages, max_tokens: 4096 };
-            var oaiResp = await fetch("https://api.openai.com/v1/chat/completions", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + oaiKey }, body: JSON.stringify(oaiBody), timeout: 120000 });
-            var oaiData = await oaiResp.json();
-            if (!oaiData.error) {
-              var oaiText = (oaiData.choices && oaiData.choices[0] && oaiData.choices[0].message) ? oaiData.choices[0].message.content : "";
-              return { content: oaiText, tokens: oaiData.usage ? oaiData.usage.total_tokens : 0, cost: 0 };
-            }
-          }
-        }
-      } catch(re) {}
-      return { content: "Fehler: " + e.message, tokens: 0, cost: 0 };
-    }
-  }
-  if (isLocal) {
-    var _pool = pickPool(); _pool.busy++; url = "http://127.0.0.1:" + _pool.port + "/v1/chat/completions"; var _releasePool = function() { _pool.busy = Math.max(0, _pool.busy - 1); };
-    headers = { "Content-Type": "application/json" };
-    body = { model: model, messages: messages, max_tokens: 200, temperature: 0.7 };
-  } else {
-    var provider = model.startsWith("claude") ? "anthropic" : (model.startsWith("gpt") || model.startsWith("o3") || model.startsWith("o1")) ? "openai" : "google";
-    var conn = await queryOne(
-      "SELECT * FROM ai_connections WHERE provider = $1 AND status = 'active' LIMIT 1",
-      [provider]
-    );
-    if (!conn) throw new Error("No active connection for model: " + model);
-
-    var apiKey;
-    try { apiKey = decryptKey(conn.api_key_encrypted); } catch(e) { throw new Error("Failed to decrypt API key: " + e.message); }
-    // Check if this is an OAuth token (JSON with access_token)
-    try { var oauthData = JSON.parse(apiKey); if (oauthData.accessToken || oauthData.access_token) { apiKey = oauthData.accessToken || oauthData.access_token; } } catch(e) { /* plain API key, use as-is */ }
-    var config = { api_key: apiKey };
-
-    if (model.startsWith("claude")) {
-      url = "https://api.anthropic.com/v1/messages";
-      // Always try CLI first for Claude models
-      try { return await callClaudeCLI(messages, config.api_key); } catch(e) { console.error("[claude-cli]", e.message); }
-      // Fallback to REST API — detect OAuth token vs API key
-      if (config.api_key && config.api_key.length > 80) {
-        // OAuth token: use Authorization Bearer
-        headers = { "Content-Type": "application/json", "Authorization": "Bearer " + config.api_key, "anthropic-version": "2023-06-01" };
-      } else {
-        // Regular API key: use x-api-key
-        headers = { "Content-Type": "application/json", "x-api-key": config.api_key, "anthropic-version": "2023-06-01" };
-      }
-      var sys = messages.find(function(m) { return m.role === "system"; });
-      var msgs = messages.filter(function(m) { return m.role !== "system"; });
-      body = { model: model, messages: msgs, max_tokens: 2048 };
-      if (sys) body.system = sys.content;
-    } else if (model.startsWith("gpt")) {
-      url = "https://api.openai.com/v1/chat/completions";
-      headers = { "Content-Type": "application/json", "Authorization": "Bearer " + config.api_key };
-      body = { model: model, messages: messages, max_tokens: 2048 };
-    } else {
-      url = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + config.api_key;
-      headers = { "Content-Type": "application/json" };
-      var sysMsg = messages.find(function(m) { return m.role === "system"; });
-      body = {
-        contents: messages.filter(function(m) { return m.role !== "system"; }).map(function(m) { return { role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] }; }),
-        systemInstruction: { parts: [{ text: sysMsg ? sysMsg.content : "" }] }
-      };
-    }
-  }
-
-  var _provider = isLocal ? "local" : getProvider(model); var _ctrl = new AbortController(); var _fetchTimeout = setTimeout(function(){ _ctrl.abort(); }, 120000); var resp; try { resp = await fetchWithRateLimit(url, { method: "POST", headers: headers, body: JSON.stringify(body), signal: _ctrl.signal }, _provider); } finally { clearTimeout(_fetchTimeout); }
-  var data = await resp.json();
-  if (typeof _releasePool === "function") _releasePool();
-
-  var content, tokens = 0;
-  if (isLocal || model.startsWith("gpt")) {
-    content = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || (data.error && data.error.message) || "No response";
-    tokens = ((data.usage && data.usage.prompt_tokens) || 0) + ((data.usage && data.usage.completion_tokens) || 0);
-  } else if (model.startsWith("claude")) {
-    content = (data.content && data.content[0] && data.content[0].text) || (data.error && data.error.message) || "No response";
-    tokens = ((data.usage && data.usage.input_tokens) || 0) + ((data.usage && data.usage.output_tokens) || 0);
-  } else {
-    content = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text) || "No response";
-    tokens = (data.usageMetadata && data.usageMetadata.totalTokenCount) || 0;
-  }
-
-  var cost = 0;
-  if (!isLocal) {
-    if (model.startsWith("claude")) cost = tokens * 0.000003;
-    else if (model.startsWith("gpt")) cost = tokens * 0.000005;
-    else cost = tokens * 0.000001;
-  }
-
-  return { content: content, tokens: tokens, cost: cost };
-}
+// === MEMORY FUNCTIONS (kept inline — tightly coupled to heartbeat) ===
 
 async function loadAgentMemory(agentId) {
   var rows = await query("SELECT key, content as value FROM agent_memory WHERE agent_id = $1", [agentId]);
@@ -481,12 +79,10 @@ async function loadSmartMemory(agentId, userMessage, maxChars) {
   maxChars = maxChars || 8000;
   var rows = await query("SELECT key, content as value, updated_at FROM agent_memory WHERE agent_id = $1 ORDER BY updated_at DESC", [agentId]);
   if (!rows.length) return "";
-  // Priority: identity, rules, vision always loaded
   var priority = ["identity", "personality", "rules", "security", "rename", "vision", "skill_"];
   var selected = [];
   var totalChars = 0;
   var msg = (userMessage || "").toLowerCase();
-  // First pass: priority keys
   for (var i = 0; i < rows.length; i++) {
     var dominated = false;
     for (var p = 0; p < priority.length; p++) {
@@ -497,7 +93,6 @@ async function loadSmartMemory(agentId, userMessage, maxChars) {
       totalChars += rows[i].value.length;
     }
   }
-  // Second pass: fuzzy search via pg_trgm (semantic-like matching)
   if (msg.length > 5) {
     try {
       var fuzzyRows = await query(
@@ -507,7 +102,6 @@ async function loadSmartMemory(agentId, userMessage, maxChars) {
       for (var fi = 0; fi < fuzzyRows.length; fi++) {
         if (selected.indexOf(fuzzyRows[fi]) !== -1) continue;
         if (totalChars >= maxChars) break;
-        // Check not already selected by key
         var alreadyIn = false;
         for (var si = 0; si < selected.length; si++) {
           if (selected[si].key === fuzzyRows[fi].key) { alreadyIn = true; break; }
@@ -517,9 +111,8 @@ async function loadSmartMemory(agentId, userMessage, maxChars) {
           totalChars += fuzzyRows[fi].value.length;
         }
       }
-    } catch(fzErr) { /* fallback to keyword match if pg_trgm fails */ }
+    } catch(fzErr) {}
   }
-  // Fallback: keyword match from user message
   var words = msg.split(/\s+/).filter(function(w) { return w.length > 3; });
   for (var i = 0; i < rows.length; i++) {
     if (selected.indexOf(rows[i]) !== -1) continue;
@@ -534,7 +127,6 @@ async function loadSmartMemory(agentId, userMessage, maxChars) {
       totalChars += rows[i].value.length;
     }
   }
-  // Third pass: most recent memories to fill remaining budget
   for (var i = 0; i < rows.length; i++) {
     if (selected.indexOf(rows[i]) !== -1) continue;
     if (totalChars >= maxChars) break;
@@ -573,7 +165,64 @@ async function searchMemoryByTag(agentId, tag) {
   );
   return rows;
 }
+// Wire circular dependencies (after all functions defined)perf.setDeps({ sendAgentMessage: sendAgentMessage, saveAgentMemory: saveAgentMemory, routeTask: routeTask, callLLM: callLLM });visualQA.setDeps({ saveAgentMemory: saveAgentMemory, sendAgentMessage: sendAgentMessage, callLLM: callLLM });dream.setDeps({ callLLM: callLLM, saveAgentMemory: saveAgentMemory });
 
+// === CREWAI PATTERNS: Sequential Pipeline + Delegation ===
+
+async function runPipeline(tasks, companyId) {
+  // Sequential pipeline: each task output becomes context for the next
+  var context = "";
+  var results = [];
+  for (var i = 0; i < tasks.length; i++) {
+    var task = tasks[i];
+    var agentId = task.agentId;
+    if (!agentId && task.department) {
+      // Dynamic routing by department (CrewAI hierarchical pattern)
+      var routed = await routeTask(task.description, companyId);
+      agentId = routed ? routed.agentId : null;
+    }
+    if (!agentId) { results.push({ step: i, error: "No agent found" }); continue; }
+
+    // Inject previous step context
+    var fullTask = task.description;
+    if (context) fullTask = "KONTEXT AUS VORHERIGEM SCHRITT:\n" + context + "\n\nDEINE AUFGABE:\n" + task.description;
+
+    await query("INSERT INTO agent_tasks (agent_id, task, status, parent_task_id, created_at) VALUES ($1, $2, 'pending', $3, NOW())", [agentId, fullTask, task.parentTaskId || null]);
+    console.log("[pipeline] Step " + i + " -> Agent " + agentId + ": " + task.description.substring(0, 80));
+
+    // Wait for completion (poll)
+    var maxWait = task.timeoutMs || 300000;
+    var start = Date.now();
+    var result = null;
+    while (Date.now() - start < maxWait) {
+      var row = await queryOne("SELECT status, result FROM agent_tasks WHERE agent_id = $1 AND task = $2 ORDER BY id DESC LIMIT 1", [agentId, fullTask]);
+      if (row && (row.status === 'completed' || row.status === 'completed_no_code' || row.status === 'error')) {
+        result = row;
+        break;
+      }
+      await new Promise(function(r) { setTimeout(r, 10000); });
+    }
+
+    if (result) {
+      context = (result.result || "").substring(0, 3000);
+      results.push({ step: i, agentId: agentId, status: result.status, output: context.substring(0, 500) });
+    } else {
+      results.push({ step: i, agentId: agentId, status: "timeout" });
+      break;
+    }
+  }
+  return results;
+}
+
+async function delegateTask(fromAgentId, toAgentId, task, reason) {
+  // CrewAI-style delegation: one agent delegates to another
+  await query("INSERT INTO agent_tasks (agent_id, task, status, created_at) VALUES ($1, $2, 'pending', NOW())", [toAgentId, task]);
+  await sendAgentMessage(fromAgentId, toAgentId, "Delegation", "Ich delegiere dir: " + task + (reason ? "\nGrund: " + reason : ""), "high");
+  console.log("[delegate] Agent " + fromAgentId + " -> Agent " + toAgentId + ": " + task.substring(0, 80));
+  return { delegated: true, toAgentId: toAgentId };
+}
+
+// === HEARTBEAT (core orchestration) ===
 async function heartbeat(agentId) {
   var agent = await queryOne("SELECT * FROM blun_agents WHERE id = $1", [agentId]);
   if (!agent || agent.status === "idle") {
@@ -1102,7 +751,6 @@ async function heartbeat(agentId) {
   await query("UPDATE blun_agents SET status = $1, last_heartbeat = NOW() WHERE id = $2", [status, agentId]);
   await query("INSERT INTO agent_heartbeats (agent_id, status, model, tokens_used, cost) VALUES ($1, $2, $3, $4, $5)", [agentId, status, agent.model, tokens, cost]);
 }
-
 function startAgent(agentId) {
   if (activeAgents.has(agentId)) return;
 
@@ -1209,636 +857,7 @@ async function chatWithAgent(agentId, message) {
   } catch(te) { console.error("[tools]", te.message); }
   return { response: result.content, tokens: result.tokens, cost: result.cost };
 }
-
-
-
-// === AUTO-DREAM: Memory Consolidation ===
-// Runs periodically for each agent — consolidates, deduplicates, cleans old memories
-var dreamIntervals = {};
-
-async function dreamCycle(agentId) {
-  try {
-    var agent = await queryOne("SELECT * FROM blun_agents WHERE id = $1", [agentId]);
-    if (!agent || agent.status === 'idle') return;
-
-    var memories = await query("SELECT key, content, updated_at FROM agent_memory WHERE agent_id = $1 ORDER BY updated_at DESC", [agentId]);
-    if (memories.length < 5) return; // not enough to consolidate
-
-    // Find old daily logs (zuletzt_*) older than 3 days
-    var now = Date.now();
-    var threeDaysMs = 3 * 24 * 60 * 60 * 1000;
-    var oldDailyKeys = [];
-    for (var i = 0; i < memories.length; i++) {
-      if (memories[i].key.startsWith('zuletzt_') && memories[i].updated_at) {
-        var age = now - new Date(memories[i].updated_at).getTime();
-        if (age > threeDaysMs) oldDailyKeys.push(memories[i]);
-      }
-    }
-
-    // Consolidate old daily logs into a summary
-    if (oldDailyKeys.length >= 3) {
-      var summaryParts = oldDailyKeys.map(function(m) { return m.key + ': ' + m.content.substring(0,150); });
-      var nl = String.fromCharCode(10); var dreamPrompt = 'Fasse diese ' + oldDailyKeys.length + ' Tageseintraege in EINEM kurzen Absatz zusammen (max 200 Woerter). Nur die wichtigsten Fakten und Entscheidungen:' + nl + nl + summaryParts.join(nl);
-
-      var dreamResult = await callLLM(agent.model || 'claude-haiku-4-5-20251001', [
-        { role: 'user', content: dreamPrompt }
-      ], agentId);
-
-      if (dreamResult && dreamResult.content) {
-        var weekKey = 'woche_' + new Date().toISOString().substring(0,10);
-        await saveAgentMemory(agentId, weekKey, dreamResult.content.substring(0,500));
-
-        // Delete old daily entries
-        for (var j = 0; j < oldDailyKeys.length; j++) {
-          await query("DELETE FROM agent_memory WHERE agent_id = $1 AND key = $2", [agentId, oldDailyKeys[j].key]);
-        }
-        console.log('[dream] ' + agent.name + ': consolidated ' + oldDailyKeys.length + ' daily logs into ' + weekKey);
-      }
-    }
-
-    // Remove duplicate memories (same content, different keys)
-    var seen = {};
-    var dupes = [];
-    for (var k = 0; k < memories.length; k++) {
-      var hash = memories[k].content.substring(0,100).toLowerCase().trim();
-      if (seen[hash]) {
-        dupes.push(memories[k].key);
-      } else {
-        seen[hash] = true;
-      }
-    }
-    if (dupes.length > 0) {
-      for (var d = 0; d < dupes.length; d++) {
-        await query("DELETE FROM agent_memory WHERE agent_id = $1 AND key = $2", [agentId, dupes[d]]);
-      }
-      console.log('[dream] ' + agent.name + ': removed ' + dupes.length + ' duplicate memories');
-    }
-
-  } catch(err) {
-    console.error('[dream] ' + agentId + ' error:', err.message);
-  }
-}
-
-function startDreamCycle(agentId) {
-  if (dreamIntervals[agentId]) return;
-  // Run every 6 hours
-  dreamIntervals[agentId] = setInterval(function() { dreamCycle(agentId); }, 6 * 60 * 60 * 1000);
-  // First dream after 30 minutes
-  setTimeout(function() { dreamCycle(agentId); }, 30 * 60 * 1000);
-}
-
-function stopDreamCycle(agentId) {
-  if (dreamIntervals[agentId]) {
-    clearInterval(dreamIntervals[agentId]);
-    delete dreamIntervals[agentId];
-  }
-}
-
-
-
-
-
-
-// === VISUAL QA: Screenshot + AI Analysis Pipeline ===
-async function visualQACheck(agentId, url, description) {
-  // 1. Take screenshot via Playwright on server
-  var cp = require('child_process');
-  var fs = require('fs');
-  var screenshotPath = '/tmp/visual_qa_' + agentId + '_' + Date.now() + '.png';
-
-  try {
-    // Use Playwright to screenshot
-    var playwrightScript = 'const{chromium}=require("playwright");(async()=>{const b=await chromium.launch({args:["--no-sandbox"]});const p=await b.newPage();await p.setViewportSize({width:1920,height:1080});await p.goto("' + url.replace(/"/g, '\\"') + '",{timeout:15000,waitUntil:"networkidle"});await p.screenshot({path:"' + screenshotPath + '",fullPage:false});await b.close()})()';
-
-    cp.execSync('node -e \'' + playwrightScript.replace(/'/g, "\\'") + '\'', {timeout: 30000, cwd: '/root/blun'});
-
-    if (!fs.existsSync(screenshotPath)) {
-      return {ok: false, error: 'Screenshot failed'};
-    }
-
-    // 2. Analyze with LLM vision (describe what we see)
-    var screenshotBase64 = fs.readFileSync(screenshotPath).toString('base64');
-
-    var analysisPrompt = 'Analysiere diesen Screenshot kritisch. Checkliste:\n' +
-      '1) Alignment: Elemente buendig?\n' +
-      '2) Spacing: Gleichmaessig?\n' +
-      '3) Text: Lesbar, kein Overflow?\n' +
-      '4) Buttons: Konsistent?\n' +
-      '5) Farben: Konsistent, lesbar?\n' +
-      '6) Leerraum: Balanced?\n' +
-      '7) Doppelte Elemente?\n' +
-      '8) Gesamteindruck: Professionell?\n' +
-      'Beschreibung der Seite: ' + (description || 'Dashboard') + '\n' +
-      'Antworte mit VISUAL:PASS oder VISUAL:FAIL + Liste der Probleme.';
-
-    // For now, store screenshot path for manual review
-    // Full vision API integration depends on model capability
-    var result = {
-      ok: true,
-      screenshot: screenshotPath,
-      url: url,
-      agent_id: agentId,
-      timestamp: new Date().toISOString()
-    };
-
-    // Save to agent memory for tracking
-    await saveAgentMemory(agentId, 'last_visual_qa', JSON.stringify(result), ['visual_qa'], 'qa');
-
-    // Clean up old screenshots (keep last 10)
-    try {
-      var files = fs.readdirSync('/tmp').filter(function(f) { return f.startsWith('visual_qa_'); }).sort();
-      if (files.length > 10) {
-        for (var i = 0; i < files.length - 10; i++) {
-          fs.unlinkSync('/tmp/' + files[i]);
-        }
-      }
-    } catch(e) {}
-
-    return result;
-  } catch(e) {
-    return {ok: false, error: e.message};
-  }
-}
-
-// Auto Visual QA after frontend agent completes a task
-async function autoVisualQA(agentId, taskResult) {
-  // Only for frontend/design agents
-  var agent = await queryOne("SELECT department FROM blun_agents WHERE id = $1", [agentId]);
-  if (!agent || (agent.department !== 'Frontend & Design' && agent.department !== 'Mobile')) return null;
-
-  // Check if task touched HTML/CSS files
-  var lower = (taskResult || '').toLowerCase();
-  if (lower.indexOf('.html') === -1 && lower.indexOf('.css') === -1 && lower.indexOf('dashboard') === -1) return null;
-
-  // Run visual QA on dashboard
-  var result = await visualQACheck(agentId, 'http://localhost:3200', 'BLUN Dashboard nach Frontend-Aenderung');
-  if (result.ok) {
-    console.log('[visual-qa] Screenshot saved: ' + result.screenshot);
-    // Send to QA agent (Helmut) for review
-    await sendAgentMessage(agentId, 29, 'Visual QA Check', 'Frontend-Aenderung von Agent ' + agentId + '. Screenshot: ' + result.screenshot + '. Bitte visuell pruefen.', 'normal', null);
-  }
-  return result;
-}
-
-// === SELF-HEALING: Auto-retry failed tasks with error analysis ===
-async function selfHealTask(taskId) {
-  var task = await queryOne("SELECT t.*, a.name, a.department, a.company_id FROM agent_tasks t JOIN blun_agents a ON a.id = t.agent_id WHERE t.id = $1", [taskId]);
-  if (!task || (task.status !== 'failed' && task.status !== 'completed_no_code' && task.status !== 'error')) return null;
-
-  // Analyze error from task result
-  var errorContext = (task.result || '').substring(0, 500);
-  var diagnosis = '';
-  var newTask = task.task;
-
-  // Pattern matching on common errors
-  if (errorContext.match(/syntax error|unexpected token|SyntaxError/i)) {
-    diagnosis = 'Syntax-Fehler im Code';
-    newTask = task.task + '\nWICHTIG: Vorheriger Versuch hatte Syntax-Fehler. Pruefe den Code mit node -c vor dem Commit. Fehler war: ' + errorContext.substring(0, 200);
-  } else if (errorContext.match(/cannot find module|module not found/i)) {
-    diagnosis = 'Fehlender Import/Require';
-    newTask = task.task + '\nWICHTIG: Vorheriger Versuch hatte fehlenden Import. Pruefe alle require() Pfade. Fehler: ' + errorContext.substring(0, 200);
-  } else if (errorContext.match(/timeout|ETIMEDOUT/i)) {
-    diagnosis = 'Timeout — Task zu komplex oder API nicht erreichbar';
-    newTask = task.task + '\nWICHTIG: Vorheriger Versuch hatte Timeout. Halte die Loesung einfach und kompakt. Maximal eine Datei aendern.';
-  } else if (errorContext.match(/permission|EACCES|forbidden/i)) {
-    diagnosis = 'Permission-Problem';
-    newTask = task.task + '\nWICHTIG: Vorheriger Versuch hatte Permission-Fehler. Pruefe Dateipfade und Berechtigungen.';
-  } else if (errorContext.match(/no code|no changes|completed_no_code/i)) {
-    diagnosis = 'Kein Code produziert — Agent hat nur analysiert';
-    newTask = 'WICHTIG: Schreibe SOFORT echten Code. Kein Analysieren, kein Planen.\n' + task.task;
-  } else {
-    diagnosis = 'Unbekannter Fehler';
-    newTask = task.task + '\nWICHTIG: Vorheriger Versuch ist fehlgeschlagen. Versuche einen einfacheren Ansatz. Fehler: ' + errorContext.substring(0, 150);
-  }
-
-  // Try different agent if same agent failed 2+ times on this task
-  var failCount = await queryOne("SELECT count(*) as c FROM agent_tasks WHERE agent_id = $1 AND status IN ('failed','error','completed_no_code') AND created_at > NOW() - interval '2 hours'", [task.agent_id]);
-  var targetAgentId = task.agent_id;
-
-  if (parseInt(failCount.c) >= 2) {
-    // Route to different agent in same department
-    var alt = await routeTask(task.task, task.company_id);
-    if (alt && alt.id !== task.agent_id) {
-      targetAgentId = alt.id;
-      console.log('[self-heal] Switching from agent ' + task.agent_id + ' to ' + alt.id + ' (' + alt.name + ')');
-    }
-  }
-
-  // Create retry task
-  var retry = await queryOne(
-    "INSERT INTO agent_tasks (agent_id, task, status, parent_task_id, created_at) VALUES ($1, $2, 'pending', $3, NOW()) RETURNING *",
-    [targetAgentId, newTask, taskId]
-  );
-
-  // Log the heal
-  console.log('[self-heal] Task ' + taskId + ' retried as ' + retry.id + ' (diagnosis: ' + diagnosis + ')');
-
-  // Send message to agent about the retry
-  await sendAgentMessage(1, targetAgentId, 'Retry: ' + diagnosis, 'Dein vorheriger Task ist fehlgeschlagen (' + diagnosis + '). Neuer Versuch mit verbesserten Anweisungen. Liefere diesmal sauberen Code.', 'urgent', null);
-
-  return {originalTask: taskId, retryTask: retry.id, diagnosis: diagnosis, agent: targetAgentId};
-}
-
-// === MENTORING: Senior agent reviews junior code before QA ===
-async function mentorReview(taskId) {
-  var task = await queryOne("SELECT t.*, a.name, a.department, a.company_id FROM agent_tasks t JOIN blun_agents a ON a.id = t.agent_id WHERE t.id = $1", [taskId]);
-  if (!task || task.status !== 'completed') return null;
-
-  // Find senior agent in same department (or Leon/Helmut as fallback)
-  var mentor = await queryOne(
-    "SELECT a.id, a.name FROM blun_agents a JOIN agent_performance p ON p.agent_id = a.id WHERE a.department = $1 AND a.id != $2 AND a.status = 'active' AND p.level IN ('senior','mid') ORDER BY p.avg_score DESC LIMIT 1",
-    [task.department, task.agent_id]
-  );
-
-  // Fallback: Leon (27) for code, Helmut (29) for QA
-  if (!mentor) {
-    var fallbackId = task.department === 'Qualitaetskontrolle' ? 29 : 27;
-    mentor = await queryOne("SELECT id, name FROM blun_agents WHERE id = $1", [fallbackId]);
-  }
-  if (!mentor) return null;
-
-  // Create mentor review task
-  var reviewTask = 'MENTOR-REVIEW fuer Task #' + taskId + ' von ' + task.name + ':\n' +
-    'Original-Task: ' + task.task.substring(0, 300) + '\n' +
-    'Ergebnis: ' + (task.result || '').substring(0, 500) + '\n\n' +
-    'Pruefe den Code auf: 1) Korrektheit 2) Best Practices 3) Sicherheit 4) Edge Cases\n' +
-    'Antworte mit MENTOR:PASS oder MENTOR:FAIL + konkretem Feedback.';
-
-  var review = await queryOne(
-    "INSERT INTO agent_tasks (agent_id, task, status, parent_task_id, created_at) VALUES ($1, $2, 'pending', $3, NOW()) RETURNING *",
-    [mentor.id, reviewTask, taskId]
-  );
-
-  console.log('[mentor] Task ' + taskId + ' sent to ' + mentor.name + ' for review');
-
-  return {taskId: taskId, mentorId: mentor.id, mentorName: mentor.name, reviewTaskId: review.id};
-}
-
-// === GAMIFICATION: XP, Badges, Achievements ===
-async function awardXP(agentId, amount, reason) {
-  // XP stored in agent_performance, calculated from tasks
-  var perf = await queryOne("SELECT * FROM agent_performance WHERE agent_id = $1", [agentId]);
-  if (!perf) return null;
-
-  // Check for achievements
-  var achievements = [];
-  var completed = parseInt(perf.completed_tasks) || 0;
-  var streak = parseInt(perf.streak) || 0;
-  var avg = parseFloat(perf.avg_score) || 0;
-
-  if (completed === 10) achievements.push('Erstling: 10 Tasks abgeschlossen');
-  if (completed === 50) achievements.push('Arbeiter: 50 Tasks abgeschlossen');
-  if (completed === 100) achievements.push('Maschine: 100 Tasks abgeschlossen');
-  if (streak >= 10) achievements.push('Unaufhaltbar: 10er Streak');
-  if (streak >= 20) achievements.push('Legende: 20er Streak');
-  if (avg >= 9.0 && completed >= 20) achievements.push('Perfektionist: 9.0+ Durchschnitt');
-
-  // Save achievements to memory
-  if (achievements.length > 0) {
-    var existingAch = [];
-    try {
-      var achMem = await queryOne("SELECT content FROM agent_memory WHERE agent_id = $1 AND key = 'achievements'", [agentId]);
-      if (achMem) existingAch = JSON.parse(achMem.content);
-    } catch(e) {}
-
-    var newAch = achievements.filter(function(a) { return existingAch.indexOf(a) === -1; });
-    if (newAch.length > 0) {
-      var allAch = existingAch.concat(newAch);
-      await saveAgentMemory(agentId, 'achievements', JSON.stringify(allAch), ['achievement', 'gamification'], 'achievement');
-      // CEO congratulates
-      for (var i = 0; i < newAch.length; i++) {
-        await sendAgentMessage(1, agentId, 'Achievement freigeschaltet!', newAch[i], 'normal', null);
-        console.log('[gamification] Agent ' + agentId + ' earned: ' + newAch[i]);
-      }
-    }
-  }
-
-  return {agentId: agentId, completed: completed, streak: streak, avg: avg, achievements: achievements};
-}
-
-// === CEO INTELLIGENCE: Performance Scoring, Dynamic Routing, Sub-Tasks ===
-
-// Score a completed task (called after QA or completion)
-async function scoreTask(taskId, score, feedback) {
-  score = Math.max(1, Math.min(10, parseInt(score) || 5));
-  await query("UPDATE agent_tasks SET score = $2, feedback = $3 WHERE id = $1", [taskId, score, feedback || '']);
-
-  // Update agent performance stats
-  var task = await queryOne("SELECT agent_id FROM agent_tasks WHERE id = $1", [taskId]);
-  if (task) {
-    await updatePerformance(task.agent_id);
-  }
-  return {taskId: taskId, score: score};
-}
-
-// Recalculate agent performance from task history
-async function updatePerformance(agentId) {
-  var stats = await queryOne(
-    "SELECT count(*) as total, count(*) FILTER (WHERE status = 'completed') as completed, count(*) FILTER (WHERE status = 'failed') as failed, COALESCE(avg(score) FILTER (WHERE score IS NOT NULL), 0) as avg_score FROM agent_tasks WHERE agent_id = $1 AND created_at > NOW() - interval '7 days'",
-    [agentId]
-  );
-
-  // Calculate streak (consecutive completions)
-  var recent = await query(
-    "SELECT status FROM agent_tasks WHERE agent_id = $1 ORDER BY completed_at DESC NULLS LAST LIMIT 10",
-    [agentId]
-  );
-  var streak = 0;
-  for (var i = 0; i < recent.length; i++) {
-    if (recent[i].status === 'completed') streak++;
-    else break;
-  }
-
-  // Determine level based on performance
-  var avg = parseFloat(stats.avg_score) || 0;
-  var completed = parseInt(stats.completed) || 0;
-  var level = 'junior';
-  if (completed >= 20 && avg >= 8) level = 'senior';
-  else if (completed >= 10 && avg >= 7) level = 'mid';
-  else if (completed >= 5 && avg >= 6) level = 'advanced_junior';
-
-  await query(
-    "INSERT INTO agent_performance (agent_id, total_tasks, completed_tasks, failed_tasks, avg_score, streak, level, last_updated) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW()) ON CONFLICT (agent_id) DO UPDATE SET total_tasks = $2, completed_tasks = $3, failed_tasks = $4, avg_score = $5, streak = $6, level = $7, last_updated = NOW()",
-    [agentId, parseInt(stats.total), completed, parseInt(stats.failed), avg, streak, level]
-  );
-
-  // Zuckerbrot: Agent mit hohem Score bekommt Lob-Memory
-  if (streak >= 5 && avg >= 8) {
-    await saveAgentMemory(agentId, 'ceo_feedback', 'CEO Dieter Junior: Hervorragende Arbeit! ' + streak + ' Tasks in Folge erfolgreich. Du bist auf Senior-Level. Weiter so!', ['feedback', 'praise'], 'feedback');
-  }
-  // Peitsche: Agent mit niedrigem Score bekommt Warnung
-  if (streak === 0 && parseInt(stats.failed) >= 2) {
-    await saveAgentMemory(agentId, 'ceo_feedback', 'CEO Dieter Junior: WARNUNG. ' + stats.failed + ' fehlgeschlagene Tasks in den letzten 7 Tagen. Naechster Fail = Pause. Konzentrier dich und liefere sauberen Code.', ['feedback', 'warning'], 'feedback');
-  }
-
-  return {agentId: agentId, level: level, avg_score: avg, streak: streak};
-}
-
-// Dynamic Routing: Find best agent for a task based on performance + department
-async function routeTask(taskDescription, companyId) {
-  var tdl = taskDescription.toLowerCase();
-
-  // Determine target department from task content
-  var dept = null;
-  if (tdl.indexOf('css') !== -1 || tdl.indexOf('design') !== -1 || tdl.indexOf('responsive') !== -1 || tdl.indexOf('html') !== -1 || tdl.indexOf('ui') !== -1) dept = 'Frontend & Design';
-  else if (tdl.indexOf('route') !== -1 || tdl.indexOf('api') !== -1 || tdl.indexOf('backend') !== -1 || tdl.indexOf('sql') !== -1 || tdl.indexOf('db') !== -1) dept = 'Backend & Coding';
-  else if (tdl.indexOf('test') !== -1 || tdl.indexOf('qa') !== -1 || tdl.indexOf('bug') !== -1) dept = 'Qualitaetskontrolle';
-  else if (tdl.indexOf('deploy') !== -1 || tdl.indexOf('server') !== -1 || tdl.indexOf('nginx') !== -1 || tdl.indexOf('pm2') !== -1) dept = 'Infrastruktur & DevOps';
-  else if (tdl.indexOf('seo') !== -1 || tdl.indexOf('marketing') !== -1 || tdl.indexOf('content') !== -1 || tdl.indexOf('social') !== -1) dept = 'Marketing';
-  else if (tdl.indexOf('stripe') !== -1 || tdl.indexOf('billing') !== -1 || tdl.indexOf('payment') !== -1) dept = 'Business & Billing';
-
-  // Find best agent: active, matching department, highest performance
-  var whereClause = "WHERE a.status = 'active' AND a.id != 1";
-  var params = [];
-  if (companyId) { whereClause += " AND a.company_id = $1"; params.push(companyId); }
-  if (dept) { whereClause += " AND a.department = $" + (params.length + 1); params.push(dept); }
-
-  var candidates = await query(
-    "SELECT a.id, a.name, a.department, COALESCE(p.avg_score, 0) as score, COALESCE(p.level, 'junior') as level, COALESCE(p.streak, 0) as streak, (SELECT count(*) FROM agent_tasks t WHERE t.agent_id = a.id AND t.status IN ('pending','in_progress','processing')) as active_tasks FROM blun_agents a LEFT JOIN agent_performance p ON p.agent_id = a.id " + whereClause + " ORDER BY active_tasks ASC, score DESC, streak DESC LIMIT 5",
-    params
-  );
-
-  if (!candidates.length) return null;
-
-  // Prefer agent with fewest active tasks and highest score
-  return candidates[0];
-}
-
-// Split a large task into sub-tasks
-async function splitTask(parentTaskId, subTasks) {
-  var parent = await queryOne("SELECT * FROM agent_tasks WHERE id = $1", [parentTaskId]);
-  if (!parent) return [];
-
-  var created = [];
-  for (var i = 0; i < subTasks.length; i++) {
-    var sub = subTasks[i];
-    var agent = sub.agent_id || (await routeTask(sub.task, null));
-    var agentId = agent ? (agent.id || agent) : parent.agent_id;
-
-    var row = await queryOne(
-      "INSERT INTO agent_tasks (agent_id, task, status, parent_task_id, created_at) VALUES ($1, $2, 'pending', $3, NOW()) RETURNING *",
-      [agentId, sub.task, parentTaskId]
-    );
-    created.push(row);
-  }
-
-  // Mark parent as 'split'
-  await query("UPDATE agent_tasks SET status = 'split', result = $2 WHERE id = $1", [parentTaskId, created.length + ' sub-tasks created']);
-
-  return created;
-}
-
-// Get performance leaderboard
-async function getLeaderboard(companyId) {
-  var where = companyId ? "WHERE a.company_id = $1" : "";
-  var params = companyId ? [companyId] : [];
-  var rows = await query(
-    "SELECT a.id, a.name, a.department, p.total_tasks, p.completed_tasks, p.failed_tasks, p.avg_score, p.streak, p.level FROM blun_agents a JOIN agent_performance p ON p.agent_id = a.id " + where + " ORDER BY p.avg_score DESC, p.completed_tasks DESC",
-    params
-  );
-  return rows;
-}
-
-// Auto-score tasks based on hasChanges and QA result
-async function autoScoreTask(taskId, hasChanges, qaPassed) {
-  var score = 5; // baseline
-  if (hasChanges) score += 2; // produced code
-  if (qaPassed === true) score += 2; // passed QA
-  if (qaPassed === false) score -= 3; // failed QA
-  if (!hasChanges) score -= 2; // no code produced
-  score = Math.max(1, Math.min(10, score));
-
-  var feedback = '';
-  if (score >= 8) feedback = 'Sehr gut — Code produziert und QA bestanden.';
-  else if (score >= 5) feedback = 'Akzeptabel — aber Verbesserungspotential.';
-  else feedback = 'Mangelhaft — kein brauchbares Ergebnis.';
-
-  return scoreTask(taskId, score, feedback);
-}
-
-// === AGENT-TO-AGENT MESSAGING ===
-async function sendAgentMessage(fromId, toId, subject, content, priority, replyTo) {
-  var msg = await queryOne(
-    "INSERT INTO agent_messages (from_agent_id, to_agent_id, subject, content, priority, in_reply_to) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
-    [fromId, toId, subject || '', content, priority || 'normal', replyTo || null]
-  );
-  return msg;
-}
-
-async function getAgentInbox(agentId, status, limit) {
-  limit = limit || 20;
-  var where = "WHERE to_agent_id = $1";
-  var params = [agentId];
-  if (status) { where += " AND status = $2"; params.push(status); }
-  params.push(limit);
-  var rows = await query(
-    "SELECT m.*, a.name as from_name FROM agent_messages m JOIN blun_agents a ON a.id = m.from_agent_id " + where + " ORDER BY created_at DESC LIMIT $" + params.length,
-    params
-  );
-  return rows;
-}
-
-async function markMessageRead(messageId, agentId) {
-  await query("UPDATE agent_messages SET status = 'read' WHERE id = $1 AND to_agent_id = $2", [messageId, agentId]);
-}
-
-async function replyToMessage(originalMsgId, fromId, content) {
-  var orig = await queryOne("SELECT * FROM agent_messages WHERE id = $1", [originalMsgId]);
-  if (!orig) return null;
-  return sendAgentMessage(fromId, orig.from_agent_id, 'Re: ' + (orig.subject || ''), content, orig.priority, originalMsgId);
-}
-
-async function broadcastMessage(fromId, subject, content, department) {
-  var where = department ? "WHERE department = $1 AND status != 'disabled'" : "WHERE status != 'disabled'";
-  var params = department ? [department] : [];
-  var agents = await query("SELECT id FROM blun_agents " + where, params);
-  var sent = 0;
-  for (var i = 0; i < agents.length; i++) {
-    if (agents[i].id !== fromId) {
-      await sendAgentMessage(fromId, agents[i].id, subject, content, 'normal', null);
-      sent++;
-    }
-  }
-  return sent;
-}
-
-async function getUnreadSummary(agentId) {
-  var unread = await query(
-    "SELECT m.subject, m.content, a.name as from_name, m.priority FROM agent_messages m JOIN blun_agents a ON a.id = m.from_agent_id WHERE m.to_agent_id = $1 AND m.status = 'unread' ORDER BY m.created_at DESC LIMIT 5",
-    [agentId]
-  );
-  if (!unread.length) return '';
-  var lines = unread.map(function(m) {
-    return (m.priority === 'urgent' ? '[DRINGEND] ' : '') + m.from_name + ': ' + (m.subject ? m.subject + ' -- ' : '') + m.content.substring(0, 200);
-  });
-  await query("UPDATE agent_messages SET status = 'read' WHERE to_agent_id = $1 AND status = 'unread'", [agentId]);
-  return '\nNachrichten von anderen Agents:\n' + lines.join('\n');
-}
-
-// === MEMORY LAYER SYSTEM (L0=Identity, L1=Essential, L2=Project) ===
-async function saveLayeredMemory(agentId, key, value, layer, tags, category) {
-  layer = layer || 'L2';
-  var tagArr = tags || [];
-  var cat = category || 'general';
-  if (typeof tagArr === 'string') tagArr = tagArr.split(',').map(function(t){return t.trim();});
-  await query(
-    "INSERT INTO agent_memory (agent_id, key, content, layer, tags, category, updated_at) VALUES ($1, $2, $3, $4, $5, $6, NOW()) ON CONFLICT (agent_id, key) DO UPDATE SET content = $3, layer = $4, tags = $5, category = $6, updated_at = NOW()",
-    [agentId, key, value, layer, tagArr, cat]
-  );
-}
-
-async function loadLayeredMemory(agentId, maxChars) {
-  maxChars = maxChars || 8000;
-  var l0 = await query("SELECT key, content as value FROM agent_memory WHERE agent_id = $1 AND layer = 'L0' ORDER BY updated_at DESC", [agentId]);
-  var l1 = await query("SELECT key, content as value FROM agent_memory WHERE agent_id = $1 AND layer = 'L1' ORDER BY updated_at DESC", [agentId]);
-  var l2 = await query("SELECT key, content as value FROM agent_memory WHERE agent_id = $1 AND layer = 'L2' ORDER BY updated_at DESC", [agentId]);
-  var selected = [];
-  var totalChars = 0;
-  for (var i = 0; i < l0.length; i++) {
-    if (totalChars + l0[i].value.length < maxChars) {
-      selected.push({layer: 'L0', key: l0[i].key, value: l0[i].value});
-      totalChars += l0[i].value.length;
-    }
-  }
-  for (var i = 0; i < l1.length; i++) {
-    if (totalChars + l1[i].value.length < maxChars) {
-      selected.push({layer: 'L1', key: l1[i].key, value: l1[i].value});
-      totalChars += l1[i].value.length;
-    }
-  }
-  for (var i = 0; i < l2.length; i++) {
-    if (totalChars >= maxChars) break;
-    if (totalChars + l2[i].value.length < maxChars) {
-      selected.push({layer: 'L2', key: l2[i].key, value: l2[i].value});
-      totalChars += l2[i].value.length;
-    }
-  }
-  return selected;
-}
-
-async function promoteMemory(agentId, key) {
-  var mem = await queryOne("SELECT * FROM agent_memory WHERE agent_id = $1 AND key = $2", [agentId, key]);
-  if (mem && mem.layer === 'L2') {
-    await query("UPDATE agent_memory SET layer = 'L1' WHERE agent_id = $1 AND key = $2", [agentId, key]);
-    return true;
-  }
-  return false;
-}
-
-// === NOISE FILTER for auto-extracted memories ===
-function filterNoiseFromDecisions(decisions) {
-  if (!decisions || !decisions.length) return [];
-  var noise = [
-    /^(ok|done|yes|ja|passt|alles klar)/i,
-    /^(I will|I can|Let me|Ich werde)/i,
-    /^(analysing|analyzing|checking|looking)/i,
-    /\b(todo|fixme|hack)\b/i,
-    /^.{0,15}$/
-  ];
-  var seen = {};
-  return decisions.filter(function(d) {
-    for (var n = 0; n < noise.length; n++) {
-      if (noise[n].test(d)) return false;
-    }
-    var sig = d.substring(0, 40).toLowerCase().replace(/[^a-z0-9]/g, '');
-    if (seen[sig]) return false;
-    seen[sig] = true;
-    return true;
-  });
-}
-
-// === CODE GRAPH for smart task assignment ===
-async function indexFileToGraph(filePath, content) {
-  var imports = [];
-  var reqMatches = content.match(/require\(["']([^"']+)["']\)/g) || [];
-  for (var i = 0; i < reqMatches.length; i++) {
-    var m = reqMatches[i].match(/require\(["']([^"']+)["']\)/);
-    if (m) imports.push(m[1]);
-  }
-  var symbols = [];
-  var funcMatches = content.match(/(async\s+)?function\s+([a-zA-Z_$][a-zA-Z0-9_$]*)/g) || [];
-  for (var i = 0; i < funcMatches.length; i++) {
-    var m = funcMatches[i].match(/function\s+([a-zA-Z_$][a-zA-Z0-9_$]*)/);
-    if (m) symbols.push({name: m[1], type: 'function'});
-  }
-  for (var s = 0; s < symbols.length; s++) {
-    await query(
-      "INSERT INTO code_graph (file_path, symbol_name, symbol_type, imports, updated_at) VALUES ($1, $2, $3, $4, NOW()) ON CONFLICT DO NOTHING",
-      [filePath, symbols[s].name, symbols[s].type, imports]
-    );
-  }
-  return {file: filePath, symbols: symbols.length, imports: imports.length};
-}
-
-async function findRelatedFiles(filePath) {
-  var rows = await query(
-    "SELECT DISTINCT file_path FROM code_graph WHERE $1 = ANY(imports) OR file_path = $1",
-    [filePath]
-  );
-  return rows.map(function(r) { return r.file_path; });
-}
-
-async function suggestAgentForFile(filePath) {
-  var mapping = {
-    'dashboard': 'Frontend & Design',
-    'routes': 'Backend & Coding',
-    'agent-engine': 'Agent System',
-    'server.js': 'Infrastruktur & DevOps',
-    'billing': 'Business & Billing',
-    '.css': 'Frontend & Design',
-    '.html': 'Frontend & Design'
-  };
-  var dept = null;
-  var keys = Object.keys(mapping);
-  for (var i = 0; i < keys.length; i++) {
-    if (filePath.indexOf(keys[i]) !== -1) { dept = mapping[keys[i]]; break; }
-  }
-  if (!dept) return null;
-  var agent = await queryOne("SELECT id, name FROM blun_agents WHERE department = $1 AND status = 'active' ORDER BY RANDOM() LIMIT 1", [dept]);
-  return agent;
-}
-
-module.exports = { startAgent, stopAgent, getActiveAgents, chatWithAgent, callLLM, loadAgentMemory, saveAgentMemory, activeAgents, getRateLimitStatus, dreamCycle, startDreamCycle, stopDreamCycle, sendAgentMessage, getAgentInbox, markMessageRead, replyToMessage, broadcastMessage, getUnreadSummary, saveLayeredMemory, loadLayeredMemory, promoteMemory, filterNoiseFromDecisions, indexFileToGraph, findRelatedFiles, suggestAgentForFile, searchAgentMemory, searchMemoryByTag, scoreTask, updatePerformance, routeTask, splitTask, getLeaderboard, autoScoreTask, selfHealTask, mentorReview, awardXP, visualQACheck, autoVisualQA };
+module.exports = { runPipeline, delegateTask, startAgent, stopAgent, getActiveAgents, chatWithAgent, callLLM, loadAgentMemory, saveAgentMemory, activeAgents, getRateLimitStatus, dreamCycle, startDreamCycle, stopDreamCycle, sendAgentMessage, getAgentInbox, markMessageRead, replyToMessage, broadcastMessage, getUnreadSummary, saveLayeredMemory, loadLayeredMemory, promoteMemory, filterNoiseFromDecisions, indexFileToGraph, findRelatedFiles, suggestAgentForFile, searchAgentMemory, searchMemoryByTag, scoreTask, updatePerformance, routeTask, splitTask, getLeaderboard, autoScoreTask, selfHealTask, mentorReview, awardXP, visualQACheck, autoVisualQA };
 
 // === DIETER TOOL CALLING ===
 var http = require('http');
@@ -2074,5 +1093,7 @@ async function executeTools(agentId, message, aiResponse) {
   }
   return results.join('\n\n');
 }
+
+module.exports.executeTools = executeTools;
 
 module.exports.executeTools = executeTools;
