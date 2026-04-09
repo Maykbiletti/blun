@@ -726,7 +726,7 @@ Profil
 <script>
 // ===== STATE =====
 var TOKEN = localStorage.getItem('blun_token') || '';
-if(!TOKEN){ fetch('/auth/me',{credentials:'include'}).then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(d){if(d.user&&d.token){TOKEN=d.token;localStorage.setItem('blun_token',TOKEN);showApp();loadAll();}}).catch(function(){}); }
+if(!TOKEN){ fetch('/auth/me',{credentials:'include'}).then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(d){if(d.user&&d.token){TOKEN=d.token;localStorage.setItem('blun_token',TOKEN);USER=d.user;showApp();}}).catch(function(){showLogin();}); }
 var USER = null;
 var agents = [], companies = [], allModels = [], activeProviders = [];
 var currentAgent = null; // for detail modal
@@ -773,7 +773,7 @@ function api(path, opts) {
   var headers = Object.assign({'Content-Type':'application/json'}, opts.headers || {});
   if (TOKEN) headers['Authorization'] = 'Bearer ' + TOKEN;
   return fetch(path, Object.assign({}, opts, {headers:headers})).then(function(r) {
-    if (r.status === 401) { localStorage.removeItem('blun_token'); window.location='/login'; throw new Error('unauthorized'); }
+    if (r.status === 401) { localStorage.removeItem('blun_token'); TOKEN=''; showLogin(); throw new Error('unauthorized'); }
     return r.json();
   });
 }
@@ -791,7 +791,7 @@ function doLogin() {
 }
 function doLogout() {
   api('/auth/logout', {method:'POST'}).catch(function(){});
-  TOKEN = ''; localStorage.removeItem('blun_token'); window.location='/login';
+  TOKEN = ''; USER = null; localStorage.removeItem('blun_token'); showLogin();
 }
 function showLogin() { document.getElementById('loginView').style.display='flex'; document.getElementById('appShell').style.display='none'; }
 function showApp() {
