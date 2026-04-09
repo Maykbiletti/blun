@@ -863,13 +863,10 @@ async function heartbeat(agentId) {
           } catch(qaErr) { console.error("[agent-cli] QA task creation error:", qaErr.message); }
         }
       } catch(gitErr) { console.error("[agent-cli] Git commit error:", gitErr.message); }
-      // Quality check: did the CLI actually change files?
-      var cp3 = require("child_process");
-      var gitChanges = await new Promise(function(res){ cp3.exec("cd " + worktreePath + " && git diff --name-only HEAD~1 HEAD", {timeout:5000}, function(e,o,er){ res((o||"").trim()); }); });
-      var codeChanged = gitChanges.split("\n").filter(function(f){ return f.match(/\.(js|html|css|json)$/); }).length > 0;
-      if (codeChanged) {
+      // Quality check: only mark completed if agent ACTUALLY committed in this run
+      if (hasChanges) {
         await query("UPDATE agent_tasks SET status = $1, result = $2, completed_at = NOW() WHERE id = $3", ["completed", finalContent, pendingTask.id]);
-        console.log("[agent-cli] " + agent.name + " PRODUCED CODE: " + gitChanges.substring(0,200));
+        console.log("[agent-cli] " + agent.name + " PRODUCED CODE in worktree " + worktreePath);
       } else {
         await query("UPDATE agent_tasks SET status = $1, result = $2, completed_at = NOW() WHERE id = $3", ["completed_no_code", finalContent, pendingTask.id]);
         console.log("[agent-cli] " + agent.name + " produced NO code changes, marked as completed_no_code");
