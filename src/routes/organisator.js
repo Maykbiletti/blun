@@ -208,7 +208,7 @@ router.get("/stats", async function(req, res) {
   try {
     var [agents, tasks, costs, companies] = await Promise.all([
       query("SELECT status, COUNT(*)::int as count FROM blun_agents GROUP BY status"),
-      queryOne("SELECT COUNT(*)::int as total FROM agent_tasks WHERE status = 'completed'"),
+      queryOne("SELECT (SELECT COUNT(*)::int FROM tasks WHERE status = 'completed') + (SELECT COUNT(*)::int FROM agent_tasks WHERE status = 'completed') as total"),
       queryOne("SELECT COALESCE(SUM(cost),0)::numeric as total FROM agent_heartbeats WHERE created_at > NOW() - INTERVAL '30 days'"),
       queryOne("SELECT COUNT(*)::int as total FROM companies"),
     ]);
