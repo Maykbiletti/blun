@@ -391,6 +391,25 @@ async function callLLM(model, messages, agentId) {
   var modelLow = model.toLowerCase();
   if (model.startsWith("codex:") || modelLow.startsWith("gpt-") || model.toUpperCase().startsWith("GPT-") || modelLow.startsWith("o1") || modelLow.startsWith("o3") || modelLow.startsWith("o4")) {
     var cleanModel = model.replace("codex:", "");
+    // Try REST API first with OAuth token from DB
+    try {
+      var oaiConn = await queryOne("SELECT api_key_encrypted FROM ai_connections WHERE provider = 'openai' AND status = 'active' LIMIT 1", []);
+      if (oaiConn) {
+        var oaiKey = decryptKey(oaiConn.api_key_encrypted);
+        try { var oj = JSON.parse(oaiKey); if (oj.access_token || oj.accessToken) oaiKey = oj.access_token || oj.accessToken; } catch(e) {}
+        if (oaiKey && oaiKey.length > 20) {
+          console.log("[callLLM] OpenAI REST API for " + cleanModel);
+          var fetch = require("node-fetch");
+          var oaiBody = { model: cleanModel, messages: messages, max_tokens: 4096 };
+          var oaiResp = await fetch("https://api.openai.com/v1/chat/completions", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + oaiKey }, body: JSON.stringify(oaiBody), timeout: 120000 });
+          var oaiData = await oaiResp.json();
+          if (oaiData.error) throw new Error(oaiData.error.message || JSON.stringify(oaiData.error));
+          var oaiText = (oaiData.choices && oaiData.choices[0] && oaiData.choices[0].message) ? oaiData.choices[0].message.content : "";
+          var oaiTok = oaiData.usage ? (oaiData.usage.total_tokens || 0) : 0;
+          return { content: oaiText, tokens: oaiTok, cost: oaiTok * 0.000005 };
+        }
+      }
+    } catch(oe) { console.error("[openai-rest] " + oe.message + " -- fallback to Codex CLI"); }
     try { return await callCodexCLI(messages, cleanModel); } catch(e) { console.error("[codex-cli]", e.message); return { content: "Fehler: " + e.message, tokens: 0, cost: 0 }; }
   }
   if (isLocal) {
