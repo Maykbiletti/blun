@@ -139,6 +139,7 @@ app.use(cors(corsOptions));
 // Stripe webhook needs raw body before JSON parser
 app.use("/billing/webhook", express.raw({ type: "application/json" }));
 
+app.use(require("express-fileupload")({ limits: { fileSize: 5 * 1024 * 1024 } }));
 app.use(express.json({ limit: "10mb" }));
 app.use(morgan("short"));
 app.use(cookieParser());
@@ -289,6 +290,7 @@ app.get("/dashboard", function (req, res) { res.set("Cache-Control","no-cache,no
   res.sendFile(__dirname + "/dashboard/index.html");
 });
 
+app.use("/uploads", express.static(path.join(__dirname, "dashboard/uploads")));
 app.use("/dashboard", express.static(path.join(__dirname, "dashboard")));
 
 app.use(function (err, req, res, _next) {

@@ -17,6 +17,13 @@ router.use("/", function(req, res, next) {
   });
 });
 
+// Company context from header or query
+function getCompanyId(req) {
+  var cid = req.headers["x-company-id"] || req.query.company_id;
+  return cid ? parseInt(cid) : null;
+}
+
+
 // === COMPANIES ===
 router.get("/companies", async function(req, res) {
   try {
@@ -56,7 +63,8 @@ router.delete("/companies/:id", async function(req, res) {
 // === AGENTS ===
 router.get("/agents", async function(req, res) {
   try {
-    var agents = await pc.getAgents();
+    var cid = getCompanyId(req);
+    var agents = await pc.getAgents(cid);
     for (var i = 0; i < agents.length; i++) {
       var a = agents[i];
       try { var pt = await queryOne("SELECT COUNT(*)::int as c FROM agent_tasks WHERE agent_id = $1 AND status = 'pending'", [a.id]); a.pending_tasks = pt ? pt.c : 0; } catch(e2) { a.pending_tasks = 0; }
@@ -99,24 +107,26 @@ router.post("/tasks/reset", async function(req, res) {
 
 router.post("/agents/bulk-start", async function(req, res) {
   try {
-    var agents = await query("SELECT id FROM blun_agents");
+    var cid = getCompanyId(req);
+    var agents = cid ? await query("SELECT id FROM blun_agents WHERE company_id = $1", [cid]) : await query("SELECT id FROM blun_agents");
     var count = 0;
     for (var i = 0; i < agents.length; i++) {
       try { engine.startAgent(agents[i].id); count++; } catch(e) {}
     }
-    await query("UPDATE blun_agents SET status = 'active'");
+    if (cid) await query("UPDATE blun_agents SET status = 'active' WHERE company_id = $1", [cid]); else await query("UPDATE blun_agents SET status = 'active'");
     res.json({ ok: true, count: count });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 router.post("/agents/bulk-stop", async function(req, res) {
   try {
-    var agents = await query("SELECT id FROM blun_agents");
+    var cid = getCompanyId(req);
+    var agents = cid ? await query("SELECT id FROM blun_agents WHERE company_id = $1", [cid]) : await query("SELECT id FROM blun_agents");
     var count = 0;
     for (var i = 0; i < agents.length; i++) {
       try { engine.stopAgent(agents[i].id); count++; } catch(e) {}
     }
-    await query("UPDATE blun_agents SET status = 'idle'");
+    if (cid) await query("UPDATE blun_agents SET status = 'idle' WHERE company_id = $1", [cid]); else await query("UPDATE blun_agents SET status = 'idle'");
     res.json({ ok: true, count: count });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -125,7 +135,8 @@ router.put("/agents/bulk-model", async function(req, res) {
   try {
     var { model } = req.body;
     if (!model) return res.status(400).json({ error: "model required" });
-    var result = await query("UPDATE blun_agents SET model = $1, updated_at = NOW()", [model]);
+    var cid = getCompanyId(req);
+    var result = cid ? await query("UPDATE blun_agents SET model = $1, updated_at = NOW() WHERE company_id = $2", [model, cid]) : await query("UPDATE blun_agents SET model = $1, updated_at = NOW()", [model]);
     pc.invalidateCache();
     res.json({ ok: true, count: result.rowCount || 15 });
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -349,6 +360,37 @@ router.get("/tasks/:id/comments", async function(req, res) {
       [req.params.id]
     );
     res.json(comments);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+
+// === COMPANY LOGO UPLOAD ===
+var path = require("path");
+var fsx = require("fs");
+router.post("/companies/:id/logo", async function(req, res) {
+  try {
+    if (!req.files || !req.files.logo) return res.status(400).json({ error: "logo file required" });
+    var logo = req.files.logo;
+    var ext = path.extname(logo.name) || ".png";
+    var fname = "company_" + req.params.id + "_logo" + ext;
+    var uploadDir = "/root/blun/dashboard/uploads";
+    if (!fsx.existsSync(uploadDir)) fsx.mkdirSync(uploadDir, { recursive: true });
+    var dest = path.join(uploadDir, fname);
+    await logo.mv(dest);
+    var url = "/uploads/" + fname;
+    await queryOne("UPDATE companies SET logo_url = $1 WHERE id = $2 RETURNING *", [url, req.params.id]);
+    res.json({ ok: true, logo_url: url });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// === SET ACTIVE COMPANY ===
+router.post("/set-company", async function(req, res) {
+  try {
+    var { company_id } = req.body;
+    if (!company_id) return res.status(400).json({ error: "company_id required" });
+    var c = await queryOne("SELECT * FROM companies WHERE id = $1", [company_id]);
+    if (!c) return res.status(404).json({ error: "Company not found" });
+    res.json({ ok: true, company: c });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 

@@ -11,7 +11,7 @@ var _blunCacheTs = 0;
 async function getBlunAgents() {
   if (_blunCache && Date.now() - _blunCacheTs < 30000) return _blunCache;
   try {
-    _blunCache = await query("SELECT id, name, role, model, department, system_prompt, personality, heartbeat_interval, status FROM blun_agents");
+    _blunCache = await query("SELECT id, name, role, model, department, system_prompt, personality, heartbeat_interval, status, company_id FROM blun_agents");
     _blunCacheTs = Date.now();
   } catch(e) { _blunCache = []; }
   return _blunCache;
@@ -38,7 +38,7 @@ function transformAgent(pa, blunData) {
     model: old ? old.model : ((pa.adapterConfig && pa.adapterConfig.model) || pa.adapterType || "unknown"),
     status: old ? (old.status || "idle") : (pa.status || "idle"),
     department: old ? (old.department || "") : (pa.role || ""),
-    company_id: pa.companyId,
+    company_id: old ? (old.company_id || pa.companyId) : pa.companyId,
     company_name: "BLUN AI",
     personality: old ? (old.personality || "") : "",
     system_prompt: old ? (old.system_prompt || "") : "",
@@ -57,10 +57,12 @@ function transformAgent(pa, blunData) {
 
 function invalidateCache() { _blunCache = null; _blunCacheTs = 0; }
 
-async function getAgents() {
+async function getAgents(companyId) {
   var agents = await pcFetch("/api/companies/" + COMPANY_ID + "/agents");
   var blunData = await getBlunAgents();
-  return agents.map(function(a) { return transformAgent(a, blunData); });
+  var result = agents.map(function(a) { return transformAgent(a, blunData); });
+  if (companyId) result = result.filter(function(a) { return a.company_id == companyId; });
+  return result;
 }
 
 async function getAgent(idOrKey) {
