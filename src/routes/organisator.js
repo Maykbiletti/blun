@@ -80,6 +80,16 @@ router.post("/agents", async function(req, res) {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+
+router.put("/agents/bulk-model", async function(req, res) {
+  try {
+    var { model } = req.body;
+    if (!model) return res.status(400).json({ error: "model required" });
+    var result = await query("UPDATE blun_agents SET model = $1, updated_at = NOW()", [model]);
+    res.json({ ok: true, count: result.rowCount || 15 });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 router.put("/agents/:id", async function(req, res) {
   try {
     var { name, role, model, system_prompt, personality, heartbeat_interval, company_id, department } = req.body;

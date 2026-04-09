@@ -980,6 +980,7 @@ function getPageFromPath(){
 function loadAll() {
   api('/api/organisator/agents').then(function(d){agents=d;renderAgents();renderChatList();document.getElementById('agentCount').textContent=d.length;var op=getOperator();var la=localStorage.getItem('blun_last_agent');if(la){openAgentWorkspace(parseInt(la));}else if(op){openAgentWorkspace(op.id);}});
   api('/api/organisator/companies').then(function(d){companies=d;renderCompanies();});
+  initBulkModelSelect();
   api('/api/organisator/stats').then(function(d){renderStats(d);}).catch(function(){});
   api('/api/models').then(function(d){allModels=d.models||d||[];}).catch(function(){});
   api('/api/connections').then(function(d){var c=d.connections||d||[];activeProviders=c.filter(function(x){return x.status==='active';}).map(function(x){return x.provider;});}).catch(function(){});
@@ -1338,6 +1339,22 @@ function saveAgentDetail() {
     personality:document.getElementById('adFieldPersonality').value
   })}).then(function(){closeModal('agentDetailModal');loadAll();});
 }
+
+function bulkChangeModel() {
+  var sel = document.getElementById('bulkModelSelect');
+  if (!sel || !sel.value) return;
+  var model = sel.value;
+  if (!confirm('Alle Agents auf "' + model + '" umstellen?')) return;
+  api('/api/organisator/agents/bulk-model', {method:'PUT', body:JSON.stringify({model:model})}).then(function(d){
+    loadAll();
+    alert((d.count||'Alle') + ' Agents umgestellt auf ' + model);
+  }).catch(function(e){ alert('Fehler: ' + e.message); });
+}
+function initBulkModelSelect() {
+  var sel = document.getElementById('bulkModelSelect');
+  if (sel) sel.innerHTML = modelOptions('');
+}
+
 function deleteAgent() {
   if(!currentAgent||!confirm('Agent "'+currentAgent.name+'" wirklich loeschen?')) return;
   api('/api/organisator/agents/'+currentAgent.id,{method:'DELETE'}).then(function(){closeModal('agentDetailModal');loadAll();});
