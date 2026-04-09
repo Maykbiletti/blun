@@ -41,6 +41,7 @@ const modelsRoutes = require("./src/routes/models");
 const profileRoutes = require("./src/routes/profile");
 const contactRoutes = require("./src/routes/contact");
 const newsletterRoutes = require("./src/routes/newsletter");
+const agentChatRoutes = require("./src/routes/agent-chat-route");
 const voiceRoutes = require("./src/routes/voice");
 const blunCodeRoutes = require("./src/routes/blun-code");
 const monitorRoutes = require("./src/routes/monitor");
@@ -210,6 +211,7 @@ app.get("/api/agents/:id/skills", getAgentSkills);
 
 // KI-Organisator routes (auth handled inside)
 app.use("/api/organisator", organisatorRoutes);
+app.use("/api/agent-chat", agentChatRoutes);
 
 // Telegram channel integration (API)
 app.use("/telegram/api", telegramRoutes);

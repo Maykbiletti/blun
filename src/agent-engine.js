@@ -789,6 +789,8 @@ async function heartbeat(agentId) {
       // Load memory
       var memBudget = (agent.model && (agent.model.startsWith("local:") || agent.model.includes("gemma") || agent.model.includes("llama"))) ? 500 : 8000;
       var memStr = await loadSmartMemory(agentId, pendingTask.task, memBudget);
+      var msgStr = await getUnreadSummary(agentId);
+      if (msgStr) memStr += msgStr;
       // Load auto_memory (decisions/blockers from previous tasks)
       try {
         var autoMemRow = await queryOne("SELECT content FROM agent_memory WHERE agent_id = $1 AND key = 'auto_memory'", [agentId]);
@@ -968,7 +970,7 @@ async function heartbeat(agentId) {
         }
       }
       var autoMem = {
-        decisions: decisions.slice(-5),
+        decisions: filterNoiseFromDecisions(decisions).slice(-5),
         blockers: blockers.slice(-3),
         context: context.slice(-3),
         last_task: (typeof pendingTask !== 'undefined' && pendingTask ? pendingTask.task : '').substring(0, 100),
@@ -1211,7 +1213,190 @@ function stopDreamCycle(agentId) {
 }
 
 
-module.exports = { startAgent, stopAgent, getActiveAgents, chatWithAgent, callLLM, loadAgentMemory, saveAgentMemory, activeAgents, getRateLimitStatus, dreamCycle, startDreamCycle, stopDreamCycle };
+
+// === AGENT-TO-AGENT MESSAGING ===
+async function sendAgentMessage(fromId, toId, subject, content, priority, replyTo) {
+  var msg = await queryOne(
+    "INSERT INTO agent_messages (from_agent_id, to_agent_id, subject, content, priority, in_reply_to) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
+    [fromId, toId, subject || '', content, priority || 'normal', replyTo || null]
+  );
+  return msg;
+}
+
+async function getAgentInbox(agentId, status, limit) {
+  limit = limit || 20;
+  var where = "WHERE to_agent_id = $1";
+  var params = [agentId];
+  if (status) { where += " AND status = $2"; params.push(status); }
+  params.push(limit);
+  var rows = await query(
+    "SELECT m.*, a.name as from_name FROM agent_messages m JOIN blun_agents a ON a.id = m.from_agent_id " + where + " ORDER BY created_at DESC LIMIT $" + params.length,
+    params
+  );
+  return rows;
+}
+
+async function markMessageRead(messageId, agentId) {
+  await query("UPDATE agent_messages SET status = 'read' WHERE id = $1 AND to_agent_id = $2", [messageId, agentId]);
+}
+
+async function replyToMessage(originalMsgId, fromId, content) {
+  var orig = await queryOne("SELECT * FROM agent_messages WHERE id = $1", [originalMsgId]);
+  if (!orig) return null;
+  return sendAgentMessage(fromId, orig.from_agent_id, 'Re: ' + (orig.subject || ''), content, orig.priority, originalMsgId);
+}
+
+async function broadcastMessage(fromId, subject, content, department) {
+  var where = department ? "WHERE department = $1 AND status != 'disabled'" : "WHERE status != 'disabled'";
+  var params = department ? [department] : [];
+  var agents = await query("SELECT id FROM blun_agents " + where, params);
+  var sent = 0;
+  for (var i = 0; i < agents.length; i++) {
+    if (agents[i].id !== fromId) {
+      await sendAgentMessage(fromId, agents[i].id, subject, content, 'normal', null);
+      sent++;
+    }
+  }
+  return sent;
+}
+
+async function getUnreadSummary(agentId) {
+  var unread = await query(
+    "SELECT m.subject, m.content, a.name as from_name, m.priority FROM agent_messages m JOIN blun_agents a ON a.id = m.from_agent_id WHERE m.to_agent_id = $1 AND m.status = 'unread' ORDER BY m.created_at DESC LIMIT 5",
+    [agentId]
+  );
+  if (!unread.length) return '';
+  var lines = unread.map(function(m) {
+    return (m.priority === 'urgent' ? '[DRINGEND] ' : '') + m.from_name + ': ' + (m.subject ? m.subject + ' -- ' : '') + m.content.substring(0, 200);
+  });
+  await query("UPDATE agent_messages SET status = 'read' WHERE to_agent_id = $1 AND status = 'unread'", [agentId]);
+  return '\nNachrichten von anderen Agents:\n' + lines.join('\n');
+}
+
+// === MEMORY LAYER SYSTEM (L0=Identity, L1=Essential, L2=Project) ===
+async function saveLayeredMemory(agentId, key, value, layer, tags, category) {
+  layer = layer || 'L2';
+  var tagArr = tags || [];
+  var cat = category || 'general';
+  if (typeof tagArr === 'string') tagArr = tagArr.split(',').map(function(t){return t.trim();});
+  await query(
+    "INSERT INTO agent_memory (agent_id, key, content, layer, tags, category, updated_at) VALUES ($1, $2, $3, $4, $5, $6, NOW()) ON CONFLICT (agent_id, key) DO UPDATE SET content = $3, layer = $4, tags = $5, category = $6, updated_at = NOW()",
+    [agentId, key, value, layer, tagArr, cat]
+  );
+}
+
+async function loadLayeredMemory(agentId, maxChars) {
+  maxChars = maxChars || 8000;
+  var l0 = await query("SELECT key, content as value FROM agent_memory WHERE agent_id = $1 AND layer = 'L0' ORDER BY updated_at DESC", [agentId]);
+  var l1 = await query("SELECT key, content as value FROM agent_memory WHERE agent_id = $1 AND layer = 'L1' ORDER BY updated_at DESC", [agentId]);
+  var l2 = await query("SELECT key, content as value FROM agent_memory WHERE agent_id = $1 AND layer = 'L2' ORDER BY updated_at DESC", [agentId]);
+  var selected = [];
+  var totalChars = 0;
+  for (var i = 0; i < l0.length; i++) {
+    if (totalChars + l0[i].value.length < maxChars) {
+      selected.push({layer: 'L0', key: l0[i].key, value: l0[i].value});
+      totalChars += l0[i].value.length;
+    }
+  }
+  for (var i = 0; i < l1.length; i++) {
+    if (totalChars + l1[i].value.length < maxChars) {
+      selected.push({layer: 'L1', key: l1[i].key, value: l1[i].value});
+      totalChars += l1[i].value.length;
+    }
+  }
+  for (var i = 0; i < l2.length; i++) {
+    if (totalChars >= maxChars) break;
+    if (totalChars + l2[i].value.length < maxChars) {
+      selected.push({layer: 'L2', key: l2[i].key, value: l2[i].value});
+      totalChars += l2[i].value.length;
+    }
+  }
+  return selected;
+}
+
+async function promoteMemory(agentId, key) {
+  var mem = await queryOne("SELECT * FROM agent_memory WHERE agent_id = $1 AND key = $2", [agentId, key]);
+  if (mem && mem.layer === 'L2') {
+    await query("UPDATE agent_memory SET layer = 'L1' WHERE agent_id = $1 AND key = $2", [agentId, key]);
+    return true;
+  }
+  return false;
+}
+
+// === NOISE FILTER for auto-extracted memories ===
+function filterNoiseFromDecisions(decisions) {
+  if (!decisions || !decisions.length) return [];
+  var noise = [
+    /^(ok|done|yes|ja|passt|alles klar)/i,
+    /^(I will|I can|Let me|Ich werde)/i,
+    /^(analysing|analyzing|checking|looking)/i,
+    /\b(todo|fixme|hack)\b/i,
+    /^.{0,15}$/
+  ];
+  var seen = {};
+  return decisions.filter(function(d) {
+    for (var n = 0; n < noise.length; n++) {
+      if (noise[n].test(d)) return false;
+    }
+    var sig = d.substring(0, 40).toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (seen[sig]) return false;
+    seen[sig] = true;
+    return true;
+  });
+}
+
+// === CODE GRAPH for smart task assignment ===
+async function indexFileToGraph(filePath, content) {
+  var imports = [];
+  var reqMatches = content.match(/require\(["']([^"']+)["']\)/g) || [];
+  for (var i = 0; i < reqMatches.length; i++) {
+    var m = reqMatches[i].match(/require\(["']([^"']+)["']\)/);
+    if (m) imports.push(m[1]);
+  }
+  var symbols = [];
+  var funcMatches = content.match(/(async\s+)?function\s+([a-zA-Z_$][a-zA-Z0-9_$]*)/g) || [];
+  for (var i = 0; i < funcMatches.length; i++) {
+    var m = funcMatches[i].match(/function\s+([a-zA-Z_$][a-zA-Z0-9_$]*)/);
+    if (m) symbols.push({name: m[1], type: 'function'});
+  }
+  for (var s = 0; s < symbols.length; s++) {
+    await query(
+      "INSERT INTO code_graph (file_path, symbol_name, symbol_type, imports, updated_at) VALUES ($1, $2, $3, $4, NOW()) ON CONFLICT DO NOTHING",
+      [filePath, symbols[s].name, symbols[s].type, imports]
+    );
+  }
+  return {file: filePath, symbols: symbols.length, imports: imports.length};
+}
+
+async function findRelatedFiles(filePath) {
+  var rows = await query(
+    "SELECT DISTINCT file_path FROM code_graph WHERE $1 = ANY(imports) OR file_path = $1",
+    [filePath]
+  );
+  return rows.map(function(r) { return r.file_path; });
+}
+
+async function suggestAgentForFile(filePath) {
+  var mapping = {
+    'dashboard': 'Frontend & Design',
+    'routes': 'Backend & Coding',
+    'agent-engine': 'Agent System',
+    'server.js': 'Infrastruktur & DevOps',
+    'billing': 'Business & Billing',
+    '.css': 'Frontend & Design',
+    '.html': 'Frontend & Design'
+  };
+  var dept = null;
+  var keys = Object.keys(mapping);
+  for (var i = 0; i < keys.length; i++) {
+    if (filePath.indexOf(keys[i]) !== -1) { dept = mapping[keys[i]]; break; }
+  }
+  if (!dept) return null;
+  var agent = await queryOne("SELECT id, name FROM blun_agents WHERE department = $1 AND status = 'active' ORDER BY RANDOM() LIMIT 1", [dept]);
+  return agent;
+}
+
+module.exports = { startAgent, stopAgent, getActiveAgents, chatWithAgent, callLLM, loadAgentMemory, saveAgentMemory, activeAgents, getRateLimitStatus, dreamCycle, startDreamCycle, stopDreamCycle, sendAgentMessage, getAgentInbox, markMessageRead, replyToMessage, broadcastMessage, getUnreadSummary, saveLayeredMemory, loadLayeredMemory, promoteMemory, filterNoiseFromDecisions, indexFileToGraph, findRelatedFiles, suggestAgentForFile, searchAgentMemory, searchMemoryByTag };
 
 // === DIETER TOOL CALLING ===
 var http = require('http');
