@@ -444,7 +444,7 @@ async function loadSmartMemory(agentId, userMessage, maxChars) {
   var rows = await query("SELECT key, content as value, updated_at FROM agent_memory WHERE agent_id = $1 ORDER BY updated_at DESC", [agentId]);
   if (!rows.length) return "";
   // Priority: identity, rules, vision always loaded
-  var priority = ["identity", "rules", "security", "rename", "vision"];
+  var priority = ["identity", "personality", "rules", "security", "rename", "vision", "skill_"];
   var selected = [];
   var totalChars = 0;
   var msg = (userMessage || "").toLowerCase();
