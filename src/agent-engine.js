@@ -105,7 +105,7 @@ function isRateLimited(provider) {
 }
 
 // === CLI CONCURRENCY LIMITER ===
-var cliConcurrency = { active: 0, max: 3, queued: 0, totalToday: 0, lastReset: Date.now(), paused: false, pauseUntil: 0 };
+var cliConcurrency = { active: 0, max: 10, queued: 0, totalToday: 0, lastReset: Date.now(), paused: false, pauseUntil: 0 };
 
 async function acquireCliSlot(agentName) {
   // Reset daily counter
