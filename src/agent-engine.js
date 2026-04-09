@@ -785,11 +785,16 @@ async function heartbeat(agentId) {
 
       // Build args (from Paperclip adapter-claude-local)
       var cp2 = require("child_process");
-      var cliArgs = ["--print", "-", "--output-format", "stream-json", "--verbose", "--max-turns", "5"];
-      // DISABLED: stale sessions cause errors
-      // if (sessionId) cliArgs.push("--resume", sessionId);
-      if (cliModel && cliCmd === "claude") cliArgs.push("--model", cliModel);
+      var cliArgs;
+      if (cliCmd === "codex") {
+        cliArgs = ["exec", "--skip-git-repo-check", "--full-auto"];
+        if (cliModel) cliArgs.push("--model", cliModel);
+      } else {
+        cliArgs = ["--print", "-", "--output-format", "stream-json", "--verbose", "--max-turns", "5"];
+        if (cliModel) cliArgs.push("--model", cliModel);
+      }
 
+      if (cliCmd === "codex") cliArgs.push(taskPrompt.substring(0,2000));
       await acquireCliSlot(agent.name);
       var cliResult = await new Promise(function(resolve) {
         var child = cp2.spawn(cliCmd, cliArgs, {
@@ -798,7 +803,7 @@ async function heartbeat(agentId) {
           env: Object.assign({}, process.env, { DISABLE_INTERACTIVITY: "1" })
         });
         var stdout = "", stderr = "";
-        child.stdin.write(taskPrompt);
+        if (cliCmd !== "codex") child.stdin.write(taskPrompt);
         child.stdin.end();
         child.stdout.on("data", function(d) { if (stdout.length < 2000000) stdout += d.toString(); });
         child.stderr.on("data", function(d) { if (stderr.length < 500000) stderr += d.toString(); });
