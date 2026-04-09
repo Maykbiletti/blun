@@ -81,6 +81,31 @@ router.post("/agents", async function(req, res) {
 });
 
 
+
+router.post("/agents/bulk-start", async function(req, res) {
+  try {
+    var agents = await query("SELECT id FROM blun_agents");
+    var count = 0;
+    for (var i = 0; i < agents.length; i++) {
+      try { engine.startAgent(agents[i].id); count++; } catch(e) {}
+    }
+    await query("UPDATE blun_agents SET status = 'active'");
+    res.json({ ok: true, count: count });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/agents/bulk-stop", async function(req, res) {
+  try {
+    var agents = await query("SELECT id FROM blun_agents");
+    var count = 0;
+    for (var i = 0; i < agents.length; i++) {
+      try { engine.stopAgent(agents[i].id); count++; } catch(e) {}
+    }
+    await query("UPDATE blun_agents SET status = 'idle'");
+    res.json({ ok: true, count: count });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 router.put("/agents/bulk-model", async function(req, res) {
   try {
     var { model } = req.body;
