@@ -186,6 +186,25 @@ async function checkRAM() {
 
 // ========== TASK DISTRIBUTION ==========
 
+
+// === FAIR ROUND-ROBIN DISTRIBUTOR ===
+var _rrIndex = 0;
+
+async function getIdleAgents(db) {
+  var busy = await db.query("SELECT DISTINCT agent_id FROM agent_tasks WHERE status = 'in_progress'");
+  var busyIds = busy.rows.map(function(r) { return r.agent_id; });
+  var all = await db.query("SELECT id, name, role, department FROM blun_agents WHERE id != 1 AND status = 'active'");
+  return all.rows.filter(function(a) { return busyIds.indexOf(a.id) === -1; });
+}
+
+function pickNextIdle(idleAgents) {
+  if (!idleAgents.length) return null;
+  _rrIndex = _rrIndex % idleAgents.length;
+  var agent = idleAgents[_rrIndex];
+  _rrIndex++;
+  return agent;
+}
+
 async function distributeTasks(db) {
   // Check for pending tasks
   var pending = await db.query(
@@ -205,8 +224,16 @@ async function distributeTasks(db) {
 
   for (var i = 0; i < pending.rows.length; i++) {
     var task = pending.rows[i];
+    // Fair distribution: reassign if target agent is busy
+    var idleAgents = await getIdleAgents(db);
     if (task.agent_id) {
-      // Already assigned — send via chat
+      var targetIdle = idleAgents.some(function(a) { return a.id === task.agent_id; });
+      if (!targetIdle && idleAgents.length > 0) {
+        var next = pickNextIdle(idleAgents);
+        log("Fair reassign: Task " + task.id + " von Agent " + task.agent_id + " -> " + next.name + " (" + next.id + ")");
+        task.agent_id = next.id;
+        await db.query("UPDATE agent_tasks SET agent_id = $1 WHERE id = $2", [next.id, task.id]);
+      }
       try {
         var chatResult = await callAPI('POST', '/api/organisator/agents/' + task.agent_id + '/chat', {
           message: 'AUFGABE: ' + task.task
