@@ -968,7 +968,7 @@ function closeMobileSidebar() {
   if(ov) ov.classList.remove('show');
 }
 function showPage(name) {
-  if(name===kanban&&typeof renderKanban===function){setTimeout(function(){renderKanban(kanbanContainer);},50);}
+  if(name==='kanban'&&typeof renderKanban==='function'){setTimeout(function(){renderKanban('kanbanContainer');},50);}
   if(name !== 'agents') {
     // Close workspace when leaving agents page
     var ws = document.getElementById('wsPanel');
