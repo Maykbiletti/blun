@@ -188,6 +188,24 @@ app.use("/software", softwareRoutes);
 app.use("/api/website-wizard", websiteWizardRoutes);
 app.get("/api/rate-limit-status", function(req, res) { try { var engine = require("./src/agent-engine"); res.json(engine.getRateLimitStatus ? engine.getRateLimitStatus() : {}); } catch(e) { res.json({ error: e.message }); } });
 
+// Multi-KI Status + Query API
+app.get("/api/multi-ki/status", authMiddleware, async function(req, res) {
+  try {
+    var ai = require("./src/ai/ai-provider");
+    var providers = Object.keys(ai.PROVIDERS);
+    var models = Object.entries(ai.MODEL_REGISTRY).map(function(e) { return { id: e[0], provider: e[1].provider, active: e[1].active !== false, capabilities: e[1].capabilities, quality: e[1].qualityScore, cost: e[1].costScore, speed: e[1].latencyScore, local: e[1].local || false }; });
+    res.json({ providers: providers, models: models });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post("/api/multi-ki/query", authMiddleware, async function(req, res) {
+  try {
+    var ai = require("./src/ai/ai-provider");
+    var result = await ai.query({ prompt: req.body.prompt, role: req.body.role, taskType: req.body.taskType, priority: req.body.priority, localOnly: req.body.localOnly, model: req.body.model, maxTokens: req.body.maxTokens, temperature: req.body.temperature });
+    res.json({ text: result.text, model: result._model, provider: result._provider, taskType: result._taskType, latencyMs: result._latencyMs, tokensIn: result.tokensIn, tokensOut: result.tokensOut, fallback: result._fallback || false });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get("/api/available-providers", async function(req, res) { try { var { query } = require("./src/db"); var rows = await query("SELECT DISTINCT provider FROM ai_connections WHERE status = 'active'"); res.json({ providers: rows.map(function(r) { return r.provider; }) }); } catch(e) { res.json({ providers: [] }); } });
 app.use("/api/models", modelsRoutes);
 app.use("/api/profile", authenticate, profileRoutes);
@@ -328,6 +346,13 @@ async function start() {
       engine.startAgent(agents.rows[i].id);
     }
     console.log("[agents] Started " + agents.rows.length + " active agents");
+    // Multi-KI Provider Abstraction Layer init
+    try {
+      var { initMultiKI } = require("./src/ai/init");
+      var { query: dbQ } = require("./src/db");
+      var { decryptKey } = require("./src/agent/llm");
+      await initMultiKI(dbQ, decryptKey);
+    } catch(mkiErr) { console.error("[multi-ki] Init error:", mkiErr.message); }
   } catch(err) { console.error("[agents] Auto-start error:", err.message); }
 
   server.listen(PORT, function () {
