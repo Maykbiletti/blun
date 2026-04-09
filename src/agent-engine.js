@@ -930,10 +930,11 @@ async function heartbeat(agentId) {
       if (hasChanges) {
         await query("UPDATE agent_tasks SET status = $1, result = $2, completed_at = NOW() WHERE id = $3", ["completed", finalContent, pendingTask.id]);
         console.log("[agent-cli] " + agent.name + " PRODUCED CODE in worktree " + worktreePath);
-        try { await autoScoreTask(pendingTask.id, true, null); } catch(se) {}
+        try { await autoScoreTask(pendingTask.id, true, null); await awardXP(agentId, 10, 'task_completed'); } catch(se) {}
       } else {
         await query("UPDATE agent_tasks SET status = $1, result = $2, completed_at = NOW() WHERE id = $3", ["completed_no_code", finalContent, pendingTask.id]);
         console.log("[agent-cli] " + agent.name + " produced NO code changes, marked as completed_no_code");
+        try { await selfHealTask(pendingTask.id); } catch(shErr) { console.error('[self-heal] Error:', shErr.message); }
         try { await autoScoreTask(pendingTask.id, false, null); } catch(se) {}
       }
       await query("INSERT INTO agent_conversations (agent_id, role, content) VALUES ($1, $2, $3)", [agentId, "user", pendingTask.task]);
@@ -1216,6 +1217,143 @@ function stopDreamCycle(agentId) {
 
 
 
+
+
+// === SELF-HEALING: Auto-retry failed tasks with error analysis ===
+async function selfHealTask(taskId) {
+  var task = await queryOne("SELECT t.*, a.name, a.department, a.company_id FROM agent_tasks t JOIN blun_agents a ON a.id = t.agent_id WHERE t.id = $1", [taskId]);
+  if (!task || (task.status !== 'failed' && task.status !== 'completed_no_code' && task.status !== 'error')) return null;
+
+  // Analyze error from task result
+  var errorContext = (task.result || '').substring(0, 500);
+  var diagnosis = '';
+  var newTask = task.task;
+
+  // Pattern matching on common errors
+  if (errorContext.match(/syntax error|unexpected token|SyntaxError/i)) {
+    diagnosis = 'Syntax-Fehler im Code';
+    newTask = task.task + '\nWICHTIG: Vorheriger Versuch hatte Syntax-Fehler. Pruefe den Code mit node -c vor dem Commit. Fehler war: ' + errorContext.substring(0, 200);
+  } else if (errorContext.match(/cannot find module|module not found/i)) {
+    diagnosis = 'Fehlender Import/Require';
+    newTask = task.task + '\nWICHTIG: Vorheriger Versuch hatte fehlenden Import. Pruefe alle require() Pfade. Fehler: ' + errorContext.substring(0, 200);
+  } else if (errorContext.match(/timeout|ETIMEDOUT/i)) {
+    diagnosis = 'Timeout — Task zu komplex oder API nicht erreichbar';
+    newTask = task.task + '\nWICHTIG: Vorheriger Versuch hatte Timeout. Halte die Loesung einfach und kompakt. Maximal eine Datei aendern.';
+  } else if (errorContext.match(/permission|EACCES|forbidden/i)) {
+    diagnosis = 'Permission-Problem';
+    newTask = task.task + '\nWICHTIG: Vorheriger Versuch hatte Permission-Fehler. Pruefe Dateipfade und Berechtigungen.';
+  } else if (errorContext.match(/no code|no changes|completed_no_code/i)) {
+    diagnosis = 'Kein Code produziert — Agent hat nur analysiert';
+    newTask = 'WICHTIG: Schreibe SOFORT echten Code. Kein Analysieren, kein Planen.\n' + task.task;
+  } else {
+    diagnosis = 'Unbekannter Fehler';
+    newTask = task.task + '\nWICHTIG: Vorheriger Versuch ist fehlgeschlagen. Versuche einen einfacheren Ansatz. Fehler: ' + errorContext.substring(0, 150);
+  }
+
+  // Try different agent if same agent failed 2+ times on this task
+  var failCount = await queryOne("SELECT count(*) as c FROM agent_tasks WHERE agent_id = $1 AND status IN ('failed','error','completed_no_code') AND created_at > NOW() - interval '2 hours'", [task.agent_id]);
+  var targetAgentId = task.agent_id;
+
+  if (parseInt(failCount.c) >= 2) {
+    // Route to different agent in same department
+    var alt = await routeTask(task.task, task.company_id);
+    if (alt && alt.id !== task.agent_id) {
+      targetAgentId = alt.id;
+      console.log('[self-heal] Switching from agent ' + task.agent_id + ' to ' + alt.id + ' (' + alt.name + ')');
+    }
+  }
+
+  // Create retry task
+  var retry = await queryOne(
+    "INSERT INTO agent_tasks (agent_id, task, status, parent_task_id, created_at) VALUES ($1, $2, 'pending', $3, NOW()) RETURNING *",
+    [targetAgentId, newTask, taskId]
+  );
+
+  // Log the heal
+  console.log('[self-heal] Task ' + taskId + ' retried as ' + retry.id + ' (diagnosis: ' + diagnosis + ')');
+
+  // Send message to agent about the retry
+  await sendAgentMessage(1, targetAgentId, 'Retry: ' + diagnosis, 'Dein vorheriger Task ist fehlgeschlagen (' + diagnosis + '). Neuer Versuch mit verbesserten Anweisungen. Liefere diesmal sauberen Code.', 'urgent', null);
+
+  return {originalTask: taskId, retryTask: retry.id, diagnosis: diagnosis, agent: targetAgentId};
+}
+
+// === MENTORING: Senior agent reviews junior code before QA ===
+async function mentorReview(taskId) {
+  var task = await queryOne("SELECT t.*, a.name, a.department, a.company_id FROM agent_tasks t JOIN blun_agents a ON a.id = t.agent_id WHERE t.id = $1", [taskId]);
+  if (!task || task.status !== 'completed') return null;
+
+  // Find senior agent in same department (or Leon/Helmut as fallback)
+  var mentor = await queryOne(
+    "SELECT a.id, a.name FROM blun_agents a JOIN agent_performance p ON p.agent_id = a.id WHERE a.department = $1 AND a.id != $2 AND a.status = 'active' AND p.level IN ('senior','mid') ORDER BY p.avg_score DESC LIMIT 1",
+    [task.department, task.agent_id]
+  );
+
+  // Fallback: Leon (27) for code, Helmut (29) for QA
+  if (!mentor) {
+    var fallbackId = task.department === 'Qualitaetskontrolle' ? 29 : 27;
+    mentor = await queryOne("SELECT id, name FROM blun_agents WHERE id = $1", [fallbackId]);
+  }
+  if (!mentor) return null;
+
+  // Create mentor review task
+  var reviewTask = 'MENTOR-REVIEW fuer Task #' + taskId + ' von ' + task.name + ':\n' +
+    'Original-Task: ' + task.task.substring(0, 300) + '\n' +
+    'Ergebnis: ' + (task.result || '').substring(0, 500) + '\n\n' +
+    'Pruefe den Code auf: 1) Korrektheit 2) Best Practices 3) Sicherheit 4) Edge Cases\n' +
+    'Antworte mit MENTOR:PASS oder MENTOR:FAIL + konkretem Feedback.';
+
+  var review = await queryOne(
+    "INSERT INTO agent_tasks (agent_id, task, status, parent_task_id, created_at) VALUES ($1, $2, 'pending', $3, NOW()) RETURNING *",
+    [mentor.id, reviewTask, taskId]
+  );
+
+  console.log('[mentor] Task ' + taskId + ' sent to ' + mentor.name + ' for review');
+
+  return {taskId: taskId, mentorId: mentor.id, mentorName: mentor.name, reviewTaskId: review.id};
+}
+
+// === GAMIFICATION: XP, Badges, Achievements ===
+async function awardXP(agentId, amount, reason) {
+  // XP stored in agent_performance, calculated from tasks
+  var perf = await queryOne("SELECT * FROM agent_performance WHERE agent_id = $1", [agentId]);
+  if (!perf) return null;
+
+  // Check for achievements
+  var achievements = [];
+  var completed = parseInt(perf.completed_tasks) || 0;
+  var streak = parseInt(perf.streak) || 0;
+  var avg = parseFloat(perf.avg_score) || 0;
+
+  if (completed === 10) achievements.push('Erstling: 10 Tasks abgeschlossen');
+  if (completed === 50) achievements.push('Arbeiter: 50 Tasks abgeschlossen');
+  if (completed === 100) achievements.push('Maschine: 100 Tasks abgeschlossen');
+  if (streak >= 10) achievements.push('Unaufhaltbar: 10er Streak');
+  if (streak >= 20) achievements.push('Legende: 20er Streak');
+  if (avg >= 9.0 && completed >= 20) achievements.push('Perfektionist: 9.0+ Durchschnitt');
+
+  // Save achievements to memory
+  if (achievements.length > 0) {
+    var existingAch = [];
+    try {
+      var achMem = await queryOne("SELECT content FROM agent_memory WHERE agent_id = $1 AND key = 'achievements'", [agentId]);
+      if (achMem) existingAch = JSON.parse(achMem.content);
+    } catch(e) {}
+
+    var newAch = achievements.filter(function(a) { return existingAch.indexOf(a) === -1; });
+    if (newAch.length > 0) {
+      var allAch = existingAch.concat(newAch);
+      await saveAgentMemory(agentId, 'achievements', JSON.stringify(allAch), ['achievement', 'gamification'], 'achievement');
+      // CEO congratulates
+      for (var i = 0; i < newAch.length; i++) {
+        await sendAgentMessage(1, agentId, 'Achievement freigeschaltet!', newAch[i], 'normal', null);
+        console.log('[gamification] Agent ' + agentId + ' earned: ' + newAch[i]);
+      }
+    }
+  }
+
+  return {agentId: agentId, completed: completed, streak: streak, avg: avg, achievements: achievements};
+}
 
 // === CEO INTELLIGENCE: Performance Scoring, Dynamic Routing, Sub-Tasks ===
 
@@ -1539,7 +1677,7 @@ async function suggestAgentForFile(filePath) {
   return agent;
 }
 
-module.exports = { startAgent, stopAgent, getActiveAgents, chatWithAgent, callLLM, loadAgentMemory, saveAgentMemory, activeAgents, getRateLimitStatus, dreamCycle, startDreamCycle, stopDreamCycle, sendAgentMessage, getAgentInbox, markMessageRead, replyToMessage, broadcastMessage, getUnreadSummary, saveLayeredMemory, loadLayeredMemory, promoteMemory, filterNoiseFromDecisions, indexFileToGraph, findRelatedFiles, suggestAgentForFile, searchAgentMemory, searchMemoryByTag, scoreTask, updatePerformance, routeTask, splitTask, getLeaderboard, autoScoreTask };
+module.exports = { startAgent, stopAgent, getActiveAgents, chatWithAgent, callLLM, loadAgentMemory, saveAgentMemory, activeAgents, getRateLimitStatus, dreamCycle, startDreamCycle, stopDreamCycle, sendAgentMessage, getAgentInbox, markMessageRead, replyToMessage, broadcastMessage, getUnreadSummary, saveLayeredMemory, loadLayeredMemory, promoteMemory, filterNoiseFromDecisions, indexFileToGraph, findRelatedFiles, suggestAgentForFile, searchAgentMemory, searchMemoryByTag, scoreTask, updatePerformance, routeTask, splitTask, getLeaderboard, autoScoreTask, selfHealTask, mentorReview, awardXP };
 
 // === DIETER TOOL CALLING ===
 var http = require('http');
