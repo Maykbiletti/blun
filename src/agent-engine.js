@@ -613,39 +613,18 @@ async function heartbeat(agentId) {
       tokens = 0; cost = 0;
       console.log("[agent-cli] " + agent.name + " exit=" + cliResult.code + " session=" + (newSessionId||"none") + " output=" + finalContent.length + "ch");
 
-      // Copy files from isolated workspace to worktree, then commit
+      // Paperclip model: detect changes via git status in worktree, then commit
       try {
-        // Walk workspace and copy new/changed files to worktree
-        var wsFiles = [];
-        var walkWs = function(dir, base) {
-          try {
-            var items = fs2.readdirSync(dir);
-            for (var wi = 0; wi < items.length; wi++) {
-              if (items[wi] === "WORKSPACE.md" || items[wi] === ".git" || items[wi] === "node_modules") continue;
-              var full = dir + "/" + items[wi];
-              var rel = (base ? base + "/" : "") + items[wi];
-              try { if (fs2.statSync(full).isDirectory()) { walkWs(full, rel); } else { wsFiles.push(rel); } } catch(e) {}
-            }
-          } catch(e) {}
-        };
-        if (workspacePath !== worktreePath) {
-          walkWs(workspacePath, "");
-          var _protected = ["agent-engine.js","code-tools.js","server.js",".env","package.json","package-lock.json","index.html","login.html","dieter-daemon.js"];
-          var copiedFiles = [];
-          for (var wf = 0; wf < wsFiles.length; wf++) {
-            var _bn = wsFiles[wf].split("/").pop();
-            if (_protected.indexOf(_bn) !== -1) { console.log("[agent-cli] BLOCKED: " + wsFiles[wf]); continue; }
-            var wsDest = worktreePath + "/" + wsFiles[wf];
-            fs2.mkdirSync(pathMod.dirname(wsDest), {recursive:true});
-            fs2.copyFileSync(workspacePath + "/" + wsFiles[wf], wsDest);
-            copiedFiles.push(wsFiles[wf]);
-          }
-          console.log("[agent-cli] Copied " + copiedFiles.length + "/" + wsFiles.length + " files (blocked " + (wsFiles.length-copiedFiles.length) + ")");
-        }
-        var hasChanges = copiedFiles && copiedFiles.length > 0;
+        var _protected = ["agent-engine.js","code-tools.js","server.js",".env","package.json","package-lock.json","index.html","login.html","dieter-daemon.js"];
+        var statusOut = await new Promise(function(res){ cp2.exec("cd " + worktreePath + " && git status --porcelain", {timeout:10000}, function(e,o){ res((o||"").trim()); }); });
+        var changedFiles = statusOut.split("\n").filter(function(l){ return l.trim().length > 0; }).map(function(l){ return l.trim().substring(3); });
+        var safeFiles = changedFiles.filter(function(f){ var bn = f.split("/").pop(); return _protected.indexOf(bn) === -1; });
+        var blocked = changedFiles.length - safeFiles.length;
+        if (blocked > 0) console.log("[agent-cli] BLOCKED " + blocked + " protected files");
+        var hasChanges = safeFiles.length > 0;
         if (hasChanges) {
           var commitMsg = agent.name + ": " + pendingTask.task.substring(0,60);
-          var _gitAddList = copiedFiles.map(function(f){ return '"' + f.replace(/"/g, '') + '"'; }).join(' ');
+          var _gitAddList = safeFiles.map(function(f){ return '"' + f.replace(/"/g, '') + '"'; }).join(' ');
           await new Promise(function(res){ cp2.exec('cd ' + worktreePath + ' && git add -- ' + _gitAddList + ' && git commit -m "' + commitMsg.replace(/"/g, '\"') + '"', {timeout:10000}, function(e,o,er){ res(true); }); });
           console.log("[agent-cli] Committed in worktree " + worktreePath);
           // Push QA task to Helmut (ID 29)
