@@ -188,6 +188,40 @@ async function checkRAM() {
 
 
 
+
+// === AUTO-QA GATE: Prueft Agent-Code vor Merge ===
+function autoQaCheck(filePath, content) {
+  var issues = [];
+
+  // 1. Emoji check
+  var emojiRegex = /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/u;
+  if (emojiRegex.test(content)) issues.push("EMOJI detected");
+
+  // 2. Blue color check
+  if (content.includes("#3b82f6") || content.includes("blue-500") || content.includes("blue-600") || content.includes("#2563eb")) {
+    issues.push("BLUE color (#3b82f6/blue-500) detected");
+  }
+
+  // 3. Dummy data check
+  if (content.includes("Agent-X") || content.includes("Example Agent") || content.includes("Demo Agent") || content.includes("Test Agent")) {
+    issues.push("DUMMY agent data detected");
+  }
+
+  // 4. Self-rendering component check
+  if (content.includes("document.body.appendChild") || content.includes("document.body.innerHTML")) {
+    issues.push("Self-rendering component (body.appendChild) detected");
+  }
+
+  // 5. Protected file check
+  var protectedFiles = ["agent-engine.js","code-tools.js","server.js",".env","package.json","package-lock.json","index.html","login.html","dieter-daemon.js","auth.js","db.js","blun.db"];
+  var basename = filePath.split("/").pop();
+  if (protectedFiles.indexOf(basename) !== -1) {
+    issues.push("PROTECTED file: " + basename);
+  }
+
+  return issues;
+}
+
 // === AUTO DEPARTMENT SWITCH ===
 var TASK_DEPT_MAP = {
   "dashboard": "Design & Frontend",
