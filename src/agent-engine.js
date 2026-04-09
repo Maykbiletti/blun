@@ -494,7 +494,7 @@ async function heartbeat(agentId) {
 
       // === PAPERCLIP-STYLE CLI EXECUTION ===
       var sysContext = (identityRow ? identityRow.content + "\n\n" : "") + (agent.system_prompt || "Du bist ein hilfreicher Agent.") + skillStr + "\n\nKONTEXT AUS MEMORY:\n" + memStr;
-      var taskPrompt = sysContext + "\n\nTask: " + pendingTask.task + "\n\nWICHTIG: Schreibe SOFORT Code in die genannte Datei. KEIN Analysieren, kein Erklaeren, kein Planen. Erster Schritt = Write Tool benutzen. Du hast Zugriff auf Read, Write, Edit, Bash. Benutze sie JETZT." + "\nVERBOTENE DATEIEN (NIEMALS aendern): agent-engine.js, code-tools.js, server.js, .env, package.json. Schreibe Empfehlung statt Aenderung.";
+      var taskPrompt = sysContext + "\n\nTask: " + pendingTask.task + "\n\nWICHTIG: Schreibe SOFORT Code in die genannte Datei. KEIN Analysieren, kein Erklaeren, kein Planen. Erster Schritt = Write Tool benutzen. Du hast Zugriff auf Read, Write, Edit, Bash. Benutze sie JETZT." + "\nVERBOTENE DATEIEN (NIEMALS aendern): agent-engine.js, code-tools.js, server.js, .env, package.json. Schreibe Empfehlung statt Aenderung." + "\nDEIN ARBEITSVERZEICHNIS: " + worktreePath + " -- Alle Dateien MUESSEN hier geschrieben werden. NIEMALS in /tmp oder andere Verzeichnisse schreiben! Nutze IMMER relative Pfade.";
 
       // === ISOLATED WORKSPACE (Paperclip-style): Agent gets empty dir, only produces new files ===
       var cp2 = require("child_process");
@@ -561,7 +561,7 @@ async function heartbeat(agentId) {
       await acquireCliSlot(agent.name);
       var cliResult = await new Promise(function(resolve) {
         var child = cp2.spawn(cliCmd, cliArgs, {
-          cwd: workspacePath,
+          cwd: worktreePath,
           timeout: 180000,
           env: Object.assign({}, process.env, { DISABLE_INTERACTIVITY: "1" })
         });
