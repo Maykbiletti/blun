@@ -257,8 +257,7 @@ app.get('/dieter/sw.js', (req, res) => { res.setHeader('Service-Worker-Allowed',
 authPage("/monitor", "monitor.html", true);
 authPage("/admin-plans", "admin-plans.html", true);
 
-app.get("/login", function (req, res) {
-  res.sendFile(__dirname + "/dashboard/login.html");
+app.get("/login", function (req, res) { res.redirect("/dashboard/"); return;
 });
 
 app.get("/dashboard", function (req, res) { res.set("Cache-Control","no-cache,no-store");
