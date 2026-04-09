@@ -1592,7 +1592,7 @@ function filterChatAgents(q) {
     c.style.display=c.textContent.toLowerCase().indexOf(q)>=0?'flex':'none';
   });
 }
-function openChat(agentId) { openAgentWorkspace(agentId); }
+function openChat(agentId) { openAgentWorkspace(agentId); loadAgentCanvas(agentId); }
 function sendChat() {
   if(!chatAgent) return;
   var input=document.getElementById('chatInput');
@@ -2457,6 +2457,70 @@ function saveInfraModal() {
 }
 
 var _canvasInterval = null;
+
+function loadAgentCanvas(agentId) {
+  var canvas = document.getElementById('wsCanvasLog');
+  if (!canvas) return;
+  var canvasEl = document.getElementById('wsCanvas');
+  if (canvasEl && !canvasEl.classList.contains('open')) toggleCanvas();
+  canvas.innerHTML = '<div style="padding:12px;color:var(--tx2)">Lade Code-Output...</div>';
+  
+  api('/api/organisator/agents/' + agentId + '/output').then(function(d) {
+    var html = '';
+    // Header
+    html += '<div style="padding:8px 12px;border-bottom:1px solid var(--brd);font-weight:600;color:var(--tx)">' + esc(d.agent) + ' — Code Output</div>';
+    
+    // Task
+    if (d.latest_task) {
+      html += '<div style="padding:8px 12px;border-bottom:1px solid var(--brd);font-size:12px"><span style="color:var(--amber)">Task:</span> ' + esc(d.latest_task.task.substring(0,120)) + ' <span class="badge badge-' + (d.latest_task.status==='completed'?'green':'blue') + '">' + d.latest_task.status + '</span></div>';
+    }
+    
+    // Commits
+    if (d.commits && d.commits.length > 0) {
+      html += '<div style="padding:8px 12px;border-bottom:1px solid var(--brd)"><div style="color:var(--green);font-size:11px;margin-bottom:4px">' + d.commits.length + ' Commits</div>';
+      d.commits.forEach(function(c) { html += '<div class="canvas-line">' + esc(c) + '</div>'; });
+      html += '</div>';
+    }
+    
+    // Changed files
+    if (d.files && d.files.length > 0) {
+      html += '<div style="padding:8px 12px;border-bottom:1px solid var(--brd)"><div style="color:var(--b);font-size:11px;margin-bottom:4px">' + d.files.length + ' Dateien</div>';
+      d.files.forEach(function(f) { html += '<div class="canvas-line tool">' + esc(f) + '</div>'; });
+      html += '</div>';
+    }
+    
+    // Diff
+    if (d.diff_full) {
+      html += '<div style="padding:8px 12px"><div style="color:var(--tx2);font-size:11px;margin-bottom:4px">Diff</div>';
+      html += '<pre style="font-size:11px;color:var(--tx);background:#0d1117;padding:8px;border-radius:4px;overflow-x:auto;max-height:400px;overflow-y:auto;white-space:pre-wrap">' + esc(d.diff_full.substring(0,20000)) + '</pre>';
+      html += '</div>';
+    }
+    
+    // Merge button
+    if (d.status === 'has_changes') {
+      html += '<div style="padding:12px;border-top:1px solid var(--brd);text-align:center"><button class="btn btn-sm btn-primary" onclick="mergeAgent(' + agentId + ')" style="min-width:160px">Code uebernehmen</button></div>';
+    } else {
+      html += '<div style="padding:12px;color:var(--tx2);text-align:center;font-size:12px">Keine Aenderungen</div>';
+    }
+    
+    canvas.innerHTML = html;
+  }).catch(function(e) {
+    canvas.innerHTML = '<div style="padding:12px;color:var(--red)">Fehler: ' + esc(e.message) + '</div>';
+  });
+}
+
+function mergeAgent(agentId) {
+  if (!confirm('Code von diesem Agent in main mergen?')) return;
+  api('/api/organisator/agents/' + agentId + '/merge', {method:'POST'}).then(function(d) {
+    if (d.ok) {
+      blunAlert('Code erfolgreich gemerged!', 'success');
+      loadAgentCanvas(agentId);
+    } else {
+      blunAlert('Merge fehlgeschlagen: ' + (d.error||'Unbekannter Fehler'), 'error');
+    }
+  });
+}
+
 function toggleCanvas() {
   var canvas = document.getElementById('wsCanvas');
   var cp = document.querySelector('.ws-cp');

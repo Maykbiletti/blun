@@ -394,4 +394,48 @@ router.post("/set-company", async function(req, res) {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+
+// === AGENT TASK OUTPUT (Code, Diff, Files) ===
+router.get("/agents/:id/output", async function(req, res) {
+  try {
+    var agent = await queryOne("SELECT * FROM blun_agents WHERE id = $1", [req.params.id]);
+    if (!agent) return res.status(404).json({ error: "Agent not found" });
+    var wtDir = "/root/blun-worktrees/agent-" + agent.name.toLowerCase();
+    var cp = require("child_process");
+    var fsx = require("fs");
+    if (!fsx.existsSync(wtDir)) return res.json({ commits: [], diff: "", files: [], status: "no worktree", agent: agent.name });
+    var execP = function(cmd) { return new Promise(function(r) { cp.exec(cmd, {timeout:10000,maxBuffer:500000,cwd:wtDir}, function(e,o){ r((o||"").trim()); }); }); };
+    var log = await execP("git log main..HEAD --oneline 2>/dev/null");
+    var diffStat = await execP("git diff main..HEAD --stat 2>/dev/null");
+    var diffFull = await execP("git diff main..HEAD 2>/dev/null");
+    var names = await execP("git diff main..HEAD --name-only 2>/dev/null");
+    var latestTask = await queryOne("SELECT * FROM agent_tasks WHERE agent_id = $1 ORDER BY created_at DESC LIMIT 1", [req.params.id]);
+    res.json({
+      agent: agent.name,
+      worktree: wtDir,
+      commits: log ? log.split(String.fromCharCode(10)) : [],
+      diff_stat: diffStat,
+      diff_full: diffFull ? diffFull.substring(0, 50000) : "",
+      files: names ? names.split(String.fromCharCode(10)).filter(function(x){return x;}) : [],
+      latest_task: latestTask ? { id: latestTask.id, task: latestTask.task, status: latestTask.status } : null,
+      status: log ? "has_changes" : "clean"
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// === MERGE AGENT BRANCH ===
+router.post("/agents/:id/merge", async function(req, res) {
+  try {
+    var agent = await queryOne("SELECT * FROM blun_agents WHERE id = $1", [req.params.id]);
+    if (!agent) return res.status(404).json({ error: "Agent not found" });
+    var branchName = "agent/" + agent.name.toLowerCase();
+    var cp = require("child_process");
+    var result = await new Promise(function(r) {
+      cp.exec("cd /root/blun && git merge " + branchName + " --no-edit 2>&1 || echo MERGE_FAILED", {timeout:15000}, function(e,o){ r((o||"").trim()); });
+    });
+    if (result.indexOf("MERGE_FAILED") !== -1) return res.json({ ok: false, error: "Merge conflict", output: result });
+    res.json({ ok: true, output: result });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 module.exports = router;
