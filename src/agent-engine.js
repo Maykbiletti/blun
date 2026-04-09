@@ -520,7 +520,7 @@ async function heartbeat(agentId) {
         );
         if (idleAgents.length > 0) {
           var agentList = idleAgents.map(function(a) { return a.name + " (ID " + a.id + ", " + (a.role||"no role") + ")"; }).join(", ");
-          var dispatchPrompt = "Du bist der Operator. Folgende Agents haben gerade keine Aufgaben: " + agentList + "." + "\nWICHTIG: Jeder Task MUSS eine konkrete CODE-Aenderung am BLUN-Projekt sein! Beispiele: Neue API-Route bauen, CSS fixen, Dashboard-Komponente erstellen, Bug in einer Route fixen, neue Seite im Dashboard." + "\nVERBOTEN: Analyse-Tasks, Reports, Konzepte, Markdown-Dokumente, Pipeline-Analysen. NUR Tasks die echte Dateien (.js/.css/.html) aendern!" + "\nVERBOTENE DATEIEN: agent-engine.js, code-tools.js, server.js, .env, package.json" + "\nDas BLUN-Projekt hat: src/routes/ (API), dashboard/ (Frontend), src/middleware/ (Auth, Rate-Limit), public/ (Static)." + "\nAntworte NUR mit [TOOL:ASSIGN_TASK:agent_id:task beschreibung] pro Agent, eine Zeile pro Agent. Keine Erklaerung.";
+          var dispatchPrompt = "Agents brauchen CODE-Tasks: " + agentList + "." + "\nJeder Task MUSS einen Dateipfad (.js/.css/.html) enthalten!" + "\nBEISPIELE:" + "\n[TOOL:ASSIGN_TASK:5:Erstelle dashboard/components/notifications.js — Toast-Notification System mit show/hide/auto-dismiss]" + "\n[TOOL:ASSIGN_TASK:8:Fix src/routes/v1/auth.js Zeile 42 — bcrypt.compare fehlt bei Login-Validierung]" + "\n[TOOL:ASSIGN_TASK:12:Baue dashboard/css/dark-theme.css — CSS Custom Properties fuer Dark Mode]" + "\nVERBOTEN: Analyse, Report, Konzept, Planung, Recherche, Dokumentation" + "\nGESCHUETZT: agent-engine.js, code-tools.js, server.js, .env, package.json" + "\nStruktur: src/routes/ (API), dashboard/ (Frontend+Components), src/middleware/, public/" + "\nNUR [TOOL:ASSIGN_TASK:id:task] Zeilen!";
           var identityRow = await queryOne("SELECT content FROM agent_memory WHERE agent_id = $1 AND key = 'identity'", [agentId]);
           var sysPrompt = (identityRow ? identityRow.content : "Du bist der Operator.") + "\nDu verteilst autonom Tasks an dein Team.";
           var dispatchResult = await callLLM(agent.model || "claude-sonnet", [{ role: "system", content: sysPrompt }, { role: "user", content: dispatchPrompt }], agentId);
@@ -529,16 +529,18 @@ async function heartbeat(agentId) {
             for (var di = 0; di < dLines.length; di++) {
               var dm = dLines[di].match(/\[TOOL:ASSIGN_TASK:(\d+):([^\]]+)\]/i);
               if (dm) {
-                await query("INSERT INTO agent_tasks (agent_id, task, status, created_at) VALUES ($1, $2, 'pending', NOW())", [parseInt(dm[1]), dm[2].trim()]);
-                // Dispatch Quality Check: reject non-code tasks
-                var taskDesc = dm[2].trim().toLowerCase();
-                var isCodeTask = taskDesc.indexOf("erstell") !== -1 || taskDesc.indexOf("bau") !== -1 || taskDesc.indexOf("fix") !== -1 || taskDesc.indexOf("css") !== -1 || taskDesc.indexOf("route") !== -1 || taskDesc.indexOf("component") !== -1 || taskDesc.indexOf("dashboard") !== -1 || taskDesc.indexOf("api") !== -1 || taskDesc.indexOf("html") !== -1 || taskDesc.indexOf("funktion") !== -1 || taskDesc.indexOf("seite") !== -1 || taskDesc.indexOf("button") !== -1 || taskDesc.indexOf("implement") !== -1 || taskDesc.indexOf("add") !== -1 || taskDesc.indexOf("endpoint") !== -1;
-                var isBanned = taskDesc.indexOf("analys") !== -1 || taskDesc.indexOf("report") !== -1 || taskDesc.indexOf("pipeline") !== -1 || taskDesc.indexOf("strategi") !== -1 || taskDesc.indexOf("konzept") !== -1 || taskDesc.indexOf("plan") !== -1 || taskDesc.indexOf("auswert") !== -1 || taskDesc.indexOf("zusammenfass") !== -1;
-                if (isBanned && !isCodeTask) {
-                  console.log("[operator] REJECTED non-code task: " + dm[2].trim().substring(0,80));
+                var taskDesc = dm[2].trim();
+                var tdl = taskDesc.toLowerCase();
+                // Quality Gate: MUST have file path AND code verb, checked BEFORE insert
+                var hasFile = /\.(js|css|html|json|ts|jsx|tsx)/.test(tdl) || tdl.indexOf("src/") !== -1 || tdl.indexOf("dashboard/") !== -1 || tdl.indexOf("routes/") !== -1 || tdl.indexOf("components/") !== -1;
+                var hasVerb = tdl.indexOf("erstell") !== -1 || tdl.indexOf("bau") !== -1 || tdl.indexOf("fix") !== -1 || tdl.indexOf("implement") !== -1 || tdl.indexOf("refactor") !== -1 || tdl.indexOf("schreib") !== -1 || tdl.indexOf("add") !== -1 || tdl.indexOf("code") !== -1 || tdl.indexOf("optimier") !== -1;
+                var banned = tdl.indexOf("analys") !== -1 || tdl.indexOf("report") !== -1 || tdl.indexOf("pipeline") !== -1 || tdl.indexOf("strategi") !== -1 || tdl.indexOf("konzept") !== -1 || tdl.indexOf("recherch") !== -1 || tdl.indexOf("dokumentation") !== -1 || tdl.indexOf("bewert") !== -1 || tdl.indexOf("zusammenfass") !== -1;
+                if (!hasFile || !hasVerb || banned) {
+                  console.log("[operator] REJECTED (need file+verb, no analysis): " + taskDesc.substring(0,80));
                   continue;
                 }
-                console.log("[operator] Auto-assigned task to agent " + dm[1] + ": " + dm[2].trim().substring(0,60));
+                await query("INSERT INTO agent_tasks (agent_id, task, status, created_at) VALUES ($1, $2, 'pending', NOW())", [parseInt(dm[1]), taskDesc]);
+                console.log("[operator] ACCEPTED task for agent " + dm[1] + ": " + taskDesc.substring(0,80));
               }
             }
             tokens = (dispatchResult.usage && dispatchResult.usage.output_tokens) || 0;
