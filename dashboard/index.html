@@ -1924,7 +1924,7 @@ function saveAgentWs() {
     system_prompt:currentAgent.system_prompt||''
   })}).then(function(){currentAgent.model=document.getElementById('wsFieldModel').value||currentAgent.model; loadAll();});
 }
-function deleteAgentWs() {
+async function deleteAgentWs() {
   if(!currentAgent) return; if(!await blunConfirm('Agent "'+currentAgent.name+'" loeschen?')) return;
   api('/api/organisator/agents/'+currentAgent.id,{method:'DELETE'}).then(function(){closeWorkspace();loadAll();});
 }
