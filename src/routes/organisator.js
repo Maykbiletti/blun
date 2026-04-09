@@ -153,11 +153,11 @@ router.delete("/agents/:id", async function(req, res) {
 });
 
 router.post("/agents/:id/start", async function(req, res) {
-  try { engine.startAgent(req.params.id); res.json({ ok: true }); } catch(e) { res.status(500).json({ error: e.message }); }
+  try { engine.startAgent(parseInt(req.params.id)); res.json({ ok: true }); } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 router.post("/agents/:id/stop", async function(req, res) {
-  try { engine.stopAgent(req.params.id); res.json({ ok: true }); } catch(e) { res.status(500).json({ error: e.message }); }
+  try { engine.stopAgent(parseInt(req.params.id)); res.json({ ok: true }); } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 router.post("/agents/create", async function(req, res) {

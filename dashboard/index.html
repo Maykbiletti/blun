@@ -1100,7 +1100,7 @@ function renderAgents(filteredAgents) { var agentList = filteredAgents || agents
         '<div class="agent-info"><div class="agent-name">'+esc(a.name)+'</div><div class="agent-role">'+esc(a.role||'')+'</div>'+
         '<div class="agent-meta">'+modelTag+'<span class="tag">'+esc(a.model||'?')+'</span></div>'+
         renderSkillTags(a.skills,a.skill_urls)+taskLine+'</div>'+
-        '<div class="agent-actions">'+(isOn?'<button class="btn-icon" title="Stoppen" onclick="event.stopPropagation();toggleAgent('+a.id+',false)" style="color:var(--red)">⏹</button>':'<button class="btn-icon" title="Starten" onclick="event.stopPropagation();toggleAgent('+a.id+',true)" style="color:var(--green)">▶</button>')+'</div></div>';
+        '<div class="agent-actions">'+(isOn?'<button class="btn-icon" title="Stoppen" onclick="event.stopPropagation();toggleAgent('+a.id+',false)" style="color:var(--green)">⏸</button>':'<button class="btn-icon" title="Starten" onclick="event.stopPropagation();toggleAgent('+a.id+',true)" style="color:var(--green)">▶</button>')+'</div></div>';
     });
     html += '</div></div>';
   });
