@@ -1285,7 +1285,7 @@ function loadSkillMatrix() {
 function toggleSkillAssign(agentId, skillId, enable) {
   api('/api/organisator/agents/' + agentId + '/skills/' + skillId + '/toggle', {method:'PUT', body:JSON.stringify({enabled:enable})}).then(function() { loadSkillMatrix(); });
 }
-function autoAssignAllSkills() {
+async function autoAssignAllSkills() {
   if(!await blunConfirm('Alle Agents automatisch Skills nach Rolle zuweisen?')) return;
   api('/api/organisator/skills/matrix').then(function(d) {
     var ags = d.agents || [];
@@ -1424,7 +1424,7 @@ function initBulkModelSelect() {
 }
 
 async function deleteAgent() {
-  if(!currentAgent||!await blunConfirm('Agent "'+currentAgent.name+'" wirklich loeschen?')) return;
+  if(!currentAgent) return; if(!await blunConfirm('Agent "'+currentAgent.name+'" wirklich loeschen?')) return;
   api('/api/organisator/agents/'+currentAgent.id,{method:'DELETE'}).then(function(){closeModal('agentDetailModal');loadAll();});
 }
 function toggleAgent(id, start) {
@@ -1461,7 +1461,7 @@ function addMemory(agentId) {
   if(!key||!val) return;
   api('/api/organisator/agents/'+agentId+'/memory',{method:'POST',body:JSON.stringify({key:key,value:val})}).then(function(){loadAgentMemories(agentId);}).catch(function(e){blunAlert('Fehler: '+e.message, 'error');});
 }
-function deleteMemory(agentId, key) {
+async function deleteMemory(agentId, key) {
   if(!await blunConfirm('Erinnerung "'+key+'" loeschen?')) return;
   api('/api/organisator/agents/'+agentId+'/memory/'+encodeURIComponent(key),{method:'DELETE'}).then(function(){loadAgentMemories(agentId);}).catch(function(e){blunAlert('Fehler: '+e.message, 'error');});
 }
@@ -1520,7 +1520,7 @@ function installSkillFromGithub(agentId) {
 function autoInstallSkills(agentId) {
   api('/api/agents/'+agentId+'/skills/auto',{method:'POST'}).then(function(){loadAgentSkills(agentId);}).catch(function(e){blunAlert('Fehler: '+e.message, 'error');});
 }
-function removeSkill(agentId, skillId) {
+async function removeSkill(agentId, skillId) {
   if(!await blunConfirm('Skill entfernen?')) return;
   api('/api/skills/'+skillId+'/assign/'+agentId,{method:'DELETE'}).then(function(){loadAgentSkills(agentId);}).catch(function(e){blunAlert('Fehler: '+e.message, 'error');});
 }
@@ -1543,7 +1543,7 @@ function loadAgentTasks(id) {
 function updateTaskStatus(agentId, taskId, newStatus) {
   api('/api/organisator/agents/'+agentId+'/tasks/'+taskId,{method:'PUT',body:JSON.stringify({status:newStatus})}).then(function(){loadAgentTasks(agentId);}).catch(function(e){blunAlert('Fehler: '+e.message, 'error');});
 }
-function deleteTask(agentId, taskId) {
+async function deleteTask(agentId, taskId) {
   if(!await blunConfirm('Task loeschen?')) return;
   api('/api/organisator/agents/'+agentId+'/tasks/'+taskId,{method:'DELETE'}).then(function(){loadAgentTasks(agentId);}).catch(function(e){blunAlert('Fehler: '+e.message, 'error');});
 }
@@ -1780,7 +1780,7 @@ function modelAction(id, action) {
 function downloadModel(id) {
   api('/api/models/'+encodeURIComponent(id)+'/download',{method:'POST'}).then(function(){alert('Download gestartet fuer '+id);setTimeout(loadModels,2000);}).catch(function(e){alert('Download fehlgeschlagen: '+e.message);});
 }
-function deleteModel(id) {
+async function deleteModel(id) {
   if(!await blunConfirm('Modell "'+id+'" wirklich loeschen?')) return;
   api('/api/models/'+encodeURIComponent(id),{method:'DELETE'}).then(function(){setTimeout(loadModels,1000);}).catch(function(){});
 }
@@ -1925,7 +1925,7 @@ function saveAgentWs() {
   })}).then(function(){currentAgent.model=document.getElementById('wsFieldModel').value||currentAgent.model; loadAll();});
 }
 function deleteAgentWs() {
-  if(!currentAgent||!await blunConfirm('Agent "'+currentAgent.name+'" loeschen?')) return;
+  if(!currentAgent) return; if(!await blunConfirm('Agent "'+currentAgent.name+'" loeschen?')) return;
   api('/api/organisator/agents/'+currentAgent.id,{method:'DELETE'}).then(function(){closeWorkspace();loadAll();});
 }
 function assignTaskWs() {
@@ -1963,7 +1963,7 @@ function loadWsTasks(id) {
     document.getElementById('wsTaskList').innerHTML=html;
   }).catch(function(){document.getElementById('wsTaskList').innerHTML='<div style="color:var(--tx2)">Fehler</div>';});
 }
-function deleteTaskWs(agentId, taskId) {
+async function deleteTaskWs(agentId, taskId) {
   api('/api/organisator/agents/'+agentId+'/tasks/'+taskId,{method:'DELETE'}).then(function(){loadWsTasks(agentId);});
 }
 function loadWsSkills(id) {
