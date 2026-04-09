@@ -115,4 +115,62 @@ module.exports = function(router, query, queryOne) {
       res.json(logs);
     } catch(e) { res.status(500).json({ error: e.message }); }
   });
+
+// === OPERATOR SKILL MANAGEMENT ===
+
+  // Get all skills with premium flag
+  router.get('/skills/catalog', async function(req, res) {
+    try {
+      var skills = await query('SELECT id, name, description, category, premium, safe FROM skills ORDER BY category, name');
+      res.json(skills);
+    } catch(e) { res.status(500).json({ error: e.message }); }
+  });
+
+  // Update skill premium flag
+  router.put('/skills/:id/premium', async function(req, res) {
+    try {
+      var val = req.body.premium ? true : false;
+      await query('UPDATE skills SET premium = $1 WHERE id = $2', [val, req.params.id]);
+      res.json({ ok: true });
+    } catch(e) { res.status(500).json({ error: e.message }); }
+  });
+
+  // Bulk assign skills to agent
+  router.post('/agents/:id/skills/bulk', async function(req, res) {
+    try {
+      var skillIds = req.body.skill_ids || [];
+      var agentId = req.params.id;
+      // Remove all existing
+      await query('DELETE FROM agent_skills WHERE agent_id = $1', [agentId]);
+      // Insert new
+      for (var i = 0; i < skillIds.length; i++) {
+        await query('INSERT INTO agent_skills (agent_id, skill_id, installed_by, enabled) VALUES ($1, $2, $3, true) ON CONFLICT (agent_id, skill_id) DO UPDATE SET enabled = true', [agentId, skillIds[i], 'operator']);
+      }
+      res.json({ ok: true, count: skillIds.length });
+    } catch(e) { res.status(500).json({ error: e.message }); }
+  });
+
+  // Toggle skill enabled/disabled for agent
+  router.put('/agents/:id/skills/:skillId/toggle', async function(req, res) {
+    try {
+      var enabled = req.body.enabled !== false;
+      var existing = await queryOne('SELECT * FROM agent_skills WHERE agent_id = $1 AND skill_id = $2', [req.params.id, req.params.skillId]);
+      if (existing) {
+        await query('UPDATE agent_skills SET enabled = $1 WHERE agent_id = $2 AND skill_id = $3', [enabled, req.params.id, req.params.skillId]);
+      } else {
+        await query('INSERT INTO agent_skills (agent_id, skill_id, installed_by, enabled) VALUES ($1, $2, $3, $4)', [req.params.id, req.params.skillId, 'operator', enabled]);
+      }
+      res.json({ ok: true, enabled: enabled });
+    } catch(e) { res.status(500).json({ error: e.message }); }
+  });
+
+  // Get full skill matrix (all agents x all skills)
+  router.get('/skills/matrix', async function(req, res) {
+    try {
+      var skills = await query('SELECT id, name, category, premium FROM skills ORDER BY category, name');
+      var agentSkills = await query('SELECT as2.agent_id, as2.skill_id, as2.enabled FROM agent_skills as2');
+      var agentList = await query('SELECT id, name, role FROM blun_agents WHERE status != $1 ORDER BY name', ['deleted']);
+      res.json({ skills: skills, agent_skills: agentSkills, agents: agentList });
+    } catch(e) { res.status(500).json({ error: e.message }); }
+  });
 };

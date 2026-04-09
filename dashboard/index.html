@@ -918,7 +918,7 @@ function renderOperatorPage() {
   var op = getOperator();
   if (!op) { document.getElementById('operatorDetail').innerHTML='<div class="empty"><div class="empty-icon">⭐</div>Kein Operator eingerichtet.<br><button class="btn btn-primary" style="margin-top:12px" onclick="openModal(\'agentModal\')">Operator erstellen</button></div>'; return; }
   var html = '<div class="detail-header"><div class="detail-av" style="background:var(--b)">'+agentInitials(op).toUpperCase()+'</div><div><div style="font-size:20px;font-weight:800">'+esc(op.name)+' <span class="badge badge-blue">OPERATOR</span></div><div style="color:var(--tx2);font-size:13px">'+esc(op.role||'')+'</div></div></div>';
-  html += '<div class="detail-tabs"><div class="detail-tab active" onclick="opTab(\'settings\')">Einstellungen</div><div class="detail-tab" onclick="opTab(\'memory\')">Erinnerungen</div><div class="detail-tab" onclick="opTab(\'chats\')">Chats</div><div class="detail-tab" onclick="opTab(\'tasks\')">Tasks</div></div>';
+  html += '<div class="detail-tabs"><div class="detail-tab active" onclick="opTab(\'settings\')">Einstellungen</div><div class="detail-tab" onclick="opTab(\'memory\')">Erinnerungen</div><div class="detail-tab" onclick="opTab(\'chats\')">Chats</div><div class="detail-tab" onclick="opTab('tasks')">Tasks</div><div class="detail-tab" onclick="opTab('skills')">Skills</div></div>
   html += '<div id="opSec-settings" class="detail-section active">';
   html += '<div class="card" style="margin-bottom:12px"><div class="detail-field"><label>Name</label><input id="opName" value="'+esc(op.name)+'"></div>';
   html += '<div class="detail-field"><label>Rolle</label><input id="opRole" value="'+esc(op.role||'')+'"></div>';
@@ -929,6 +929,7 @@ function renderOperatorPage() {
   html += '<div id="opSec-memory" class="detail-section"><div id="opMemList"><div class="spinner"></div></div></div>';
   html += '<div id="opSec-chats" class="detail-section" style="display:none;flex-direction:column;flex:1;overflow:hidden"><div id="opChatHistory" style="display:flex;flex-direction:column;flex:1;overflow:hidden"><div class="spinner"></div></div></div>';
   html += '<div id="opSec-tasks" class="detail-section"><div id="opTaskList"><div class="spinner"></div></div><div style="display:flex;gap:8px;margin-top:12px"><input id="opNewTaskInput" placeholder="Neuen Task fuer '+esc(op.name)+' erstellen..."><button class="btn btn-sm btn-primary" onclick="assignOperatorTask()">Zuweisen</button></div></div>';
+  html += '<div id="opSec-skills" class="detail-section"><div class="card" style="margin-bottom:12px;padding:16px"><div style="font-size:16px;font-weight:700;margin-bottom:12px">Skill-Verwaltung</div><div style="display:flex;gap:8px;margin-bottom:12px"><button class="btn btn-sm btn-primary" onclick="loadSkillMatrix()">Skill-Matrix laden</button><button class="btn btn-sm btn-outline" onclick="autoAssignAllSkills()">Auto-Assign alle</button></div><div id="opSkillMatrix"><div style="color:var(--tx2);font-size:13px">Klicke Skill-Matrix laden</div></div></div><div class="card" style="padding:16px"><div style="font-size:14px;font-weight:700;margin-bottom:8px">Skill-Katalog</div><div id="opSkillCatalog"><div class="spinner"></div></div></div></div>';
   var od=document.getElementById('operatorDetail'); od.innerHTML=html; od.style.display='flex'; od.style.flexDirection='column'; od.style.flex='1'; od.style.overflow='hidden';
   // Load memory + tasks
   api('/api/organisator/agents/'+op.id+'/memory').then(function(d) {
@@ -952,6 +953,7 @@ function opTab(name) {
   event.target.classList.add('active');
   var s=document.getElementById('opSec-'+name);
   if(s){s.classList.add('active');s.style.display=name==='chats'?'flex':'block';}
+  if(name==='skills'){loadSkillCatalog();loadSkillMatrix();}
 }
 function sendOperatorChat() {
   var op=getOperator(); if(!op) return;
@@ -982,6 +984,74 @@ function assignOperatorTask() {
     });
   }).catch(function(e){alert('Fehler: '+e.message);});
 }
+
+function loadSkillMatrix() {
+  document.getElementById('opSkillMatrix').innerHTML = '<div class="spinner"></div>';
+  api('/api/organisator/skills/matrix').then(function(d) {
+    var skills = d.skills || [];
+    var as = d.agent_skills || [];
+    var ags = d.agents || [];
+    var asMap = {};
+    as.forEach(function(x){ asMap[x.agent_id + '_' + x.skill_id] = x.enabled; });
+    var h = '<div style="overflow-x:auto"><table style="width:100%;font-size:12px;border-collapse:collapse">';
+    h += '<tr><th style="text-align:left;padding:6px;border-bottom:1px solid var(--bg4)">Agent</th>';
+    skills.forEach(function(s){ h += '<th style="padding:6px;border-bottom:1px solid var(--bg4);font-size:10px;writing-mode:vertical-lr;transform:rotate(180deg);height:80px">' + esc(s.name) + (s.premium ? ' <span style="color:var(--amber)">★</span>' : '') + '</th>'; });
+    h += '</tr>';
+    ags.forEach(function(ag) {
+      h += '<tr><td style="padding:4px 6px;border-bottom:1px solid var(--bg4);font-weight:600;white-space:nowrap">' + esc(ag.name) + '</td>';
+      skills.forEach(function(s) {
+        var key = ag.id + '_' + s.id;
+        var enabled = asMap[key] !== undefined ? asMap[key] : false;
+        var color = enabled ? 'var(--green)' : 'var(--bg4)';
+        h += '<td style="padding:4px;text-align:center;border-bottom:1px solid var(--bg4);cursor:pointer" onclick="toggleSkillAssign(' + ag.id + ',' + s.id + ',' + (enabled ? 'false' : 'true') + ')"><div style="width:18px;height:18px;border-radius:4px;background:' + color + ';margin:auto;transition:background .2s"></div></td>';
+      });
+      h += '</tr>';
+    });
+    h += '</table></div>';
+    document.getElementById('opSkillMatrix').innerHTML = h;
+  }).catch(function(e) { document.getElementById('opSkillMatrix').innerHTML = '<div style="color:var(--red)">Fehler: ' + e.message + '</div>'; });
+}
+
+function toggleSkillAssign(agentId, skillId, enable) {
+  api('/api/organisator/agents/' + agentId + '/skills/' + skillId + '/toggle', {method:'PUT', body:JSON.stringify({enabled:enable})}).then(function() {
+    loadSkillMatrix();
+  });
+}
+
+function autoAssignAllSkills() {
+  if(!confirm('Alle Agents automatisch Skills nach Rolle zuweisen?')) return;
+  api('/api/organisator/skills/matrix').then(function(d) {
+    var ags = d.agents || [];
+    var promises = ags.map(function(ag) {
+      return api('/api/organisator/agents/' + ag.id + '/skills/auto', {method:'POST'});
+    });
+    Promise.all(promises).then(function() { loadSkillMatrix(); alert('Skills zugewiesen!'); });
+  });
+}
+
+function loadSkillCatalog() {
+  api('/api/organisator/skills/catalog').then(function(skills) {
+    var h = '';
+    var cats = {};
+    skills.forEach(function(s) { if(!cats[s.category]) cats[s.category] = []; cats[s.category].push(s); });
+    Object.keys(cats).sort().forEach(function(cat) {
+      h += '<div style="font-size:12px;font-weight:700;color:var(--tx2);margin:12px 0 6px;text-transform:uppercase">' + esc(cat) + '</div>';
+      cats[cat].forEach(function(s) {
+        h += '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--bg4)">';
+        h += '<span style="flex:1;font-size:13px">' + esc(s.name) + '</span>';
+        h += '<span style="font-size:11px;color:var(--tx2)">' + esc(s.description || '') + '</span>';
+        h += '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer"><input type="checkbox" ' + (s.premium ? 'checked' : '') + ' onchange="togglePremium(' + s.id + ',this.checked)"> Premium</label>';
+        h += '</div>';
+      });
+    });
+    document.getElementById('opSkillCatalog').innerHTML = h || '<div style="color:var(--tx2)">Keine Skills</div>';
+  });
+}
+
+function togglePremium(skillId, val) {
+  api('/api/organisator/skills/' + skillId + '/premium', {method:'PUT', body:JSON.stringify({premium:val})});
+}
+
 function saveOperator() {
   var op=getOperator(); if(!op)return;
   api('/api/organisator/agents/'+op.id,{method:'PUT',body:JSON.stringify({name:document.getElementById('opName').value,role:document.getElementById('opRole').value,model:document.getElementById('opModel').value,system_prompt:document.getElementById('opPrompt').value,personality:document.getElementById('opPersonality').value})}).then(function(){loadAll();renderOperatorPage();});
