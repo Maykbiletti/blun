@@ -734,7 +734,16 @@ async function heartbeat(agentId) {
         [agentId]
       );
       var nl = String.fromCharCode(10);
-      var skillStr = agentSkills.length ? nl+nl+"DEINE SKILLS:"+nl + agentSkills.map(function(s){ return "- " + s.name + ": " + (s.code || s.description); }).join(nl) : "";
+      var skillStr = "";
+      if (agentSkills.length) {
+        skillStr = nl+nl+"=== DEINE SKILLS (AKTIV NUTZEN!) ==="+nl;
+        skillStr += "Du MUSST die folgenden Skills bei jeder Aufgabe aktiv anwenden. Sie enthalten Regeln, Frameworks und Methoden die deine Arbeit leiten."+nl+nl;
+        for (var si = 0; si < agentSkills.length; si++) {
+          var sk = agentSkills[si];
+          var content = (sk.code || sk.description || "").substring(0, 3000);
+          skillStr += "### SKILL: " + sk.name + nl + content + nl + nl;
+        }
+      }
       // Load memory
       var memBudget = (agent.model && (agent.model.startsWith("local:") || agent.model.includes("gemma") || agent.model.includes("llama"))) ? 500 : 8000;
       var memStr = await loadSmartMemory(agentId, pendingTask.task, memBudget);
@@ -968,7 +977,16 @@ async function chatWithAgent(agentId, message) {
     [agentId]
   );
   var nl = String.fromCharCode(10);
-  var skillStr = agentSkills.length ? nl+nl+"DEINE SKILLS:"+nl + agentSkills.map(function(s){ return "- " + s.name + ": " + (s.code || s.description); }).join(nl) : "";
+  var skillStr = "";
+      if (agentSkills.length) {
+        skillStr = nl+nl+"=== DEINE SKILLS (AKTIV NUTZEN!) ==="+nl;
+        skillStr += "Du MUSST die folgenden Skills bei jeder Aufgabe aktiv anwenden. Sie enthalten Regeln, Frameworks und Methoden die deine Arbeit leiten."+nl+nl;
+        for (var si = 0; si < agentSkills.length; si++) {
+          var sk = agentSkills[si];
+          var content = (sk.code || sk.description || "").substring(0, 3000);
+          skillStr += "### SKILL: " + sk.name + nl + content + nl + nl;
+        }
+      }
   var history = await query(
     "SELECT role, content FROM agent_conversations WHERE agent_id = $1 ORDER BY created_at DESC LIMIT 10",
     [agentId]
