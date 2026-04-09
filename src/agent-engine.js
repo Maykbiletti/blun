@@ -1222,7 +1222,9 @@ async function executeTools(agentId, message, aiResponse) {
           model: cmd.model,
           status: 'active',
           company_id: agent.company_id || 1,
-          system_prompt: 'Du bist ' + cmd.name + ', ein ' + cmd.role + '. Du sprichst Deutsch und hilfst proaktiv.'
+          system_prompt: (cmd.role && (cmd.role.toLowerCase().indexOf('operator') !== -1 || cmd.role.toLowerCase().indexOf('ceo') !== -1 || cmd.role.toLowerCase().indexOf('organisator') !== -1)) ?
+            'Du bist ' + cmd.name + ', Operator/CEO. KERNREGELN: 1) NUR Code-Tasks mit Dateipfad verteilen (dashboard/components/, src/routes/ etc). NIEMALS Analyse/Report/Konzept/Marketing. 2) Ergebnisse pruefen: git diff nach Task-Completion — keine Datei = nicht erfolgreich. 3) Skills aktiv nutzen. 4) Qualitaet vor Quantitaet. 5) VERBOTEN: agent-engine.js, code-tools.js, server.js, .env, package.json. 6) Systematisch arbeiten, kein Panik-Modus. 7) Syntax-Check vor Deploy. TASK-FORMAT: [TOOL:ASSIGN_TASK:id:VERB + WAS + Dateipfad]' :
+            'Du bist ' + cmd.name + ', ein ' + cmd.role + '. Du sprichst Deutsch, schreibst echten Code und hilfst proaktiv. Bei jeder Aufgabe MUSST du Dateien aendern (.js/.css/.html). Nutze alle zugewiesenen Skills aktiv.'
         });
         results.push('Agent erstellt: ' + (r.name || r.error || JSON.stringify(r)));
       } else if (cmd.tool === 'delete_agent') {
@@ -1314,7 +1316,9 @@ async function executeTools(agentId, message, aiResponse) {
           model: cmd.model,
           status: 'active',
           company_id: agent.company_id || 1,
-          system_prompt: 'Du bist ' + cmd.name + ', ein ' + cmd.role + '. Du sprichst Deutsch und hilfst proaktiv.'
+          system_prompt: (cmd.role && (cmd.role.toLowerCase().indexOf('operator') !== -1 || cmd.role.toLowerCase().indexOf('ceo') !== -1 || cmd.role.toLowerCase().indexOf('organisator') !== -1)) ?
+            'Du bist ' + cmd.name + ', Operator/CEO. KERNREGELN: 1) NUR Code-Tasks mit Dateipfad verteilen (dashboard/components/, src/routes/ etc). NIEMALS Analyse/Report/Konzept/Marketing. 2) Ergebnisse pruefen: git diff nach Task-Completion — keine Datei = nicht erfolgreich. 3) Skills aktiv nutzen. 4) Qualitaet vor Quantitaet. 5) VERBOTEN: agent-engine.js, code-tools.js, server.js, .env, package.json. 6) Systematisch arbeiten, kein Panik-Modus. 7) Syntax-Check vor Deploy. TASK-FORMAT: [TOOL:ASSIGN_TASK:id:VERB + WAS + Dateipfad]' :
+            'Du bist ' + cmd.name + ', ein ' + cmd.role + '. Du sprichst Deutsch, schreibst echten Code und hilfst proaktiv. Bei jeder Aufgabe MUSST du Dateien aendern (.js/.css/.html). Nutze alle zugewiesenen Skills aktiv.'
         });
         results.push('Agent erstellt: ' + (r.name || r.error || JSON.stringify(r)));
       } else if (cmd.tool === 'delete_agent') {
