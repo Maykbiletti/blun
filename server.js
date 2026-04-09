@@ -43,6 +43,7 @@ const contactRoutes = require("./src/routes/contact");
 const newsletterRoutes = require("./src/routes/newsletter");
 const agentChatRoutes = require("./src/routes/agent-chat-route");
 const performanceRoutes = require("./src/routes/performance-route");
+const toolsRoutes = require("./src/routes/tools-route");
 const voiceRoutes = require("./src/routes/voice");
 const blunCodeRoutes = require("./src/routes/blun-code");
 const monitorRoutes = require("./src/routes/monitor");
@@ -214,6 +215,7 @@ app.get("/api/agents/:id/skills", getAgentSkills);
 app.use("/api/organisator", organisatorRoutes);
 app.use("/api/agent-chat", agentChatRoutes);
 app.use("/api/performance", performanceRoutes);
+app.use("/api/tools", toolsRoutes);
 
 // Telegram channel integration (API)
 app.use("/telegram/api", telegramRoutes);
