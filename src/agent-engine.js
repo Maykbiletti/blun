@@ -635,17 +635,23 @@ async function heartbeat(agentId) {
         };
         if (workspacePath !== worktreePath) {
           walkWs(workspacePath, "");
+          var _protected = ["agent-engine.js","code-tools.js","server.js",".env","package.json","package-lock.json","index.html","login.html","dieter-daemon.js"];
+          var copiedFiles = [];
           for (var wf = 0; wf < wsFiles.length; wf++) {
+            var _bn = wsFiles[wf].split("/").pop();
+            if (_protected.indexOf(_bn) !== -1) { console.log("[agent-cli] BLOCKED: " + wsFiles[wf]); continue; }
             var wsDest = worktreePath + "/" + wsFiles[wf];
             fs2.mkdirSync(pathMod.dirname(wsDest), {recursive:true});
             fs2.copyFileSync(workspacePath + "/" + wsFiles[wf], wsDest);
+            copiedFiles.push(wsFiles[wf]);
           }
-          console.log("[agent-cli] Copied " + wsFiles.length + " files from workspace to worktree");
+          console.log("[agent-cli] Copied " + copiedFiles.length + "/" + wsFiles.length + " files (blocked " + (wsFiles.length-copiedFiles.length) + ")");
         }
-        var hasChanges = await new Promise(function(res){ cp2.exec("cd " + worktreePath + " && git status --porcelain", {timeout:5000}, function(e,o){ res((o||"").trim().length > 0); }); });
+        var hasChanges = copiedFiles && copiedFiles.length > 0;
         if (hasChanges) {
           var commitMsg = agent.name + ": " + pendingTask.task.substring(0,60);
-          await new Promise(function(res){ cp2.exec('cd ' + worktreePath + ' && git add -A && git commit -m "' + commitMsg.replace(/"/g, '\"') + '"', {timeout:10000}, function(e,o,er){ res(true); }); });
+          var _gitAddList = copiedFiles.map(function(f){ return '"' + f.replace(/"/g, '') + '"'; }).join(' ');
+          await new Promise(function(res){ cp2.exec('cd ' + worktreePath + ' && git add -- ' + _gitAddList + ' && git commit -m "' + commitMsg.replace(/"/g, '\"') + '"', {timeout:10000}, function(e,o,er){ res(true); }); });
           console.log("[agent-cli] Committed in worktree " + worktreePath);
           // Push QA task to Helmut (ID 29)
           try {
