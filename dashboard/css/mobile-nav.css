@@ -197,8 +197,11 @@
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-radius: 24px;
-  z-index: 100;
+  /* ✅ Z-INDEX FIX: Niedriger als Modals (1000+), höher als Content */
+  z-index: 20;
   border: 1px solid rgba(255, 255, 255, 0.1);
+  /* Modal-Conflict Prevention */
+  isolation: isolate;
 }
 
 .nav-dot {
@@ -221,6 +224,8 @@
   user-select: none;
   /* Android Fast-Click */
   touch-action: manipulation;
+  /* ✅ ACTIVE STATE IMPROVEMENT: Force repaint für bessere Sichtbarkeit */
+  will-change: transform;
 }
 
 .nav-dot::after {
@@ -230,12 +235,24 @@
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.4);
   transition: all 200ms ease;
+  /* ✅ ACTIVE INDICATOR FIX: Hardware-Beschleunigung für sofortiges Update */
+  will-change: background, width, border-radius;
+  transform: translateZ(0);
+}
+
+/* ✅ AKTIVER TAB-INDIKATOR: Deutlichere Styles mit GPU-Optimierung */
+.nav-dot.active {
+  /* Visual Feedback für aktiven State */
+  background: rgba(99, 102, 241, 0.1);
 }
 
 .nav-dot.active::after {
   background: #6366f1;
   width: 24px;
   border-radius: 4px;
+  /* ✅ PERFORMANCE: Force GPU Layer für bessere Animations */
+  transform: translateZ(1px);
+  box-shadow: 0 0 8px rgba(99, 102, 241, 0.4);
 }
 
 .nav-dot:hover::after {
@@ -246,6 +263,14 @@
   transform: scale(0.95);
 }
 
+/* ✅ PAGE-WECHSEL ACTIVE-STATE: Force-Update für sofortige Sichtbarkeit */
+.nav-dot[data-active="true"]::after {
+  background: #6366f1 !important;
+  width: 24px !important;
+  border-radius: 4px !important;
+  box-shadow: 0 0 8px rgba(99, 102, 241, 0.4) !important;
+}
+
 /* ── Swipe Overlay (Touch Feedback) ─────────────────────────── */
 .nav-swipe-overlay {
   position: fixed;
@@ -254,7 +279,8 @@
   right: 0;
   bottom: 0;
   pointer-events: none;
-  z-index: 50;
+  /* ✅ Z-INDEX FIX: Unter Bottom-Nav, über Content */
+  z-index: 15;
 }
 
 .nav-swipe-indicator {
@@ -281,6 +307,17 @@
   transform: translateY(-50%) scaleY(1);
 }
 
+/* ── Z-INDEX HIERARCHY (Modal-Conflict Prevention) ──────────── */
+/*
+  ✅ BLUN Z-INDEX SYSTEM:
+  - Modals & Overlays: 1000+
+  - Tooltips & Dropdowns: 100-999
+  - Bottom Navigation: 20
+  - Swipe Indicators: 15
+  - Content: 1-10
+  - Background: 0
+*/
+
 /* ── Performance & Accessibility ────────────────────────────── */
 
 /* Reduced Motion Support */
@@ -305,6 +342,11 @@
   .nav-menu-item:focus {
     border: 1px solid #fff;
     outline: 2px solid #fff;
+  }
+  /* ✅ HIGH CONTRAST: Aktiver Tab deutlicher sichtbar */
+  .nav-dot.active::after {
+    background: #fff !important;
+    box-shadow: 0 0 0 2px #6366f1 !important;
   }
 }
 
@@ -387,5 +429,9 @@
   .nav-dots-container {
     background: rgba(255, 255, 255, 0.9);
     border: 1px solid rgba(0, 0, 0, 0.1);
+  }
+  /* ✅ LIGHT MODE: Active Tab Indikator angepasst */
+  .nav-dot.active::after {
+    box-shadow: 0 0 8px rgba(99, 102, 241, 0.3);
   }
 }

@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modal Component Demo</title>
+    <link rel="stylesheet" href="../css/components.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: var(--gap-8);
+            background: var(--gray-50);
+            min-height: 100vh;
+        }
+
+        .demo-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .demo-section {
+            margin-bottom: var(--gap-8);
+        }
+
+        .demo-buttons {
+            display: flex;
+            gap: var(--gap-4);
+            flex-wrap: wrap;
+            margin-bottom: var(--gap-6);
+        }
+
+        .code-example {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: var(--gap-4);
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 0.875rem;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <h1>Modal Component Demo</h1>
+
+        <div class="demo-section">
+            <h2>Basic Usage</h2>
+            <div class="demo-buttons">
+                <button id="basicModalBtn" class="btn btn-primary">Basic Modal öffnen</button>
+                <button id="confirmModalBtn" class="btn btn-secondary">Confirm Modal</button>
+                <button id="formModalBtn" class="btn btn-primary">Form Modal</button>
+            </div>
+
+            <div class="code-example">
+<pre>// Import Modal Functions
+import { modalOpen, modalClose } from './components/modal.js';
+
+// Basic Usage
+modalOpen('Title', '&lt;p&gt;Content&lt;/p&gt;');
+
+// Programmatically close
+modalClose();</pre>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h2>Features</h2>
+            <ul>
+                <li>✅ ESC-Key schließt Modal</li>
+                <li>✅ Backdrop-Click schließt Modal</li>
+                <li>✅ Focus-Trap für Accessibility</li>
+                <li>✅ Responsive Design (Mobile-friendly)</li>
+                <li>✅ Smooth Animationen</li>
+                <li>✅ Body Scroll-Lock</li>
+                <li>✅ ARIA-Labels für Screen Reader</li>
+            </ul>
+        </div>
+
+        <div class="demo-section">
+            <h2>API Reference</h2>
+            <div class="code-example">
+<pre>// modalOpen(title, content)
+modalOpen('Dialog Title', '&lt;p&gt;HTML content here&lt;/p&gt;');
+
+// modalClose()
+modalClose();
+
+// isModalActive() - Check if modal is open
+if (isModalActive()) {
+    console.log('Modal is open');
+}</pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Component Script -->
+    <script type="module">
+        import { modalOpen, modalClose } from './modal.js';
+
+        // Demo Event Listeners
+        document.getElementById('basicModalBtn').addEventListener('click', () => {
+            modalOpen(
+                'Basic Modal Demo',
+                `<p>Dies ist ein einfaches Modal-Beispiel.</p>
+                 <p>Du kannst es schließen mit:</p>
+                 <ul>
+                     <li>ESC-Taste drücken</li>
+                     <li>Auf den dunklen Hintergrund klicken</li>
+                     <li>Den X-Button klicken</li>
+                 </ul>`
+            );
+        });
+
+        document.getElementById('confirmModalBtn').addEventListener('click', () => {
+            modalOpen(
+                'Bestätigung erforderlich',
+                `<div>
+                     <p>Möchten Sie diese Aktion wirklich ausführen?</p>
+                     <div class="btn-group-mobile" style="margin-top: var(--gap-4);">
+                         <button id="confirmYes" class="btn btn-danger">Ja, ausführen</button>
+                         <button id="confirmNo" class="btn btn-secondary">Abbrechen</button>
+                     </div>
+                 </div>`
+            );
+
+            // Event listeners für dynamische Buttons
+            setTimeout(() => {
+                document.getElementById('confirmYes')?.addEventListener('click', () => {
+                    alert('Aktion ausgeführt!');
+                    modalClose();
+                });
+
+                document.getElementById('confirmNo')?.addEventListener('click', () => {
+                    modalClose();
+                });
+            }, 100);
+        });
+
+        document.getElementById('formModalBtn').addEventListener('click', () => {
+            modalOpen(
+                'Benutzer hinzufügen',
+                `<form id="userForm">
+                     <div class="form-group">
+                         <label class="form-label" for="userName">Name</label>
+                         <input type="text" id="userName" class="form-input" placeholder="Max Mustermann" required>
+                     </div>
+                     <div class="form-group">
+                         <label class="form-label" for="userEmail">E-Mail</label>
+                         <input type="email" id="userEmail" class="form-input" placeholder="max@example.com" required>
+                     </div>
+                     <div class="form-group">
+                         <label class="form-label" for="userRole">Rolle</label>
+                         <select id="userRole" class="form-input" required>
+                             <option value="">Bitte wählen...</option>
+                             <option value="admin">Administrator</option>
+                             <option value="user">Benutzer</option>
+                             <option value="viewer">Betrachter</option>
+                         </select>
+                     </div>
+                     <div class="btn-group-mobile" style="margin-top: var(--gap-4);">
+                         <button type="submit" class="btn btn-primary">Speichern</button>
+                         <button type="button" id="formCancel" class="btn btn-secondary">Abbrechen</button>
+                     </div>
+                 </form>`
+            );
+
+            // Form Event Handlers
+            setTimeout(() => {
+                document.getElementById('userForm')?.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.target);
+                    const data = Object.fromEntries(formData);
+                    alert('Benutzer gespeichert: ' + JSON.stringify(data, null, 2));
+                    modalClose();
+                });
+
+                document.getElementById('formCancel')?.addEventListener('click', () => {
+                    modalClose();
+                });
+            }, 100);
+        });
+    </script>
+</body>
+</html>
