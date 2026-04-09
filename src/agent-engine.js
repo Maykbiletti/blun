@@ -1224,8 +1224,15 @@ async function executeTools(agentId, message, aiResponse) {
       } else if (cmd.tool === 'chat_agent') {
         var chatId = await resolveAgentRef(cmd.ref);
         if (!chatId) { results.push('Agent "' + cmd.ref + '" nicht gefunden'); continue; }
+        // Also create a task so the agent works on it via CLI
+        var tdl = cmd.message.toLowerCase();
+        var hasFile = /\.(js|css|html|json|ts)/.test(tdl) || tdl.indexOf("src/") !== -1 || tdl.indexOf("dashboard/") !== -1;
+        if (hasFile) {
+          await callLocalAPI('POST', '/api/organisator/agents/' + chatId + '/task', { task: cmd.message, priority: 'normal' });
+          console.log("[operator] CHAT_AGENT -> Task created for " + cmd.ref + ": " + cmd.message.substring(0,80));
+        }
         var r = await callLocalAPI('POST', '/api/organisator/agents/' + chatId + '/chat', { message: cmd.message });
-        results.push('Antwort von ' + cmd.ref + ': ' + (r.response || r.error || JSON.stringify(r)));
+        results.push('Task+Chat an ' + cmd.ref + ': ' + (r.response || r.error || JSON.stringify(r)).substring(0,200));
         await sleepMs(2000); // Wait before next agent call
       } else if (cmd.tool === 'create_company') {
         var r = await callLocalAPI('POST', '/api/organisator/companies', { name: cmd.name, description: '' });
