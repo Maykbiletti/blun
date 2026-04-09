@@ -429,6 +429,96 @@ async function agentPullLoop(db) {
   return { msg: pinged + "/" + idle.length + " idle Agents bekamen Tasks", pinged: pinged };
 }
 
+
+// ========== AUTO INTEGRATOR (Junior) ==========
+// Checks worktrees for completed code, QA checks, merges, integrates
+
+async function autoIntegrate(db) {
+  var fs = require("fs");
+  var worktreeBase = "/root/blun-worktrees/";
+  var merged = [];
+  var failed = [];
+
+  var agents = await db.query("SELECT id, name FROM blun_agents WHERE id != 1 AND status = 'active'");
+  
+  for (var i = 0; i < agents.rows.length; i++) {
+    var agent = agents.rows[i];
+    var dir = worktreeBase + "agent-" + agent.name.toLowerCase();
+    if (!fs.existsSync(dir)) continue;
+
+    try {
+      var ahead = execSync("cd " + dir + " && git log main..HEAD --oneline 2>/dev/null | wc -l").toString().trim();
+      if (parseInt(ahead) === 0) continue;
+
+      var files = execSync("cd " + dir + " && git diff main..HEAD --name-only 2>/dev/null").toString().trim();
+      if (!files) continue;
+
+      var fileList = files.split(String.fromCharCode(10));
+      var qaPass = true;
+      var qaIssues = [];
+
+      for (var j = 0; j < fileList.length; j++) {
+        var filePath = fileList[j].trim();
+        if (!filePath) continue;
+        try {
+          var content = execSync("cd " + dir + " && cat " + JSON.stringify(filePath) + " 2>/dev/null").toString();
+          var issues = autoQaCheck(filePath, content);
+          if (issues.length > 0) {
+            qaPass = false;
+            qaIssues.push(filePath + ": " + issues.join(", "));
+          }
+          if (filePath.endsWith(".js")) {
+            try {
+              execSync("cd " + dir + " && node -c " + JSON.stringify(filePath) + " 2>&1");
+            } catch(syntaxErr) {
+              qaPass = false;
+              qaIssues.push(filePath + ": SYNTAX ERROR");
+            }
+          }
+        } catch(e) {}
+      }
+
+      if (!qaPass) {
+        log("QA FAIL " + agent.name + ": " + qaIssues.join("; "));
+        failed.push(agent.name + " (" + qaIssues.length + " issues)");
+        continue;
+      }
+
+      var branch = "agent/" + agent.name.toLowerCase();
+      try {
+        var mergeOut = execSync("cd /root/blun && git merge " + branch + " --no-edit 2>&1").toString();
+        if (mergeOut.indexOf("CONFLICT") !== -1) {
+          execSync("cd /root/blun && git merge --abort 2>/dev/null");
+          failed.push(agent.name + " (merge conflict)");
+          continue;
+        }
+        log("MERGED " + agent.name + ": " + fileList.length + " files");
+        merged.push(agent.name);
+        execSync("cd " + dir + " && git reset --hard main 2>/dev/null");
+        await db.query("UPDATE agent_tasks SET status = 'completed', completed_at = NOW() WHERE agent_id = $1 AND status IN ('processing', 'in_progress')", [agent.id]);
+      } catch(mergeErr) {
+        log("Merge error " + agent.name + ": " + mergeErr.message);
+        failed.push(agent.name + " (merge error)");
+      }
+    } catch(e) {
+      log("Integrate check error " + agent.name + ": " + e.message);
+    }
+  }
+
+  if (merged.length > 0) {
+    try {
+      execSync("cd /root/blun && git push pro main 2>&1");
+      execSync("pm2 restart blun --silent 2>/dev/null");
+      log("DEPLOYED: " + merged.join(", "));
+      await sendTelegram("Auto-Deploy: " + merged.length + " Agent(s) gemerged: " + merged.join(", "));
+    } catch(pushErr) {
+      log("Push/restart error: " + pushErr.message);
+    }
+  }
+
+  return { merged: merged, failed: failed };
+}
+
 // ========== MAIN LOOP ==========
 
 async function runCheck() {
@@ -482,6 +572,13 @@ async function runCheck() {
         report.push("Naechster Deploy in " + minsLeft + " Min");
       }
     } catch(e) { log('Task distribution error: ' + e.message); }
+
+    // Auto-integrate agent code
+    try {
+      var intResult = await autoIntegrate(db);
+      if (intResult.merged.length) report.push("Merged: " + intResult.merged.join(", "));
+      if (intResult.failed.length) report.push("QA-Fail: " + intResult.failed.join(", "));
+    } catch(e) { log("Integrate error: " + e.message); }
 
     // Save heartbeat
     var status = problems.length > 0 ? 'warning' : 'healthy';
