@@ -334,14 +334,9 @@ async function heartbeat(agentId) {
               await new Promise(function(res){ cp5.exec("cd " + brWorktree + " && git add -A && git diff --cached --quiet || git commit -m 'QA fixes by Helmut'", {timeout:10000}, function(e,o,er){ res(true); }); });
             }
             if (qaPassed) {
-              var mergeResult = await new Promise(function(res){ cp5.exec("cd /root/blun && git merge " + br + " --no-edit", {timeout:10000}, function(e,o,er){ res({err:e, out:(o||"")+((er||""))}); }); });
-              if (mergeResult.err) {
-                console.error("[operator] Merge conflict on " + br + ": " + mergeResult.out.substring(0,200));
-                await new Promise(function(res){ cp5.exec("cd /root/blun && git merge --abort", {timeout:5000}, function(e,o,er){ res(true); }); });
-              } else {
-                console.log("[operator] Merged " + br + " (QA passed)");
-                await new Promise(function(res){ cp5.exec("cd /root/blun && git worktree remove " + brWorktree + " --force 2>/dev/null; git branch -d " + br, {timeout:10000}, function(e,o,er){ res(true); }); });
-              }
+              // NO AUTO-MERGE: Only Dieter Junior approves merges
+              console.log("[operator] QA PASSED for " + br + " — awaiting Dieter Junior approval to merge. NO auto-merge.");
+              await query("INSERT INTO agent_tasks (agent_id, task, status, created_at) VALUES ((SELECT id FROM agents WHERE LOWER(name) = 'dieter junior' LIMIT 1), $1, 'pending', NOW())", ["MERGE APPROVAL: Branch " + br + " hat QA bestanden (Helmut: PASS). Pruefe den Diff und entscheide: MERGE oder REJECT. Branch: " + br]);
             } else {
               console.log("[operator] Branch " + br + " NOT merged - QA failed. Keeping worktree for rework.");
             }
@@ -356,7 +351,7 @@ async function heartbeat(agentId) {
       var cp7 = require("child_process");
       var indexPath = "/root/blun/dashboard/index.html";
       var compDir = "/root/blun/dashboard/components/";
-      if (fs4.existsSync(indexPath) && fs4.existsSync(compDir)) {
+      if (false && fs4.existsSync(indexPath) && fs4.existsSync(compDir)) { // DISABLED: No auto-integrate into index.html
         var indexHtml = fs4.readFileSync(indexPath, "utf8");
         var compFiles = fs4.readdirSync(compDir).filter(function(f) { return f.endsWith(".js"); });
         var added = [];
