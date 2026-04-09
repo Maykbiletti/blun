@@ -7,6 +7,8 @@ class ActivityFeed {
         this.maxEvents = 100;
         this.ws = null;
         this.element = null;
+        this.styleElement = null;
+        this.reconnectInterval = null;
         this.init();
     }
 
@@ -34,8 +36,8 @@ class ActivityFeed {
     }
 
     addStyles() {
-        const style = document.createElement('style');
-        style.textContent = `
+        this.styleElement = document.createElement('style');
+        this.styleElement.textContent = `
             .activity-feed {
                 background: #1a1a1a;
                 border-radius: 12px;
@@ -184,7 +186,7 @@ class ActivityFeed {
                 margin-top: 50px;
             }
         `;
-        document.head.appendChild(style);
+        document.head.appendChild(this.styleElement);
     }
 
     connectWebSocket() {
@@ -324,7 +326,7 @@ class ActivityFeed {
 
     bindEvents() {
         // Auto-reconnect bei Verbindungsabbruch
-        setInterval(() => {
+        this.reconnectInterval = setInterval(() => {
             if (this.ws && this.ws.readyState === WebSocket.CLOSED) {
                 this.connectWebSocket();
             }
@@ -337,12 +339,36 @@ class ActivityFeed {
     }
 
     destroy() {
-        if (this.ws) {
-            this.ws.close();
+        // Clear reconnect interval
+        if (this.reconnectInterval) {
+            clearInterval(this.reconnectInterval);
+            this.reconnectInterval = null;
         }
+
+        // Close WebSocket connection und entferne Event-Listener
+        if (this.ws) {
+            this.ws.onopen = null;
+            this.ws.onclose = null;
+            this.ws.onerror = null;
+            this.ws.onmessage = null;
+            this.ws.close();
+            this.ws = null;
+        }
+
+        // Remove DOM element
         if (this.element && this.element.parentNode) {
             this.element.parentNode.removeChild(this.element);
         }
+
+        // Remove style element
+        if (this.styleElement && this.styleElement.parentNode) {
+            this.styleElement.parentNode.removeChild(this.styleElement);
+        }
+
+        // Clear all references
+        this.element = null;
+        this.styleElement = null;
+        this.events = [];
     }
 
     // Simuliere Test-Events (für Entwicklung)
