@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ad Preview Component</title>
+    <style>
+        .ad-preview-container {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .preview-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .preview-status {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            background: #10b981;
+            color: white;
+        }
+
+        .iframe-container {
+            position: relative;
+            width: 100%;
+            height: 500px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #f9fafb;
+        }
+
+        .preview-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: white;
+        }
+
+        .error-message {
+            padding: 12px;
+            background: #fee2e2;
+            border: 1px solid #fca5a5;
+            border-radius: 6px;
+            color: #dc2626;
+            font-size: 14px;
+            margin-top: 8px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: none;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+
+        .btn-secondary {
+            background: #e5e7eb;
+            color: #374151;
+        }
+
+        .btn-secondary:hover {
+            background: #d1d5db;
+        }
+    </style>
+</head>
+<body>
+    <div class="ad-preview-container">
+        <div class="preview-header">
+            <h3 class="preview-title">Ad Preview</h3>
+            <span class="preview-status">Live Preview</span>
+        </div>
+
+        <div class="iframe-container">
+            <iframe id="adPreviewFrame" class="preview-iframe" sandbox="allow-scripts allow-same-origin"></iframe>
+        </div>
+
+        <div id="errorContainer" class="error-message" style="display: none;"></div>
+
+        <div class="controls">
+            <button class="btn btn-primary" onclick="refreshPreview()">🔄 Refresh</button>
+            <button class="btn btn-secondary" onclick="clearPreview()">🗑️ Clear</button>
+        </div>
+    </div>
+
+    <script>
+        // XSS-Sanitizer für User-Content
+        class HTMLSanitizer {
+            static allowedTags = new Set([
+                'div', 'span', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+                'em', 'strong', 'b', 'i', 'u', 'br', 'hr',
+                'ul', 'ol', 'li', 'blockquote',
+                'img', 'a', 'button'
+            ]);
+
+            static allowedAttributes = new Set([
+                'class', 'id', 'style', 'href', 'src', 'alt', 'title',
+                'width', 'height', 'target'
+            ]);
+
+            static dangerousProtocols = new Set([
+                'javascript:', 'data:', 'vbscript:', 'file:', 'about:'
+            ]);
+
+            static sanitize(html) {
+                if (!html || typeof html !== 'string') {
+                    return '';
+                }
+
+                // Erstelle temporäres DOM Element
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = html;
+
+                // Rekursive Bereinigung
+                this.cleanElement(tempDiv);
+
+                return tempDiv.innerHTML;
+            }
+
+            static cleanElement(element) {
+                // Alle Child-Elemente durchgehen
+                const children = Array.from(element.children);
+
+                children.forEach(child => {
+                    // Tag-Name prüfen
+                    if (!this.allowedTags.has(child.tagName.toLowerCase())) {
+                        child.remove();
+                        return;
+                    }
+
+                    // Attribute bereinigen
+                    const attributes = Array.from(child.attributes);
+                    attributes.forEach(attr => {
+                        const attrName = attr.name.toLowerCase();
+
+                        if (!this.allowedAttributes.has(attrName)) {
+                            child.removeAttribute(attr.name);
+                            return;
+                        }
+
+                        // Gefährliche Protokolle in href/src entfernen
+                        if (attrName === 'href' || attrName === 'src') {
+                            const value = attr.value.toLowerCase().trim();
+                            for (const protocol of this.dangerousProtocols) {
+                                if (value.startsWith(protocol)) {
+                                    child.removeAttribute(attr.name);
+                                    break;
+                                }
+                            }
+                        }
+
+                        // Inline-Scripts in style-Attribut entfernen
+                        if (attrName === 'style') {
+                            const cleanStyle = this.sanitizeStyle(attr.value);
+                            if (cleanStyle !== attr.value) {
+                                child.setAttribute('style', cleanStyle);
+                            }
+                        }
+                    });
+
+                    // Rekursiv für Kinder
+                    this.cleanElement(child);
+                });
+            }
+
+            static sanitizeStyle(styleText) {
+                if (!styleText) return '';
+
+                // Entferne gefährliche CSS-Funktionen
+                const dangerousPatterns = [
+                    /expression\s*\(/gi,
+                    /javascript\s*:/gi,
+                    /vbscript\s*:/gi,
+                    /data\s*:/gi,
+                    /@import/gi,
+                    /behavior\s*:/gi
+                ];
+
+                let cleanStyle = styleText;
+                dangerousPatterns.forEach(pattern => {
+                    cleanStyle = cleanStyle.replace(pattern, '');
+                });
+
+                return cleanStyle;
+            }
+        }
+
+        // Ad Preview Manager
+        class AdPreviewManager {
+            constructor() {
+                this.iframe = document.getElementById('adPreviewFrame');
+                this.errorContainer = document.getElementById('errorContainer');
+                this.currentContent = '';
+            }
+
+            // Sichere Content-Darstellung mit XSS-Schutz
+            setContent(htmlContent, cssContent = '', jsContent = '') {
+                try {
+                    // HTML Content sanitizen
+                    const sanitizedHTML = HTMLSanitizer.sanitize(htmlContent);
+
+                    // CSS Content bereinigen (einfache Validierung)
+                    const sanitizedCSS = this.sanitizeCSS(cssContent);
+
+                    // JavaScript komplett blockieren für User-Content
+                    // Nur vordefinierte, sichere Interaktionen erlauben
+
+                    // Vollständiges HTML-Dokument erstellen
+                    const fullHTML = this.buildSafeDocument(sanitizedHTML, sanitizedCSS);
+
+                    // Content escapen für srcDoc
+                    const escapedContent = this.escapeForSrcDoc(fullHTML);
+
+                    this.iframe.srcdoc = escapedContent;
+                    this.currentContent = escapedContent;
+                    this.hideError();
+
+                } catch (error) {
+                    this.showError('Fehler beim Laden des Ad-Contents: ' + error.message);
+                    console.error('Ad Preview Error:', error);
+                }
+            }
+
+            sanitizeCSS(css) {
+                if (!css) return '';
+
+                // Gefährliche CSS-Direktiven entfernen
+                const dangerousPatterns = [
+                    /@import\s+url\(/gi,
+                    /expression\s*\(/gi,
+                    /javascript\s*:/gi,
+                    /vbscript\s*:/gi,
+                    /-moz-binding/gi,
+                    /behavior\s*:/gi
+                ];
+
+                let cleanCSS = css;
+                dangerousPatterns.forEach(pattern => {
+                    cleanCSS = cleanCSS.replace(pattern, '');
+                });
+
+                return cleanCSS;
+            }
+
+            buildSafeDocument(html, css) {
+                return `<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'none'; style-src 'unsafe-inline'; img-src 'self' data: https:;">
+    <title>Ad Preview</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8fafc;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .ad-container {
+            max-width: 100%;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        ${css}
+    </style>
+</head>
+<body>
+    <div class="ad-container">
+        ${html}
+    </div>
+</body>
+</html>`;
+            }
+
+            // Sichere srcDoc-Escaping
+            escapeForSrcDoc(html) {
+                return html
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#x27;');
+            }
+
+            showError(message) {
+                this.errorContainer.textContent = message;
+                this.errorContainer.style.display = 'block';
+            }
+
+            hideError() {
+                this.errorContainer.style.display = 'none';
+            }
+
+            refresh() {
+                if (this.currentContent) {
+                    this.iframe.srcdoc = this.currentContent;
+                }
+            }
+
+            clear() {
+                this.iframe.srcdoc = '';
+                this.currentContent = '';
+                this.hideError();
+            }
+        }
+
+        // Globale Instanz
+        const adPreview = new AdPreviewManager();
+
+        // Externe API für andere Scripts
+        window.AdPreview = {
+            setContent: (html, css, js) => adPreview.setContent(html, css, js),
+            refresh: () => adPreview.refresh(),
+            clear: () => adPreview.clear()
+        };
+
+        // Control-Funktionen
+        function refreshPreview() {
+            adPreview.refresh();
+        }
+
+        function clearPreview() {
+            adPreview.clear();
+        }
+
+        // Demo Content laden beim Seitenstart
+        document.addEventListener('DOMContentLoaded', function() {
+            const demoHTML = `
+                <div style="padding: 40px; text-align: center;">
+                    <h2 style="color: #1f2937; margin-bottom: 16px;">🚀 BLUN AI</h2>
+                    <p style="color: #6b7280; margin-bottom: 24px;">Revolutioniere dein Business mit KI</p>
+                    <button style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px 24px; border-radius: 25px; font-weight: bold; cursor: pointer; transform: scale(1); transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                        Jetzt starten
+                    </button>
+                </div>
+            `;
+
+            const demoCSS = `
+                .ad-container {
+                    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+                    max-width: 400px;
+                }
+            `;
+
+            adPreview.setContent(demoHTML, demoCSS);
+        });
+    </script>
+</body>
+</html>

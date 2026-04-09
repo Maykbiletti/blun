@@ -13,12 +13,22 @@
   height: 100dvh;
   overflow: hidden;
   /* Touch-Action optimiert für bessere Swipe-Gesten */
-  touch-action: pan-x pan-y pinch-zoom;
+  touch-action: pan-x;
+  /* iOS Safari Momentum-Scrolling Fix */
   -webkit-overflow-scrolling: touch;
+  /* Android Chrome Touch-Optimierung */
+  overscroll-behavior-x: none;
+  overscroll-behavior-y: contain;
   /* GPU Layer Promotion für 60fps Performance */
   transform: translateZ(0);
   will-change: transform;
   background: var(--blun-bg-primary, #0a0a0f);
+  /* iOS Safari Viewport-Bug Fix */
+  -webkit-transform: translateZ(0);
+  /* Android Smooth Scrolling */
+  scroll-behavior: smooth;
+  /* Performance Container */
+  contain: layout style paint;
 }
 
 /* ── Navigation Track (Swipe Container) ──────────────────────── */
@@ -26,12 +36,18 @@
   display: flex;
   width: 300vw; /* 3 Panels: Menu, Main, Canvas */
   height: 100%;
-  /* Performance-optimierte Transform */
+  /* Performance-optimierte Transform für 60fps */
   will-change: transform;
   transform: translate3d(-100vw, 0, 0); /* Start bei Main Panel */
-  transition: transform 280ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transition: transform 250ms cubic-bezier(0.23, 1, 0.32, 1);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+  /* GPU Layer Force für bessere Performance */
+  contain: layout style paint;
+  /* iOS Safari 60fps Fix */
+  -webkit-transform: translate3d(-100vw, 0, 0);
+  /* Hardware Acceleration für Android */
+  -webkit-perspective: 1000;
 }
 
 /* ── Panel Basis ─────────────────────────────────────────────── */
@@ -45,9 +61,15 @@
   /* Overscroll-Behavior: verhindert Browser-Swipe-Back */
   overscroll-behavior-x: none;
   overscroll-behavior-y: contain;
+  /* iOS Safari Bounce-Fix */
+  -webkit-overflow-scrolling: touch;
   position: relative;
   /* GPU Layer per Panel für Performance */
   transform: translateZ(0);
+  /* 60fps Scroll-Performance */
+  contain: layout style paint;
+  /* Passive Event Listener Support */
+  touch-action: auto;
 }
 
 /* ── Left Panel: Sidebar Menu ───────────────────────────────── */
@@ -91,6 +113,12 @@
   background: none;
   width: 100%;
   text-align: left;
+  /* iOS Touch-Delay Fix */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  /* Android Fast-Click */
+  touch-action: manipulation;
 }
 
 .nav-menu-item:hover,
@@ -137,14 +165,23 @@
 /* ── Navigation States ──────────────────────────────────────── */
 .nav-track.show-menu {
   transform: translate3d(0, 0, 0);
+  -webkit-transform: translate3d(0, 0, 0);
 }
 
 .nav-track.show-main {
   transform: translate3d(-100vw, 0, 0);
+  -webkit-transform: translate3d(-100vw, 0, 0);
 }
 
 .nav-track.show-canvas {
   transform: translate3d(-200vw, 0, 0);
+  -webkit-transform: translate3d(-200vw, 0, 0);
+}
+
+/* Swipe-Gesture Lock während Transitions */
+.nav-track.transitioning {
+  pointer-events: none;
+  touch-action: none;
 }
 
 /* ── Bottom Navigation Dots (Thumb-optimiert) ───────────────── */
@@ -178,6 +215,12 @@
   -webkit-tap-highlight-color: transparent;
   /* Sichtbarer Punkt */
   position: relative;
+  /* iOS Touch-Delay Fix */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  /* Android Fast-Click */
+  touch-action: manipulation;
 }
 
 .nav-dot::after {

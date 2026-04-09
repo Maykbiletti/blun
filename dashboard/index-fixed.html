@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BLUN">
+<meta name="theme-color" content="#0f0f1a">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" type="image/png" href="/favicon.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="google-site-verification" content="rLDlUP_U15jNWjucswiqKuhWk-hj0-NdAbYKlz7ivO4" />
+<meta http-equiv=Cache-Control content=no-cache,no-store,must-revalidate><meta http-equiv=Pragma content=no-cache><meta http-equiv=Expires content=0>
+<title>BLUN Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/mobile-nav.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--b:#3b82f6;--bd:#2563eb;--bg:#0a0a0a;--bg2:#111;--bg3:#1a1a1a;--bg4:#222;--tx:#e5e5e5;--tx2:#888;--brd:#2a2a2a;--green:#22c55e;--red:#ef4444;--amber:#f59e0b;--purple:#a855f7}
+html,body{height:100vh;height:100dvh;background:var(--bg);color:var(--tx);font-family:'Inter',system-ui,sans-serif;overflow:hidden;position:fixed;width:100%;overscroll-behavior:none}
+a{color:var(--b);text-decoration:none}
+button{font-family:inherit;cursor:pointer;border:none;outline:none}
+input,textarea,select{font-family:inherit;background:var(--bg3);border:1px solid var(--brd);color:var(--tx);padding:10px 14px;border-radius:8px;width:100%;font-size:16px;outline:none}
+input:focus,textarea:focus,select:focus{border-color:var(--b)}
+textarea{resize:vertical;min-height:80px}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#333;border-radius:3px}
+
+/* LAYOUT */
+.shell{display:flex;height:100vh}
+.sidebar{width:240px;background:var(--bg2);border-right:1px solid var(--brd);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}
+.sidebar-head{padding:20px;border-bottom:1px solid var(--brd)}
+.sidebar-logo{font-size:22px;font-weight:800;letter-spacing:1px}
+.sidebar-logo span{color:var(--b)}
+.sidebar-user{margin-top:8px;font-size:12px;color:var(--tx2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sidebar-nav{flex:1;padding:8px 0;overflow-y:auto}
+.nav-section{padding:16px 16px 4px;font-size:10px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:1.5px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 16px;color:var(--tx2);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;border-left:3px solid transparent}
+.nav-item:hover{color:var(--tx);background:rgba(255,255,255,.03)}
+.nav-item.active{color:var(--b);background:rgba(59,130,246,.08);border-left-color:var(--b)}
+.nav-item svg{width:18px;height:18px;flex-shrink:0}
+.nav-item .badge-count{margin-left:auto;background:var(--b);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;min-width:18px;text-align:center}
+.sidebar-foot{padding:12px 16px;border-top:1px solid var(--brd)}
+.logout-btn{width:100%;padding:8px;background:transparent;color:var(--red);border:1px solid rgba(239,68,68,.3);border-radius:8px;font-size:13px;font-weight:500;transition:all .15s}
+.logout-btn:hover{background:var(--red);color:#fff}
+
+.main{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden}
+.topbar{height:52px;background:var(--bg2);border-bottom:1px solid var(--brd);display:flex;align-items:center;padding:0 20px;flex-shrink:0;gap:12px}
+.topbar-title{font-size:16px;font-weight:700}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.topbar-search{background:var(--bg3);border:1px solid var(--brd);border-radius:8px;padding:6px 12px;color:var(--tx);font-size:13px;width:240px}
+.ws-dot{width:8px;height:8px;border-radius:50%;background:var(--red);transition:background .3s}
+.ws-dot.on{background:var(--green)}
+
+.page{display:none;flex:1;overflow:hidden}
+.page.active{display:flex;flex-direction:column}
+
+/* CARDS & COMPONENTS */
+.card{background:var(--bg3);border:1px solid var(--brd);border-radius:10px;padding:16px}
+.card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.card-title{font-size:14px;font-weight:700}
+.btn{padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;transition:all .15s}
+.btn-primary{background:var(--b);color:#fff}.btn-primary:hover{background:var(--bd)}
+.btn-sm{padding:4px 10px;font-size:12px}
+.btn-outline{background:transparent;color:var(--b);border:1px solid rgba(59,130,246,.4)}.btn-outline:hover{background:rgba(59,130,246,.1)}
+.btn-danger{background:transparent;color:var(--red);border:1px solid rgba(239,68,68,.3)}.btn-danger:hover{background:var(--red);color:#fff}
+.btn-icon{background:transparent;color:var(--tx2);padding:4px;border-radius:6px}.btn-icon:hover{color:var(--tx);background:var(--bg4)}
+.badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600}
+.badge-green{background:rgba(34,197,94,.12);color:var(--green)}
+.badge-amber{background:rgba(245,158,11,.12);color:var(--amber)}
+.badge-blue{background:rgba(59,130,246,.12);color:var(--b)}
+.badge-red{background:rgba(239,68,68,.12);color:var(--red)}
+.badge-purple{background:rgba(168,85,247,.12);color:var(--purple)}
+.status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+.status-dot.on{background:var(--green)}.status-dot.off{background:#555}
+.tag{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600;background:var(--bg4);color:var(--tx2);margin:1px}
+.empty{text-align:center;padding:60px 20px;color:var(--tx2)}
+.empty-icon{font-size:40px;margin-bottom:8px}
+.spinner{width:20px;height:20px;border:2px solid var(--brd);border-top-color:var(--b);border-radius:50%;animation:spin .6s linear infinite;margin:20px auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* GRID LAYOUTS */
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px}
+.stat-card{background:var(--bg3);border:1px solid var(--brd);border-radius:10px;padding:14px 16px}
+.stat-label{font-size:11px;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px}
+.stat-val{font-size:24px;font-weight:800;margin-top:2px}
+
+/* OPERATOR BANNER */
+.operator-banner{background:linear-gradient(135deg,rgba(59,130,246,.12),rgba(59,130,246,.04));border:1px solid rgba(59,130,246,.3);border-radius:12px;padding:16px;margin-bottom:16px;display:flex;align-items:center;gap:16px;cursor:pointer;transition:border-color .2s}
+.operator-banner:hover{border-color:var(--b)}
+.operator-av{width:52px;height:52px;border-radius:14px;background:var(--b);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#fff;flex-shrink:0}
+.operator-info{flex:1;min-width:0}
+.operator-name{font-size:16px;font-weight:700}
+.operator-role{font-size:12px;color:var(--b);font-weight:600}
+.operator-status{font-size:11px;color:var(--tx2);margin-top:2px}
+
+/* DEPARTMENT SECTIONS */
+.dept-section{margin-bottom:16px}
+.dept-head{display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer;user-select:none}
+.dept-head h3{font-size:12px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:1px}
+.dept-count{font-size:10px;color:var(--tx2);background:var(--bg4);padding:0 6px;border-radius:10px}
+.dept-agents{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px}
+
+/* AGENT CARD */
+.agent-card{background:var(--bg3);border:1px solid var(--brd);border-radius:10px;padding:12px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:all .15s}
+.agent-card:hover{border-color:#444;background:var(--bg4)}
+.agent-card.operator{border-color:rgba(59,130,246,.4);background:rgba(59,130,246,.05)}
+.agent-av{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#fff;flex-shrink:0;position:relative}
+.agent-av .online-dot{position:absolute;bottom:-1px;right:-1px;width:10px;height:10px;border-radius:50%;background:var(--green);border:2px solid var(--bg3)}
+.agent-info{flex:1;min-width:0}
+.agent-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.agent-role{font-size:11px;color:var(--tx2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.agent-meta{display:flex;gap:4px;margin-top:3px;flex-wrap:wrap}
+.agent-actions{display:flex;gap:4px;flex-shrink:0}
+
+/* SPLIT PANE (for Chat/Agent Detail) */
+.split{display:flex;flex:1;overflow:hidden}
+.split-left{width:280px;border-right:1px solid var(--brd);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}
+.split-left-head{padding:12px;border-bottom:1px solid var(--brd);display:flex;align-items:center;gap:8px}
+.split-left-list{flex:1;overflow-y:auto;padding:8px}
+.split-right{flex:1;display:flex;flex-direction:column;overflow:hidden}
+
+/* CHAT */
+.chat-head{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--brd);flex-shrink:0}
+.chat-head select{width:auto;min-width:140px;padding:5px 8px;font-size:12px;border-radius:6px}
+.chat-msgs{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;display:flex;flex-direction:column;gap:6px}
+.msg{max-width:70%;padding:10px 14px;border-radius:14px;font-size:13px;line-height:1.5;word-break:break-word}
+.msg-user{background:var(--b);color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
+.msg-ai{background:var(--bg4);color:#e5e5e5;align-self:flex-start;border-bottom-left-radius:4px}
+.msg-ai pre{background:#1a1a2e;color:#e2e8f0;padding:8px;border-radius:6px;overflow-x:auto;font-size:12px;margin:4px 0;border:1px solid #2d2d4e}
+.msg-ai code{font-size:12px;color:#e2e8f0;background:rgba(255,255,255,.08);padding:2px 5px;border-radius:4px}
+.chat-input-wrap{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--brd);flex-shrink:0;align-items:flex-end}
+.chat-input{flex:1;min-width:0;background:var(--bg4);border:1px solid var(--brd);border-radius:12px;padding:10px 14px;color:var(--tx);font-size:14px;outline:none;resize:none;max-height:120px;line-height:1.4}
+.chat-send{background:var(--b);color:#fff;border:none;border-radius:10px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.chat-send:hover{background:var(--bd)}
+.chat-send:disabled{opacity:.4;cursor:not-allowed}
+
+/* AGENT DETAIL PANEL */
+.detail-panel{padding:20px;overflow-y:auto;flex:1}
+.detail-header{flex-shrink:0;display:flex;align-items:center;gap:16px;margin-bottom:20px}
+.detail-av{width:56px;height:56px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:#fff;flex-shrink:0}
+.detail-tabs{flex-shrink:0;display:flex;gap:4px;border-bottom:1px solid var(--brd);margin-bottom:16px;padding-bottom:0}
+.detail-tab{padding:8px 14px;font-size:13px;font-weight:600;color:var(--tx2);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s}
+.detail-tab:hover{color:var(--tx)}
+.detail-tab.active{color:var(--b);border-bottom-color:var(--b)}
+.detail-section{display:none}.detail-section.active{display:block}#opSec-chats.active{display:flex}
+.detail-field{margin-bottom:12px}
+.detail-field label{display:block;font-size:11px;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+
+/* LIVELOG */
+.log-line{padding:6px 12px;font-family:'Courier New',monospace;font-size:12px;border-bottom:1px solid rgba(255,255,255,.03);display:flex;gap:8px;line-height:1.4}
+.log-time{color:var(--tx2);flex-shrink:0;width:60px}
+.log-agent{color:var(--b);font-weight:600;flex-shrink:0;width:80px;overflow:hidden;text-overflow:ellipsis}
+.log-type{flex-shrink:0;width:70px}
+.log-content{flex:1;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* MODEL CARDS */
+.model-card{background:var(--bg3);border:1px solid var(--brd);border-radius:10px;padding:14px;display:flex;align-items:center;gap:12px}
+.model-icon{width:40px;height:40px;border-radius:10px;background:var(--bg4);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.model-info{flex:1;min-width:0}
+.model-name{font-size:14px;font-weight:600}
+.model-meta{font-size:11px;color:var(--tx2)}
+
+/* MODAL */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:none;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:var(--bg3);border:1px solid var(--brd);border-radius:14px;padding:24px;width:90%;max-width:500px;max-height:80vh;overflow-y:auto}
+.modal h3{font-size:17px;font-weight:700;margin-bottom:16px}
+.modal label{display:block;font-size:12px;color:var(--tx2);margin-bottom:4px;margin-top:12px}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
+
+/* SETUP WIZARD */
+.setup{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:40px;text-align:center}
+.setup h2{font-size:28px;font-weight:800;margin-bottom:8px}
+.setup p{color:var(--tx2);margin-bottom:24px;max-width:400px}
+.setup-form{width:100%;max-width:380px;text-align:left}
+.setup-form label{display:block;font-size:12px;color:var(--tx2);margin-bottom:4px;margin-top:14px}
+
+/* LOGIN */
+.login-wrap{display:flex;align-items:center;justify-content:center;height:100vh;padding:20px}
+.login-box{width:100%;max-width:380px;text-align:center}
+.login-logo{font-size:48px;font-weight:800;letter-spacing:2px;margin-bottom:4px}
+.login-logo span{color:var(--b)}
+.login-sub{color:var(--tx2);font-size:14px;margin-bottom:32px}
+.login-box input{margin-bottom:10px}
+.login-err{color:var(--red);font-size:13px;min-height:20px;margin-bottom:8px}
+.login-btn{width:100%;padding:12px;background:var(--b);color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer}
+.login-btn:hover{background:var(--bd)}
+.login-link{margin-top:12px;font-size:13px;color:var(--tx2)}
+.login-link a{color:var(--b);cursor:pointer}
+
+/* RESPONSIVE */
+@media(max-width:768px){
+  .sidebar{position:fixed;z-index:100;transform:translateX(-100%);transition:transform .25s ease;width:280px;top:0;bottom:0;left:0;background:var(--bg2);box-shadow:4px 0 20px rgba(0,0,0,.5)}
+  .sidebar.open{transform:translateX(0)}
+  #menuBtn{display:flex!important;align-items:center;justify-content:center}
+  .split-left{width:100%}
+  .split-right{display:none}
+  .split-right.active{display:flex;position:absolute;inset:0;z-index:10;background:var(--bg)}
+}
+</style>
+</head>
+<body>
+
+<!-- MEMORY LEAK FIX APPLIED -->
+<script>
+'use strict';
+
+// MEMORY MANAGEMENT SYSTEM
+window.MemoryManager = {
+  intervals: new Set(),
+  timeouts: new Set(),
+  eventListeners: new Map(),
+  wsConnections: new Set(),
+
+  // Register interval for cleanup
+  setInterval(fn, delay) {
+    var id = setInterval(fn, delay);
+    this.intervals.add(id);
+    return id;
+  },
+
+  // Register timeout for cleanup
+  setTimeout(fn, delay) {
+    var id = setTimeout(fn, delay);
+    this.timeouts.add(id);
+    return id;
+  },
+
+  // Register event listener for cleanup
+  addEventListener(target, event, handler, options) {
+    target.addEventListener(event, handler, options);
+    if (!this.eventListeners.has(target)) {
+      this.eventListeners.set(target, []);
+    }
+    this.eventListeners.get(target).push({event: event, handler: handler});
+  },
+
+  // Register WebSocket for cleanup
+  addWebSocket(ws) {
+    this.wsConnections.add(ws);
+  },
+
+  // Clean up all registered resources
+  cleanup() {
+    // Clear intervals
+    this.intervals.forEach(function(id) {
+      clearInterval(id);
+    });
+    this.intervals.clear();
+
+    // Clear timeouts
+    this.timeouts.forEach(function(id) {
+      clearTimeout(id);
+    });
+    this.timeouts.clear();
+
+    // Remove event listeners
+    this.eventListeners.forEach(function(listeners, target) {
+      listeners.forEach(function(item) {
+        target.removeEventListener(item.event, item.handler);
+      });
+    });
+    this.eventListeners.clear();
+
+    // Close WebSocket connections
+    this.wsConnections.forEach(function(ws) {
+      if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+        ws.close();
+      }
+    });
+    this.wsConnections.clear();
+  }
+};
+
+// Clean up on page unload
+MemoryManager.addEventListener(window, 'beforeunload', function() {
+  MemoryManager.cleanup();
+});
+
+// Clean up on visibility change (mobile background/foreground)
+MemoryManager.addEventListener(document, 'visibilitychange', function() {
+  if (document.hidden) {
+    MemoryManager.cleanup();
+  }
+});
+
+// SERVICE WORKER - MEMORY LEAK FIX
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js', {
+    scope: '/',
+    updateViaCache: 'none'
+  }).then(function(registration) {
+    console.log('ServiceWorker registered successfully:', registration.scope);
+
+    // Handle updates
+    registration.addEventListener('updatefound', function() {
+      var newWorker = registration.installing;
+      if (newWorker) {
+        newWorker.addEventListener('statechange', function() {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            // New version available, prompt user to refresh
+            if (confirm('Neue Version verfügbar. Seite neu laden?')) {
+              window.location.reload();
+            }
+          }
+        });
+      }
+    });
+
+  }).catch(function(error) {
+    console.warn('ServiceWorker registration failed:', error);
+  });
+
+  // Clean up old service worker caches periodically
+  MemoryManager.setInterval(function() {
+    if ('caches' in window) {
+      caches.keys().then(function(cacheNames) {
+        return Promise.all(
+          cacheNames.map(function(cacheName) {
+            if (cacheName.indexOf('blun-v') === 0) {
+              var version = parseInt(cacheName.split('blun-v')[1]);
+              if (isNaN(version) || version < Date.now() - 86400000) { // 24h old
+                return caches.delete(cacheName);
+              }
+            }
+          })
+        );
+      });
+    }
+  }, 3600000); // Check every hour
+}
+
+// CANVAS INTERVAL - MEMORY LEAK FIX
+var _canvasInterval = null;
+
+function toggleCanvas() {
+  var canvas = document.getElementById('wsCanvas');
+  var cp = document.querySelector('.ws-cp');
+  var btn = document.getElementById('canvasToggleBtn');
+  var isOpen = canvas && canvas.classList.contains('open');
+  var rh = document.getElementById('wsResizeHandle');
+
+  if (isOpen) {
+    if (canvas) canvas.classList.remove('open');
+    if (cp) cp.style.maxWidth = '';
+    if (rh) rh.style.display = 'none';
+
+    // MEMORY LEAK FIX: Clean interval
+    if (_canvasInterval) {
+      clearInterval(_canvasInterval);
+      _canvasInterval = null;
+    }
+
+    if (btn) btn.textContent = 'Canvas';
+    localStorage.setItem('blun_canvas_open', '0');
+  } else {
+    if (canvas) canvas.classList.add('open');
+    var savedW = parseInt(localStorage.getItem('blun_canvas_w') || '320');
+    if (canvas) canvas.style.width = savedW + 'px';
+    if (cp) cp.style.maxWidth = 'calc(100% - ' + (savedW + 5) + 'px)';
+    if (rh) rh.style.display = '';
+    if (btn) btn.textContent = 'Canvas schliessen';
+    localStorage.setItem('blun_canvas_open', '1');
+
+    var logEl = document.getElementById('wsCanvasLog');
+    if (logEl) logEl.innerHTML = '';
+
+    loadCanvasLog();
+
+    // MEMORY LEAK FIX: Use MemoryManager
+    _canvasInterval = MemoryManager.setInterval(loadCanvasLog, 5000);
+
+    if (!_blunWS || _blunWS.readyState > 1) {
+      initBlunWS();
+    }
+  }
+}
+
+function loadCanvasLog() {
+  // Stub function - implement as needed
+  console.log('Loading canvas log...');
+}
+
+// WEBSOCKET - MEMORY LEAK FIX
+var _blunWS = null;
+var _wsReconnectAttempts = 0;
+var _maxReconnectAttempts = 5;
+
+function initBlunWS() {
+  // Don't create multiple connections
+  if (_blunWS && (_blunWS.readyState === WebSocket.OPEN || _blunWS.readyState === WebSocket.CONNECTING)) {
+    return;
+  }
+
+  if (_wsReconnectAttempts >= _maxReconnectAttempts) {
+    console.warn('Max WebSocket reconnect attempts reached');
+    return;
+  }
+
+  try {
+    var proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    _blunWS = new WebSocket(proto + '//' + location.host + '/ws?role=dashboard');
+
+    // Register for cleanup
+    MemoryManager.addWebSocket(_blunWS);
+
+    _blunWS.onopen = function() {
+      console.log('WebSocket connected');
+      _wsReconnectAttempts = 0; // Reset on successful connection
+    };
+
+    _blunWS.onmessage = function(e) {
+      try {
+        var msg = JSON.parse(e.data);
+        if (msg.type === 'agent:stream' && msg.payload) {
+          handleAgentStream(msg.payload);
+        } else if (msg.type === 'agent:stream:end') {
+          handleStreamEnd();
+        }
+      } catch (error) {
+        console.warn('WebSocket message parse error:', error);
+      }
+    };
+
+    _blunWS.onerror = function(error) {
+      console.warn('WebSocket error:', error);
+    };
+
+    _blunWS.onclose = function(event) {
+      console.log('WebSocket closed:', event.code, event.reason);
+      _blunWS = null;
+
+      // Only reconnect if not explicitly closed and haven't exceeded attempts
+      if (event.code !== 1000 && _wsReconnectAttempts < _maxReconnectAttempts) {
+        _wsReconnectAttempts++;
+        var delay = Math.min(1000 * Math.pow(2, _wsReconnectAttempts), 30000); // Exponential backoff, max 30s
+        MemoryManager.setTimeout(initBlunWS, delay);
+      }
+    };
+
+  } catch (error) {
+    console.error('WebSocket creation failed:', error);
+  }
+}
+
+function handleAgentStream(payload) {
+  var el = document.getElementById('wsCanvasLog');
+  if (el && document.getElementById('wsCanvas') && document.getElementById('wsCanvas').classList.contains('open')) {
+    var last = el.lastElementChild;
+    if (!last || last.classList.contains('stream-done')) {
+      var line = document.createElement('div');
+      line.className = 'canvas-line tool stream-active';
+      line.style.cssText = 'padding:6px 8px;white-space:pre-wrap;word-break:break-word;border-bottom:1px solid rgba(255,255,255,.05)';
+      var t = new Date();
+      var ts = pad(t.getHours()) + ':' + pad(t.getMinutes());
+      line.setAttribute('data-ts', ts);
+      el.appendChild(line);
+      last = line;
+    }
+    if (last && payload.tok) {
+      var currentText = last.textContent.replace(/^\d+:\d+\s/, '') || '';
+      last.textContent = (last.getAttribute('data-ts') || '') + ' ' + (currentText + payload.tok);
+      el.scrollTop = el.scrollHeight;
+    }
+  }
+}
+
+function handleStreamEnd() {
+  var el = document.getElementById('wsCanvasLog');
+  if (el) {
+    var last = el.lastElementChild;
+    if (last && last.classList.contains('stream-active')) {
+      last.classList.remove('stream-active');
+      last.classList.add('stream-done');
+    }
+  }
+}
+
+function pad(n) {
+  return n < 10 ? '0' + n : n;
+}
+
+// MOUSE EVENT LISTENERS - MEMORY LEAK FIX
+(function() {
+  var dragging = false, startX = 0, startW = 0;
+
+  function handleMouseDown(e) {
+    if (e.target && e.target.id === 'wsResizeHandle') {
+      dragging = true;
+      startX = e.clientX;
+      var canvas = document.getElementById('wsCanvas');
+      startW = canvas ? canvas.offsetWidth : 320;
+      e.preventDefault();
+    }
+  }
+
+  function handleMouseMove(e) {
+    if (!dragging) return;
+    var canvas = document.getElementById('wsCanvas');
+    if (!canvas) return;
+    var diff = startX - e.clientX;
+    var newW = Math.max(200, Math.min(800, startW + diff));
+    canvas.style.width = newW + 'px';
+    var cp = document.querySelector('.ws-cp');
+    if (cp) cp.style.maxWidth = 'calc(100% - ' + (newW + 5) + 'px)';
+  }
+
+  function handleMouseUp() {
+    if (dragging) {
+      var canvas = document.getElementById('wsCanvas');
+      if (canvas) localStorage.setItem('blun_canvas_w', canvas.offsetWidth);
+    }
+    dragging = false;
+  }
+
+  // Use MemoryManager for proper cleanup
+  MemoryManager.addEventListener(document, 'mousedown', handleMouseDown);
+  MemoryManager.addEventListener(document, 'mousemove', handleMouseMove);
+  MemoryManager.addEventListener(document, 'mouseup', handleMouseUp);
+})();
+
+// STUB FUNCTIONS - Implement as needed
+function esc(str) {
+  if (typeof str !== 'string') return '';
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+console.log('BLUN Dashboard - Memory Leak Fixes Applied');
+console.log('✅ Service Worker: Error handling added');
+console.log('✅ Canvas Interval: MemoryManager integration');
+console.log('✅ WebSocket: Proper cleanup and reconnection limits');
+console.log('✅ Event Listeners: Registered for cleanup');
+console.log('✅ Global cleanup on page unload/visibility change');
+</script>
+
+<!-- LOAD EXTERNAL SCRIPTS WITH ERROR HANDLING -->
+<script>
+// SAFE SCRIPT LOADER - MEMORY LEAK PREVENTION
+function loadScript(src, callback) {
+  var script = document.createElement('script');
+  var loaded = false;
+
+  script.onload = script.onreadystatechange = function() {
+    if (!loaded && (!this.readyState || this.readyState === 'loaded' || this.readyState === 'complete')) {
+      loaded = true;
+      script.onload = script.onreadystatechange = null;
+      if (callback) callback(null);
+    }
+  };
+
+  script.onerror = function() {
+    if (!loaded) {
+      loaded = true;
+      console.warn('Failed to load script:', src);
+      if (callback) callback(new Error('Failed to load: ' + src));
+    }
+  };
+
+  script.src = src;
+  document.head.appendChild(script);
+}
+
+// Load scripts with error handling
+var scriptsToLoad = [
+  '/dashboard/js/workspace-prefs.js',
+  '/dashboard/js/nav-sidebar.js?v=2',
+  '/dashboard/components/canvas-editor.js',
+  '/dashboard/components/agent-network.js',
+  '/dashboard/js/agent-network-init.js',
+  'components/pixel-office.js',
+  'components/electron-bridge.js',
+  'components/button-library.js',
+  'components/form-validator.js',
+  'components/activity-feed.js',
+  'components/notification-center.js',
+  'components/desktop-titlebar.js',
+  'components/modal-dialog.js',
+  'components/video-gallery.js',
+  'components/electron-updater.js'
+];
+
+var loadedCount = 0;
+scriptsToLoad.forEach(function(src, index) {
+  // Add delay to prevent loading bottleneck
+  MemoryManager.setTimeout(function() {
+    loadScript(src, function(error) {
+      loadedCount++;
+      if (error) {
+        console.warn('Script load error:', error.message);
+      } else {
+        console.log('Loaded:', src);
+      }
+
+      if (loadedCount === scriptsToLoad.length) {
+        console.log('All scripts loaded. Dashboard ready.');
+        // Initialize dashboard here if needed
+      }
+    });
+  }, index * 50); // Stagger loading by 50ms
+});
+</script>
+
+</body>
+</html>
