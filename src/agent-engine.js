@@ -686,7 +686,7 @@ async function heartbeat(agentId) {
           await query("INSERT INTO agent_memory (agent_id, key, content) VALUES ($1, $2, $3) ON CONFLICT (agent_id, key) DO UPDATE SET content = $3, updated_at = NOW()", [agentId, "last_auto_deploy", new Date().toISOString()]);
         } else {
           console.log("[operator] Real code changes: " + codeFiles.join(", ").substring(0,200));
-          var check = await new Promise(function(res){ cp2.exec("node -c /root/blun/src/server.js && node -c /root/blun/src/agent-engine.js && node -c /root/blun/src/code-tools.js", {timeout:10000}, function(e,o,er){ res({err:e,out:(o||"")+(er||"")}); }); });
+          var check = await new Promise(function(res){ cp2.exec("node -c /root/blun/server.js && node -c /root/blun/src/agent-engine.js && node -c /root/blun/src/code-tools.js", {timeout:10000}, function(e,o,er){ res({err:e,out:(o||"")+(er||"")}); }); });
           if (!check.err) {
             var gitConn = await queryOne("SELECT config FROM user_connections WHERE type = 'git' AND company_id = $1 ORDER BY id LIMIT 1", [agent.company_id]);
             var sshKey = "/root/.ssh/id_ed25519_github_pro";
@@ -1271,7 +1271,7 @@ async function executeTools(agentId, message, aiResponse) {
         try {
           // Syntax check all key files before restart
           var cp2 = require('child_process');
-          var check = await new Promise(function(res){ cp2.exec('node -c /root/blun/src/server.js && node -c /root/blun/src/agent-engine.js && node -c /root/blun/src/code-tools.js', {timeout:10000}, function(e,o,er){ res({err:e,out:(o||'')+(er||'')}); }); });
+          var check = await new Promise(function(res){ cp2.exec('node -c /root/blun/server.js && node -c /root/blun/src/agent-engine.js && node -c /root/blun/src/code-tools.js', {timeout:10000}, function(e,o,er){ res({err:e,out:(o||'')+(er||'')}); }); });
           if (check.err) {
             results.push('DEPLOY_ERR: Syntax check failed: ' + check.out);
           } else {

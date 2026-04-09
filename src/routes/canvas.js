@@ -68,6 +68,95 @@ router.delete("/files/:id", requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ===== CANVAS STATES - Save/Load =====
+
+// List all saved states for a file
+router.get("/files/:id/states", requireAuth, async (req, res) => {
+  try {
+    const rows = await query(
+      "SELECT id, state_name, created_at, updated_at, created_by, thumbnail FROM canvas_states WHERE file_id = $1 ORDER BY updated_at DESC",
+      [req.params.id]
+    );
+    res.json(rows);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Get specific state
+router.get("/states/:stateId", requireAuth, async (req, res) => {
+  try {
+    const row = await queryOne("SELECT * FROM canvas_states WHERE id = $1", [req.params.stateId]);
+    if (!row) return res.status(404).json({ error: "State not found" });
+    res.json(row);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Save canvas state (version/snapshot)
+router.post("/files/:id/states", requireAuth, async (req, res) => {
+  try {
+    const { state_name, state_data, thumbnail } = req.body;
+    if (!state_name || !state_data) return res.status(400).json({ error: "state_name and state_data required" });
+
+    const file = await queryOne("SELECT project_id FROM canvas_files WHERE id = $1", [req.params.id]);
+    if (!file) return res.status(404).json({ error: "File not found" });
+
+    const row = await queryOne(
+      `INSERT INTO canvas_states (project_id, file_id, state_name, state_data, thumbnail, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (file_id, state_name) DO UPDATE
+       SET state_data = $4, thumbnail = $5, updated_at = NOW()
+       RETURNING *`,
+      [file.project_id, req.params.id, state_name, JSON.stringify(state_data), thumbnail || null, req.user.name || req.user.email]
+    );
+    res.json(row);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Load canvas state
+router.get("/states/:stateId/load", requireAuth, async (req, res) => {
+  try {
+    const row = await queryOne("SELECT state_data FROM canvas_states WHERE id = $1", [req.params.stateId]);
+    if (!row) return res.status(404).json({ error: "State not found" });
+    res.json(row.state_data);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Delete state
+router.delete("/states/:stateId", requireAuth, async (req, res) => {
+  try {
+    await query("DELETE FROM canvas_states WHERE id = $1", [req.params.stateId]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ===== AUTOSAVE =====
+
+// Get autosave for file
+router.get("/files/:id/autosave", requireAuth, async (req, res) => {
+  try {
+    const row = await queryOne("SELECT state_data, last_saved, last_editor FROM canvas_autosave WHERE file_id = $1", [req.params.id]);
+    if (!row) return res.status(204).send();
+    res.json(row);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Update autosave
+router.post("/files/:id/autosave", requireAuth, async (req, res) => {
+  try {
+    const { state_data } = req.body;
+    if (!state_data) return res.status(400).json({ error: "state_data required" });
+
+    const row = await queryOne(
+      `INSERT INTO canvas_autosave (file_id, state_data, last_editor)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (file_id) DO UPDATE
+       SET state_data = $2, last_saved = NOW(), last_editor = $3
+       RETURNING *`,
+      [req.params.id, JSON.stringify(state_data), req.user.name || req.user.email]
+    );
+    res.json(row);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 function detectLanguage(filePath) {
   const ext = filePath.split(".").pop().toLowerCase();
   const map = { js: "javascript", ts: "typescript", py: "python", html: "html", css: "css", sql: "sql", json: "json", md: "markdown", jsx: "javascript", tsx: "typescript", rb: "ruby", go: "go", rs: "rust", sh: "bash", yml: "yaml", yaml: "yaml" };
