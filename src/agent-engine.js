@@ -520,7 +520,7 @@ async function heartbeat(agentId) {
         );
         if (idleAgents.length > 0) {
           var agentList = idleAgents.map(function(a) { return a.name + " (ID " + a.id + ", " + (a.role||"no role") + ")"; }).join(", ");
-          var dispatchPrompt = "Du bist der Operator. Folgende Agents haben gerade keine Aufgaben: " + agentList + ".\nErstelle fuer JEDEN einen sinnvollen Task basierend auf ihrer Rolle. Antworte NUR mit [TOOL:ASSIGN_TASK:agent_id:task beschreibung] pro Agent, eine Zeile pro Agent. Keine Erklaerung.";
+          var dispatchPrompt = "Du bist der Operator. Folgende Agents haben gerade keine Aufgaben: " + agentList + "." + "\nWICHTIG: Jeder Task MUSS eine konkrete CODE-Aenderung am BLUN-Projekt sein! Beispiele: Neue API-Route bauen, CSS fixen, Dashboard-Komponente erstellen, Bug in einer Route fixen, neue Seite im Dashboard." + "\nVERBOTEN: Analyse-Tasks, Reports, Konzepte, Markdown-Dokumente, Pipeline-Analysen. NUR Tasks die echte Dateien (.js/.css/.html) aendern!" + "\nVERBOTENE DATEIEN: agent-engine.js, code-tools.js, server.js, .env, package.json" + "\nDas BLUN-Projekt hat: src/routes/ (API), dashboard/ (Frontend), src/middleware/ (Auth, Rate-Limit), public/ (Static)." + "\nAntworte NUR mit [TOOL:ASSIGN_TASK:agent_id:task beschreibung] pro Agent, eine Zeile pro Agent. Keine Erklaerung.";
           var identityRow = await queryOne("SELECT content FROM agent_memory WHERE agent_id = $1 AND key = 'identity'", [agentId]);
           var sysPrompt = (identityRow ? identityRow.content : "Du bist der Operator.") + "\nDu verteilst autonom Tasks an dein Team.";
           var dispatchResult = await callLLM(agent.model || "claude-sonnet", [{ role: "system", content: sysPrompt }, { role: "user", content: dispatchPrompt }], agentId);
