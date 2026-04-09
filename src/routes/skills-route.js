@@ -173,4 +173,58 @@ module.exports = function(router, query, queryOne) {
       res.json({ skills: skills, agent_skills: agentSkills, agents: agentList });
     } catch(e) { res.status(500).json({ error: e.message }); }
   });
+
+  // Fetch skill from GitHub URL (server-side to avoid CORS)
+  router.post('/skills/import-github', async function(req, res) {
+    try {
+      var url = req.body.url;
+      if (!url) return res.status(400).json({ error: 'url required' });
+      // Convert to raw URL
+      var rawUrl = url.replace('github.com', 'raw.githubusercontent.com')
+        .replace('/blob/', '/').replace('/tree/', '/');
+      if (!rawUrl.match(/\.(md|txt|json)$/)) rawUrl = rawUrl.replace(/\/?$/, '/SKILL.md');
+
+      var https = require('https');
+      var content = await new Promise(function(resolve, reject) {
+        https.get(rawUrl, { headers: { 'User-Agent': 'BLUN-Skill-Importer' } }, function(r) {
+          if (r.statusCode === 301 || r.statusCode === 302) {
+            https.get(r.headers.location, { headers: { 'User-Agent': 'BLUN-Skill-Importer' } }, function(r2) {
+              var d = ''; r2.on('data', function(c){ d += c; }); r2.on('end', function(){ resolve(d); });
+            }).on('error', reject);
+            return;
+          }
+          if (r.statusCode !== 200) return reject(new Error('HTTP ' + r.statusCode));
+          var d = ''; r.on('data', function(c){ d += c; }); r.on('end', function(){ resolve(d); });
+        }).on('error', reject);
+      });
+
+      // Parse frontmatter
+      var name = 'custom-skill', desc = '', slug = '';
+      var fm = content.match(/^---\n([\s\S]*?)\n---/);
+      if (fm) {
+        fm[1].split('\n').forEach(function(l) {
+          var m = l.match(/^(\w+):\s*"?([^"]*)"?$/);
+          if (m) {
+            if (m[1] === 'name') name = m[2].trim();
+            if (m[1] === 'description') desc = m[2].trim();
+            if (m[1] === 'slug') slug = m[2].trim();
+          }
+        });
+      }
+      if (slug && name === 'custom-skill') name = slug;
+
+      // Check if exists
+      var existing = await queryOne("SELECT id FROM skills WHERE name = $1", [name]);
+      if (existing) {
+        return res.json({ id: existing.id, name: name, exists: true, description: desc });
+      }
+
+      var row = await queryOne(
+        "INSERT INTO skills (name, description, category, code, safe) VALUES ($1, $2, 'imported', $3, true) RETURNING *",
+        [name, desc || 'Importiert von ' + url, content]
+      );
+      res.json(row);
+    } catch(e) { res.status(500).json({ error: e.message }); }
+  });
+
 };

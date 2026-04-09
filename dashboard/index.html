@@ -1168,42 +1168,10 @@ function installSkillFromPicker(agentId) {
 function installSkillFromGithub(agentId) {
   var url=document.getElementById('skillGithubUrl').value.trim();
   if(!url) return;
-  // Convert GitHub blob URL to raw content URL
-  var rawUrl = url.replace('github.com','raw.githubusercontent.com').replace('/blob/','/')
-    .replace('/tree/','/');
-  // If URL points to a directory, append SKILL.md
-  if(!rawUrl.match(/\.(md|txt|json)$/)) rawUrl = rawUrl.replace(/\/?$/, '/SKILL.md');
   var btn = event.target; btn.textContent='Lade...'; btn.disabled=true;
-  fetch(rawUrl).then(function(r){
-    if(!r.ok) throw new Error('HTTP '+r.status+' - Skill nicht gefunden');
-    return r.text();
-  }).then(function(content){
-    // Parse YAML frontmatter
-    var name='custom-skill', desc='', slug='';
-    var fm = content.match(/^---\n([\s\S]*?)\n---/);
-    if(fm) {
-      var lines = fm[1].split('\n');
-      lines.forEach(function(l){
-        var m = l.match(/^(\w+):\s*["']?([^"']*)["']?$/);
-        if(m) {
-          if(m[1]==='name') name=m[2].trim();
-          if(m[1]==='description') desc=m[2].trim();
-          if(m[1]==='slug') slug=m[2].trim();
-        }
-      });
-    }
-    if(slug && !name) name=slug;
-    // Use full markdown as the skill prompt/code
-    return api('/api/skills/install',{method:'POST',body:JSON.stringify({
-      name: name,
-      source_url: url,
-      description: desc || 'Importiert von '+url,
-      category: 'imported',
-      system_prompt: content
-    })});
+  api('/api/organisator/skills/import-github',{method:'POST',body:JSON.stringify({url:url})}).then(function(skill){
+    return api('/api/skills/'+(skill.id)+'/assign/'+agentId,{method:'POST'}).then(function(){ return skill; });
   }).then(function(skill){
-    return api('/api/skills/'+(skill.id)+'/assign/'+agentId,{method:'POST'});
-  }).then(function(){
     btn.textContent='Von GitHub'; btn.disabled=false;
     loadAgentSkills(agentId);
     alert('Skill importiert und zugewiesen!');
