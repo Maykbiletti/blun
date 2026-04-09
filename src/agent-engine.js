@@ -344,7 +344,14 @@ async function callLLM(model, messages, agentId) {
   // Route CLI-based models: gpt-* via Codex CLI, claude-* via Claude CLI
   // Haiku: skip CLI, use direct API (much faster)
   if (model.startsWith("claude") && !model.includes("api:")) {
-    try { return await callClaudeCLI(messages, null, model, agentId); } catch(e) {
+    // Get API key from ai_connections for CLI
+    var cliApiKey = null;
+    try {
+      var cliConn = await queryOne("SELECT api_key_encrypted FROM ai_connections WHERE provider = 'anthropic' AND status = 'active' LIMIT 1", []);
+      if (cliConn) cliApiKey = decryptKey(cliConn.api_key_encrypted);
+      try { var od = JSON.parse(cliApiKey); if (od.access_token) cliApiKey = od.access_token; } catch(e) {}
+    } catch(e) {}
+    try { return await callClaudeCLI(messages, cliApiKey, model, agentId); } catch(e) {
       console.error("[claude-cli] " + e.message + " — Fallback auf Codex CLI");
       try { return await callCodexCLI(messages, 'gpt-4o'); } catch(e2) {
         console.error("[codex-cli] Fallback auch fehlgeschlagen: " + e2.message);
