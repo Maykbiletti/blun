@@ -615,7 +615,7 @@ async function heartbeat(agentId) {
 
       // Paperclip model: detect changes via git status in worktree, then commit
       try {
-        var _protected = ["agent-engine.js","code-tools.js","server.js",".env","package.json","package-lock.json","index.html","login.html","dieter-daemon.js"];
+        var _protected = ["agent-engine.js","code-tools.js","server.js",".env","package.json","package-lock.json","index.html","login.html","dieter-daemon.js","auth.js"];
         var statusOut = await new Promise(function(res){ cp2.exec("cd " + worktreePath + " && git status --porcelain", {timeout:10000}, function(e,o){ res((o||"").trim()); }); });
         var changedFiles = statusOut.split("\n").filter(function(l){ return l.trim().length > 0; }).map(function(l){ return l.trim().substring(3); });
         var safeFiles = changedFiles.filter(function(f){ var bn = f.split("/").pop(); return _protected.indexOf(bn) === -1; });
