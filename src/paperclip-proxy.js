@@ -1,8 +1,21 @@
 // Paperclip API Proxy — translates BLUN dashboard calls to Paperclip engine
-var http = require("http");
+// Enriches Paperclip data with legacy BLUN DB fields for UI compatibility
+var { query } = require("./db");
 
 var PAPERCLIP_BASE = "http://127.0.0.1:3100";
 var COMPANY_ID = "59dcf77d-fe64-4700-a5f9-ef32957ac28c";
+
+// Cache old BLUN agent data for UI fields
+var _blunCache = null;
+var _blunCacheTs = 0;
+async function getBlunAgents() {
+  if (_blunCache && Date.now() - _blunCacheTs < 30000) return _blunCache;
+  try {
+    _blunCache = await query("SELECT name, role, model, department, system_prompt, personality, heartbeat_interval FROM blun_agents");
+    _blunCacheTs = Date.now();
+  } catch(e) { _blunCache = []; }
+  return _blunCache;
+}
 
 async function pcFetch(path, opts) {
   var url = PAPERCLIP_BASE + path;
@@ -14,21 +27,22 @@ async function pcFetch(path, opts) {
   return resp.json();
 }
 
-// Transform Paperclip agent to BLUN format
-function transformAgent(pa) {
+// Transform Paperclip agent to BLUN format, enriched with old DB fields
+function transformAgent(pa, blunData) {
+  var old = blunData ? blunData.find(function(b) { return b.name.toLowerCase() === pa.name.toLowerCase(); }) : null;
   return {
     id: pa.urlKey || pa.id,
     pc_id: pa.id,
     name: pa.name,
-    role: pa.role || "general",
-    model: (pa.adapterConfig && pa.adapterConfig.model) || pa.adapterType || "unknown",
+    role: old ? old.role : (pa.title || pa.role || "general"),
+    model: old ? old.model : ((pa.adapterConfig && pa.adapterConfig.model) || pa.adapterType || "unknown"),
     status: pa.status || "idle",
-    department: pa.role || "",
+    department: old ? (old.department || "") : (pa.role || ""),
     company_id: pa.companyId,
     company_name: "BLUN AI",
-    personality: "",
-    system_prompt: "",
-    heartbeat_interval: 30,
+    personality: old ? (old.personality || "") : "",
+    system_prompt: old ? (old.system_prompt || "") : "",
+    heartbeat_interval: old ? (old.heartbeat_interval || 60) : 30,
     last_heartbeat: pa.lastHeartbeatAt,
     pending_tasks: 0,
     runtime_active: pa.status === "running" || pa.status === "active",
@@ -43,7 +57,8 @@ function transformAgent(pa) {
 
 async function getAgents() {
   var agents = await pcFetch("/api/companies/" + COMPANY_ID + "/agents");
-  return agents.map(transformAgent);
+  var blunData = await getBlunAgents();
+  return agents.map(function(a) { return transformAgent(a, blunData); });
 }
 
 async function getAgent(idOrKey) {
@@ -60,7 +75,7 @@ async function createAgent(data) {
     method: "POST",
     body: JSON.stringify({ name: data.name, role: role, adapterType: data.adapter_type || "claude_local" })
   });
-  return transformAgent(pa);
+  return transformAgent(pa, null);
 }
 
 async function startAgent(pcId) {
