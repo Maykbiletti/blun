@@ -82,6 +82,14 @@ router.post("/agents", async function(req, res) {
 
 
 
+
+router.get("/agents/running", async function(req, res) {
+  try {
+    var running = engine.getActiveAgents();
+    res.json({ running: running });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 router.post("/tasks/reset", async function(req, res) {
   try {
     var result = await query("UPDATE tasks SET status = 'pending' WHERE status IN ('in_progress', 'error')");

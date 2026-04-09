@@ -994,7 +994,7 @@ function getPageFromPath(){
 
 // ===== LOAD ALL =====
 function loadAll() {
-  api('/api/organisator/agents').then(function(d){agents=d;renderAgents();renderChatList();document.getElementById('agentCount').textContent=d.length;var op=getOperator();});
+  api('/api/organisator/agents').then(function(d){agents=d; api('/api/organisator/agents/running').then(function(r){var running=r.running||[];agents.forEach(function(a){a.engine_running=running.indexOf(a.id)>=0;});renderAgents();}).catch(function(){renderAgents();});renderChatList();document.getElementById('agentCount').textContent=d.length;var op=getOperator();});
   api('/api/organisator/companies').then(function(d){companies=d;renderCompanies();});
   initBulkModelSelect();
   api('/api/organisator/stats').then(function(d){renderStats(d);}).catch(function(){});
@@ -1092,7 +1092,7 @@ function renderAgents(filteredAgents) { var agentList = filteredAgents || agents
     html += '<div class="dept-section"><div class="dept-head" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'grid\':\'none\'"><h3>'+esc(dept)+'</h3><span class="dept-count">'+list.length+'</span></div><div class="dept-agents">';
     list.forEach(function(a) {
       var isOn = a.status==='active'||a.status==='working'||a.runtime_active;
-      var isWorking = a.pending_tasks > 0 && isOn;
+      var isWorking = a.engine_running || (a.pending_tasks > 0 && isOn);
       var modelTag = (a.model||'').indexOf('local')>=0||(a.model||'').indexOf('gemma')>=0||(a.model||'').indexOf('llama')>=0||(a.model||'').indexOf('deepseek')>=0 ? '<span class="tag" style="color:var(--green)">Lokal</span>' : '<span class="tag" style="color:var(--amber)">API</span>';
       var taskLine = isWorking ? '<div class="working-task"><span class="working-dot"></span>'+(a.current_task||'Arbeitet...')+'</div>' : (!isOn ? '<div style="font-size:11px;color:var(--tx2);margin-top:2px">Offline</div>' : '<div style="font-size:11px;color:var(--tx2);margin-top:2px">Bereit</div>');
       html += '<div class="agent-card'+(isWorking?' working':'')+'" onclick="openAgentDetail('+a.id+')">'+
