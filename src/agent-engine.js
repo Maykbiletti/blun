@@ -798,6 +798,11 @@ async function heartbeat(agentId) {
           var commitMsg = agent.name + ": " + pendingTask.task.substring(0,60);
           await new Promise(function(res){ cp2.exec('cd ' + worktreePath + ' && git add -A && git commit -m "' + commitMsg.replace(/"/g, '\\"') + '"', {timeout:10000}, function(e,o,er){ res(true); }); });
           console.log("[agent-cli] Committed in worktree " + worktreePath);
+          // Push QA task to Helmut (ID 29)
+          try {
+            await query("INSERT INTO agent_tasks (agent_id, task, status, created_at) VALUES (29, $1, 'pending', NOW())", ["QA REVIEW: Branch " + branchName + " von " + agent.name + " hat neue Commits. Pruefe den Code in " + worktreePath + " mit git diff main.." + branchName + ". Bei QA:PASS melde an Operator zum Mergen. Bei QA:FAIL beschreibe die Probleme."]);
+            console.log("[agent-cli] QA task created for Helmut: " + branchName);
+          } catch(qaErr) { console.error("[agent-cli] QA task creation error:", qaErr.message); }
         }
       } catch(gitErr) { console.error("[agent-cli] Git commit error:", gitErr.message); }
       // Quality check: did the CLI actually change files?
