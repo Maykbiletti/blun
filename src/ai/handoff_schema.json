@@ -1,0 +1,14 @@
+{
+  "from_agent": "string",
+  "to_agent": "string",
+  "task_objective": "string",
+  "required_outcome": "string",
+  "priority": "low | normal | high | critical",
+  "known_context": [],
+  "constraints": [],
+  "dependencies": [],
+  "risks": [],
+  "expected_output_format": [],
+  "definition_of_done": [],
+  "notes": []
+}
