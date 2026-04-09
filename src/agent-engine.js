@@ -344,19 +344,48 @@ async function callLLM(model, messages, agentId) {
   // Route CLI-based models: gpt-* via Codex CLI, claude-* via Claude CLI
   // Haiku: skip CLI, use direct API (much faster)
   if (model.startsWith("claude") && !model.includes("api:")) {
-    // Get API key from ai_connections for CLI
+    // Get API key from ai_connections
     var cliApiKey = null;
+    var isOAuthToken = false;
     try {
       var cliConn = await queryOne("SELECT api_key_encrypted FROM ai_connections WHERE provider = 'anthropic' AND status = 'active' LIMIT 1", []);
-      if (cliConn) cliApiKey = decryptKey(cliConn.api_key_encrypted);
-      try { var od = JSON.parse(cliApiKey); if (od.access_token) cliApiKey = od.access_token; } catch(e) {}
-    } catch(e) {}
-    try { return await callClaudeCLI(messages, cliApiKey, model, agentId); } catch(e) {
-      console.error("[claude-cli] " + e.message + " — Fallback auf Codex CLI");
-      try { return await callCodexCLI(messages, 'gpt-4o'); } catch(e2) {
-        console.error("[codex-cli] Fallback auch fehlgeschlagen: " + e2.message);
-        return { content: "Alle Modelle im Rate Limit. Bitte spaeter nochmal.", tokens: 0, cost: 0 };
+      if (cliConn) {
+        cliApiKey = decryptKey(cliConn.api_key_encrypted);
+        try { var od = JSON.parse(cliApiKey); if (od.accessToken || od.access_token) { cliApiKey = od.accessToken || od.access_token; isOAuthToken = true; } } catch(e) {}
       }
+    } catch(e) {}
+    // OAuth tokens: skip CLI, use REST API directly
+    if (cliApiKey && isOAuthToken) {
+      console.log("[callLLM] OAuth token, using REST API for " + model);
+      var sysM = messages.find(function(m) { return m.role === "system"; });
+      var chatM = messages.filter(function(m) { return m.role !== "system"; });
+      var rb = { model: model, messages: chatM, max_tokens: 4096 };
+      if (sysM) rb.system = sysM.content;
+      var rh = { "Content-Type": "application/json", "Authorization": "Bearer " + cliApiKey, "anthropic-version": "2023-06-01" };
+      try {
+        var fetch = require("node-fetch");
+        var resp = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: rh, body: JSON.stringify(rb), timeout: 120000 });
+        var data = await resp.json();
+        if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+        var text = (data.content || []).map(function(c) { return c.text || ""; }).join("");
+        var tu = (data.usage ? (data.usage.input_tokens || 0) + (data.usage.output_tokens || 0) : 0);
+        return { content: text, tokens: tu, cost: tu * 0.000003 };
+      } catch(re) {
+        console.error("[claude-rest] " + re.message + " -- Fallback auf Codex CLI");
+        try { return await callCodexCLI(messages, 'gpt-4o'); } catch(e2) {
+          return { content: "API Fehler: " + re.message, tokens: 0, cost: 0 };
+        }
+      }
+    }
+    // Plain API key: try CLI
+    if (cliApiKey) {
+      try { return await callClaudeCLI(messages, cliApiKey, model, agentId); } catch(e) {
+        console.error("[claude-cli] " + e.message + " -- Fallback auf Codex CLI");
+      }
+    }
+    try { return await callCodexCLI(messages, 'gpt-4o'); } catch(e2) {
+      console.error("[codex-cli] Fallback fehlgeschlagen: " + e2.message);
+      return { content: "Alle Modelle im Rate Limit.", tokens: 0, cost: 0 };
     }
   }
   var modelLow = model.toLowerCase();
@@ -379,7 +408,7 @@ async function callLLM(model, messages, agentId) {
     var apiKey;
     try { apiKey = decryptKey(conn.api_key_encrypted); } catch(e) { throw new Error("Failed to decrypt API key: " + e.message); }
     // Check if this is an OAuth token (JSON with access_token)
-    try { var oauthData = JSON.parse(apiKey); if (oauthData.access_token) { apiKey = oauthData.access_token; } } catch(e) { /* plain API key, use as-is */ }
+    try { var oauthData = JSON.parse(apiKey); if (oauthData.accessToken || oauthData.access_token) { apiKey = oauthData.accessToken || oauthData.access_token; } } catch(e) { /* plain API key, use as-is */ }
     var config = { api_key: apiKey };
 
     if (model.startsWith("claude")) {
