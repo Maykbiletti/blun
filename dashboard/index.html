@@ -102,6 +102,13 @@ textarea{resize:vertical;min-height:80px}
 .dept-count{font-size:10px;color:var(--tx2);background:var(--bg4);padding:0 6px;border-radius:10px}
 .dept-agents{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px}
 
+
+/* WORKING INDICATOR */
+@keyframes pulse-work { 0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,0.4)} 50%{box-shadow:0 0 0 8px rgba(34,197,94,0)} }
+.agent-card.working { border-color: var(--green); animation: pulse-work 2s infinite; }
+.agent-card .working-task { font-size:11px; color:var(--green); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px; }
+.agent-card .working-dot { display:inline-block; width:6px; height:6px; background:var(--green); border-radius:50%; margin-right:4px; animation: pulse-work 1.5s infinite; }
+
 /* AGENT CARD */
 .agent-card{background:var(--bg3);border:1px solid var(--brd);border-radius:10px;padding:12px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:all .15s}
 .agent-card:hover{border-color:#444;background:var(--bg4)}
@@ -438,6 +445,7 @@ Profil
   <span style="border-left:1px solid var(--bd);height:20px;margin:0 4px"></span>
   <button class="btn btn-sm" style="background:#22c55e;color:#fff" onclick="bulkStartAgents()">Alle starten</button>
   <button class="btn btn-sm" style="background:#ef4444;color:#fff" onclick="bulkStopAgents()">Alle stoppen</button>
+  <button class="btn btn-sm btn-outline" onclick="resetAllTasks()">Tasks Reset</button>
 </div>
 <div id="operatorBanner"></div>
 <div id="deptList"></div>
@@ -1084,12 +1092,14 @@ function renderAgents(filteredAgents) { var agentList = filteredAgents || agents
     html += '<div class="dept-section"><div class="dept-head" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'grid\':\'none\'"><h3>'+esc(dept)+'</h3><span class="dept-count">'+list.length+'</span></div><div class="dept-agents">';
     list.forEach(function(a) {
       var isOn = a.status==='active'||a.status==='working'||a.runtime_active;
+      var isWorking = a.pending_tasks > 0 && isOn;
       var modelTag = (a.model||'').indexOf('local')>=0||(a.model||'').indexOf('gemma')>=0||(a.model||'').indexOf('llama')>=0||(a.model||'').indexOf('deepseek')>=0 ? '<span class="tag" style="color:var(--green)">Lokal</span>' : '<span class="tag" style="color:var(--amber)">API</span>';
-      html += '<div class="agent-card" onclick="openAgentDetail('+a.id+')">'+
+      var taskLine = isWorking ? '<div class="working-task"><span class="working-dot"></span>'+(a.current_task||'Arbeitet...')+'</div>' : (!isOn ? '<div style="font-size:11px;color:var(--tx2);margin-top:2px">Offline</div>' : '<div style="font-size:11px;color:var(--tx2);margin-top:2px">Bereit</div>');
+      html += '<div class="agent-card'+(isWorking?' working':'')+'" onclick="openAgentDetail('+a.id+')">'+
         '<div class="agent-av" style="background:'+agentColor(a)+'">'+agentAvatar(a)+(isOn?'<div class="online-dot"></div>':'')+'</div>'+
         '<div class="agent-info"><div class="agent-name">'+esc(a.name)+'</div><div class="agent-role">'+esc(a.role||'')+'</div>'+
         '<div class="agent-meta">'+modelTag+'<span class="tag">'+esc(a.model||'?')+'</span></div>'+
-        renderSkillTags(a.skills,a.skill_urls)+'</div>'+
+        renderSkillTags(a.skills,a.skill_urls)+taskLine+'</div>'+
         '<div class="agent-actions">'+(isOn?'<button class="btn-icon" title="Stoppen" onclick="event.stopPropagation();toggleAgent('+a.id+',false)" style="color:var(--red)">⏹</button>':'<button class="btn-icon" title="Starten" onclick="event.stopPropagation();toggleAgent('+a.id+',true)" style="color:var(--green)">▶</button>')+'</div></div>';
     });
     html += '</div></div>';
@@ -1348,6 +1358,14 @@ function saveAgentDetail() {
   })}).then(function(){closeModal('agentDetailModal');loadAll();});
 }
 
+
+function resetAllTasks() {
+  if (!confirm('Alle Tasks auf pending zuruecksetzen?')) return;
+  api('/api/organisator/tasks/reset', {method:'POST'}).then(function(d){
+    loadAll();
+    alert((d.count||0) + ' Tasks zurueckgesetzt');
+  }).catch(function(e){ alert('Fehler: ' + e.message); });
+}
 
 function bulkStartAgents() {
   if (!confirm('Alle Agents starten?')) return;

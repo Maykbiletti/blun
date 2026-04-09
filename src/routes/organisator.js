@@ -82,6 +82,13 @@ router.post("/agents", async function(req, res) {
 
 
 
+router.post("/tasks/reset", async function(req, res) {
+  try {
+    var result = await query("UPDATE tasks SET status = 'pending' WHERE status IN ('in_progress', 'error')");
+    res.json({ ok: true, count: result.rowCount || 0 });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 router.post("/agents/bulk-start", async function(req, res) {
   try {
     var agents = await query("SELECT id FROM blun_agents");
