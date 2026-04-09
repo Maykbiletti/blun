@@ -354,34 +354,12 @@ async function callLLM(model, messages, agentId) {
         try { var od = JSON.parse(cliApiKey); if (od.accessToken || od.access_token) { cliApiKey = od.accessToken || od.access_token; isOAuthToken = true; } } catch(e) {}
       }
     } catch(e) {}
-    // OAuth tokens: skip CLI, use REST API directly
-    if (cliApiKey && isOAuthToken) {
-      console.log("[callLLM] OAuth token, using REST API for " + model);
-      var sysM = messages.find(function(m) { return m.role === "system"; });
-      var chatM = messages.filter(function(m) { return m.role !== "system"; });
-      var rb = { model: model, messages: chatM, max_tokens: 4096 };
-      if (sysM) rb.system = sysM.content;
-      var rh = { "Content-Type": "application/json", "Authorization": "Bearer " + cliApiKey, "anthropic-version": "2023-06-01" };
-      try {
-        var fetch = require("node-fetch");
-        var resp = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: rh, body: JSON.stringify(rb), timeout: 120000 });
-        var data = await resp.json();
-        if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
-        var text = (data.content || []).map(function(c) { return c.text || ""; }).join("");
-        var tu = (data.usage ? (data.usage.input_tokens || 0) + (data.usage.output_tokens || 0) : 0);
-        return { content: text, tokens: tu, cost: tu * 0.000003 };
-      } catch(re) {
-        console.error("[claude-rest] " + re.message + " -- Fallback auf Codex CLI");
-        try { return await callCodexCLI(messages, 'gpt-4o'); } catch(e2) {
-          return { content: "API Fehler: " + re.message, tokens: 0, cost: 0 };
-        }
-      }
-    }
-    // Plain API key: try CLI
-    if (cliApiKey) {
-      try { return await callClaudeCLI(messages, cliApiKey, model, agentId); } catch(e) {
-        console.error("[claude-cli] " + e.message + " -- Fallback auf Codex CLI");
-      }
+    // OAuth: CLI uses its own ~/.claude/.credentials.json — dont pass API key
+    // Plain API key: pass it via ANTHROPIC_API_KEY env
+    var passKey = isOAuthToken ? null : cliApiKey;
+    console.log("[callLLM] Claude " + (isOAuthToken ? "OAuth (CLI own credentials)" : "API key") + " for " + model);
+    try { return await callClaudeCLI(messages, passKey, model, agentId); } catch(e) {
+      console.error("[claude-cli] " + e.message + " -- Fallback auf Codex CLI");
     }
     try { return await callCodexCLI(messages, 'gpt-4o'); } catch(e2) {
       console.error("[codex-cli] Fallback fehlgeschlagen: " + e2.message);
