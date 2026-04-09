@@ -316,7 +316,7 @@ async function start() {
   // Auto-start all active agents
   try {
     var engine = require("./src/agent-engine");
-    var agents = await pool.query("SELECT id, name FROM blun_agents WHERE status = 'active'");
+    var agents = await pool.query("SELECT id, name FROM blun_agents WHERE status IN ('active', 'working', 'paused')");
     for (var i = 0; i < agents.rows.length; i++) {
       engine.startAgent(agents.rows[i].id);
     }
