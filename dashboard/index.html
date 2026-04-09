@@ -885,6 +885,17 @@ function getOperator() { return agents.find(function(a){return a.role&&(a.role.t
 function agentColor(a) { return COLORS[(a.id||0)%COLORS.length]; }
 function agentInitials(a) { var n=a.name||'?'; var parts=n.split(/\s+/); return parts.length>1?parts[0][0]+parts[1][0]:n.substring(0,2); }
 
+function renderSkillTags(skills) {
+  if (!skills || !skills.length) return '';
+  var html = '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:3px">';
+  var show = skills.slice(0,3);
+  for (var i = 0; i < show.length; i++) {
+    html += '<span style="font-size:9px;padding:1px 5px;background:rgba(59,130,246,.15);color:var(--b);border-radius:4px">' + esc(show[i]) + '</span>';
+  }
+  if (skills.length > 3) html += '<span style="font-size:9px;color:var(--tx2)">+' + (skills.length - 3) + '</span>';
+  html += '</div>';
+  return html;
+}
 function renderAgents(filteredAgents) { var agentList = filteredAgents || agents;
   var op = getOperator();
   // Operator banner
@@ -923,7 +934,8 @@ function renderAgents(filteredAgents) { var agentList = filteredAgents || agents
       html += '<div class="agent-card" onclick="openAgentDetail('+a.id+')">'+
         '<div class="agent-av" style="background:'+agentColor(a)+'">'+agentInitials(a).toUpperCase()+(isOn?'<div class="online-dot"></div>':'')+'</div>'+
         '<div class="agent-info"><div class="agent-name">'+esc(a.name)+'</div><div class="agent-role">'+esc(a.role||'')+'</div>'+
-        '<div class="agent-meta">'+modelTag+'<span class="tag">'+esc(a.model||'?')+'</span></div></div>'+
+        '<div class="agent-meta">'+modelTag+'<span class="tag">'+esc(a.model||'?')+'</span></div>'+
+        renderSkillTags(a.skills)+'</div>'+
         '<div class="agent-actions">'+(isOn?'<button class="btn-icon" title="Stoppen" onclick="event.stopPropagation();toggleAgent('+a.id+',false)" style="color:var(--red)">⏹</button>':'<button class="btn-icon" title="Starten" onclick="event.stopPropagation();toggleAgent('+a.id+',true)" style="color:var(--green)">▶</button>')+'</div></div>';
     });
     html += '</div></div>';

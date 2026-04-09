@@ -63,7 +63,11 @@ router.get("/agents", async function(req, res) {
       params
     );
     var activeIds = engine.getActiveAgents();
-    agents.forEach(function(a) { a.runtime_active = activeIds.indexOf(a.id) >= 0; });
+    // Load skills for all agents in one query
+    var allSkills = await query("SELECT as2.agent_id, s.name FROM agent_skills as2 JOIN skills s ON s.id = as2.skill_id WHERE as2.enabled = true");
+    var skillMap = {};
+    allSkills.forEach(function(s) { if (!skillMap[s.agent_id]) skillMap[s.agent_id] = []; skillMap[s.agent_id].push(s.name); });
+    agents.forEach(function(a) { a.runtime_active = activeIds.indexOf(a.id) >= 0; a.skills = skillMap[a.id] || []; });
     res.json(agents);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
