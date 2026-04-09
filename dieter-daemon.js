@@ -223,7 +223,7 @@ async function distributeTasks(db) {
         var agents = await db.query("SELECT id, name, role, department FROM blun_agents WHERE id != 1 AND status = 'active'");
         var agentList = agents.rows.map(function(a) { return a.name + ' (' + a.role + ')'; }).join(', ');
         var decisionResult = await callAPI('POST', '/api/organisator/agents/1/chat', {
-          message: 'Verteile diese Aufgabe an den passenden Agent. Antworte NUR mit [TOOL:ASSIGN_TASK:AgentName|Aufgabe]. Aufgabe: ' + task.task + '. Verfuegbare Agents: ' + agentList
+          message: 'Weise diese Code-Aufgabe dem passenden Agent zu. Antworte NUR mit [TOOL:ASSIGN_TASK:AgentName|Aufgabe]. Die Aufgabe MUSS einen Dateipfad enthalten! Aufgabe: ' + task.task + '. Agents: ' + agentList
         });
         log('Dieter decision for task ' + task.id + ': ' + (decisionResult.response || '').substring(0, 100));
         distributed++;
@@ -248,7 +248,7 @@ async function autoDistributeFromList(db) {
 
   // Ask Dieter to pick next tasks from the list
   var result = await callAPI('POST', '/api/organisator/agents/1/chat', {
-    message: 'Du bist der CEO. Schau dir die offene Task-Liste an und verteile ALLE offenen Tasks an deine 12 Agents. Jeder Agent bekommt 2-3 Tasks. Verteile nach Expertise: Fritz=Canvas/Frontend, Greta=Architektur, Heinrich=Backend, Klaus=Security, Sandra=QA, Petra=Datenbank, Guenter=DevOps, Brigitte=Marketing, Hanno=Business, Werner=Kommunikation, Rolf=Mobile, Marlene=Video/Medien. Benutze [TOOL:CHAT_AGENT:Name|Aufgabe] fuer jeden. Keine Rueckfragen, einfach machen.'
+    message: 'Verteile Code-Tasks an idle Agents. JEDER Task MUSS einen konkreten Dateipfad enthalten! Format: [TOOL:ASSIGN_TASK:AgentName|Erstelle/Fix/Baue DATEIPFAD — Beschreibung]. Expertise: Fritz=dashboard/js/, Greta=dashboard/components/, Heinrich=src/routes/, Klaus=src/middleware/, Sandra=dashboard/css/, Petra=src/db/, Guenter=src/routes/deploy.js, Werner=src/routes/agent-comm.js, Rolf=dashboard/css/mobile.css, Leon=dashboard/css/. VERBOTEN: Marketing, Video, Analyse, Konzept, Report. NUR echten Code!'
   });
   log('Auto-distribute: ' + (result.response || '').substring(0, 200));
 }
