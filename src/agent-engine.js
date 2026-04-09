@@ -786,7 +786,8 @@ async function heartbeat(agentId) {
       // Build args (from Paperclip adapter-claude-local)
       var cp2 = require("child_process");
       var cliArgs = ["--print", "-", "--output-format", "stream-json", "--verbose", "--max-turns", "5"];
-      if (sessionId) cliArgs.push("--resume", sessionId);
+      // DISABLED: stale sessions cause errors
+      // if (sessionId) cliArgs.push("--resume", sessionId);
       if (cliModel && cliCmd === "claude") cliArgs.push("--model", cliModel);
 
       await acquireCliSlot(agent.name);
