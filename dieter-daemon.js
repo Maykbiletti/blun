@@ -187,6 +187,72 @@ async function checkRAM() {
 // ========== TASK DISTRIBUTION ==========
 
 
+
+// === AUTO DEPARTMENT SWITCH ===
+var TASK_DEPT_MAP = {
+  "dashboard": "Design & Frontend",
+  "frontend": "Design & Frontend",
+  "css": "Design & Frontend",
+  "component": "Design & Frontend",
+  "ui": "Design & Frontend",
+  "ux": "Design & Frontend",
+  "api": "Backend & Coding",
+  "route": "Backend & Coding",
+  "server": "Backend & Coding",
+  "backend": "Backend & Coding",
+  "middleware": "Backend & Coding",
+  "database": "Backend & Coding",
+  "db": "Backend & Coding",
+  "auth": "Backend & Coding",
+  "test": "QA & Testing",
+  "qa": "QA & Testing",
+  "review": "Qualitaetskontrolle",
+  "bug": "QA & Testing",
+  "deploy": "Infrastruktur & DevOps",
+  "docker": "Infrastruktur & DevOps",
+  "nginx": "Infrastruktur & DevOps",
+  "ci": "Infrastruktur & DevOps",
+  "dns": "Infrastruktur & DevOps",
+  "server": "Infrastruktur & DevOps",
+  "agent": "Agent System",
+  "skill": "Agent System",
+  "marketplace": "Agent System",
+  "marketing": "Marketing & SEO",
+  "seo": "Marketing & SEO",
+  "landing": "Marketing & SEO",
+  "content": "Marketing & SEO",
+  "mobile": "Mobile & Desktop",
+  "electron": "Mobile & Desktop",
+  "app": "Mobile & Desktop",
+  "video": "Video & Medien",
+  "billing": "Business & Sales",
+  "stripe": "Business & Sales",
+  "affiliate": "Business & Sales",
+  "model": "Infrastruktur & DevOps",
+  "llm": "Infrastruktur & DevOps",
+  "sidebar": "Design & Frontend",
+  "kanban": "Design & Frontend"
+};
+
+async function autoSwitchDepartment(db, agentId, taskTitle) {
+  var title = (taskTitle || "").toLowerCase();
+  var newDept = null;
+  var keys = Object.keys(TASK_DEPT_MAP);
+  for (var k = 0; k < keys.length; k++) {
+    if (title.indexOf(keys[k]) !== -1) {
+      newDept = TASK_DEPT_MAP[keys[k]];
+      break;
+    }
+  }
+  if (newDept) {
+    var current = await db.query("SELECT department FROM blun_agents WHERE id = $1", [agentId]);
+    if (current.rows.length && current.rows[0].department !== newDept) {
+      await db.query("UPDATE blun_agents SET department = $1 WHERE id = $2", [newDept, agentId]);
+      log("Dept switch: Agent " + agentId + " -> " + newDept + " (task: " + title.substring(0, 40) + ")");
+    }
+  }
+}
+
 // === FAIR ROUND-ROBIN DISTRIBUTOR ===
 var _rrIndex = 0;
 
@@ -240,6 +306,7 @@ async function distributeTasks(db) {
         });
         await db.query("UPDATE agent_tasks SET status = 'in_progress' WHERE id = $1", [task.id]);
         log('Task ' + task.id + ' sent to agent ' + task.agent_id);
+        await autoSwitchDepartment(db, task.agent_id, task.task);
         distributed++;
       } catch(e) {
         log('Task send error: ' + e.message);
@@ -315,6 +382,7 @@ async function agentPullLoop(db) {
         message: "NEUER TASK #" + task.id + ": " + task.title + "\nDetails: " + (task.description || "Keine Details") + "\nBitte erledige das und melde dich wenn fertig."
       });
       log("Task #" + task.id + " an " + agent.name + " zugewiesen");
+      await autoSwitchDepartment(db, agent.id, task.title);
       pinged++;
     } catch(e) {
       log("Fehler bei Task-Zuweisung an " + agent.name + ": " + e.message);
