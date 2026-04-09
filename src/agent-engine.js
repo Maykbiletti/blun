@@ -838,7 +838,8 @@ async function heartbeat(agentId) {
   // Auto-memory: save last activity
   try {
     var today = new Date().toISOString().substring(0,10);
-    var summary = (finalContent || "").substring(0,300).replace(/\n/g,' ');
+    var fc = typeof finalContent !== 'undefined' ? finalContent : '';
+    var summary = (fc || "").substring(0,300).replace(/\n/g,' ');
     await saveAgentMemory(agentId, 'zuletzt_' + today, 'Chat: ' + (typeof message !== 'undefined' && message ? message : (typeof pendingTask !== 'undefined' && pendingTask ? pendingTask.task : '')).substring(0,80) + ' | Antwort: ' + summary);
   } catch(me) { console.error('[auto-memory]', me.message); }
 
