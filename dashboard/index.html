@@ -202,7 +202,7 @@ textarea{resize:vertical;min-height:80px}
   .topbar-search{display:none}
   .sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99}
   .sidebar-overlay.show{display:block}
-  .page{overflow-y:auto!important;-webkit-overflow-scrolling:touch;height:calc(100vh - 56px)!important}
+  .page{overflow-y:auto!important;-webkit-overflow-scrolling:touch;height:calc(100vh - 116px)!important}
   .stats-row{grid-template-columns:repeat(2,1fr)!important;gap:6px!important;margin-bottom:8px!important}
   .stat-card{padding:8px 10px!important}
   .stat-val{font-size:18px!important}
@@ -211,6 +211,70 @@ textarea{resize:vertical;min-height:80px}
   .agent-card{padding:8px!important}
   .dept-header{font-size:13px!important;margin:8px 0 4px!important}
   .main-content{overflow-y:auto!important;-webkit-overflow-scrolling:touch}
+
+  /* MOBILE BOTTOM NAV */
+  .mobile-bottom-nav{display:flex!important}
+  .sidebar{display:none!important}
+  body{padding-bottom:60px!important}
+}
+
+/* MOBILE BOTTOM NAVIGATION */
+.mobile-bottom-nav{
+  display:none;
+  position:fixed;
+  bottom:0;
+  left:0;
+  right:0;
+  height:60px;
+  background:var(--bg2);
+  border-top:1px solid var(--brd);
+  z-index:1000;
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px)
+}
+.mobile-nav-container{
+  display:flex;
+  justify-content:space-around;
+  align-items:center;
+  height:100%;
+  max-width:100%;
+  margin:0 auto;
+  padding:0 8px
+}
+.mobile-nav-item{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:8px 4px;
+  min-height:44px;
+  color:var(--tx2);
+  text-decoration:none;
+  transition:all .2s ease;
+  cursor:pointer;
+  border-radius:8px;
+  user-select:none
+}
+.mobile-nav-item:hover{
+  color:var(--tx);
+  background:rgba(255,255,255,.05)
+}
+.mobile-nav-item.active{
+  color:var(--b);
+  background:rgba(59,130,246,.08)
+}
+.mobile-nav-item svg{
+  width:20px;
+  height:20px;
+  margin-bottom:2px;
+  flex-shrink:0
+}
+.mobile-nav-item span{
+  font-size:10px;
+  font-weight:500;
+  line-height:1;
+  text-align:center
 }
 #loginView{display:none}
 
@@ -290,24 +354,24 @@ textarea{resize:vertical;min-height:80px}
 
 <!-- SIDEBAR -->
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeMobileSidebar()"></div>
-<nav class="sidebar" id="sidebar">
+<nav class="sidebar" id="sidebar" role="navigation" aria-label="Haupt-Navigation">
 <div class="sidebar-head">
 <div class="sidebar-logo">BL<span>UN</span></div>
 <div class="sidebar-user" id="sidebarUser">-</div>
 </div>
 <div class="sidebar-nav">
 <div class="nav-section">Steuerung</div>
-<div class="nav-item active" data-page="agents" onclick="showPage('agents')">
+<div class="nav-item active" data-page="agents" onclick="showPage('agents')" aria-label="Agents verwalten">
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M6 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/></svg>
 Agents <span class="badge-count" id="agentCount">0</span>
 </div>
 <!-- Chat removed -->
-<div class="nav-item" data-page="livelog" onclick="showPage('livelog')">
+<div class="nav-item" data-page="livelog" onclick="showPage('livelog')" aria-label="Live-Log anzeigen">
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M8 10l4 4 4-4"/></svg>
 Livelog
 </div>
 <div class="nav-section">Tools</div>
-<div class="nav-item" onclick="window.location='/dashboard/blun-code'">
+<div class="nav-item" onclick="window.location='/dashboard/blun-code'" aria-label="BLUN Code öffnen">
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
 BLUN Code
 </div>
@@ -2513,4 +2577,5 @@ function initBlunWS() {
   <script src="components/video-gallery.js"></script>
   <script src="components/electron-updater.js"></script>
   <script src="components/skill-card.js"></script>
+  <script src="components/toast.js"></script>
 </body></html><!-- test -->
