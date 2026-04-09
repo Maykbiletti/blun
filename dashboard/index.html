@@ -250,28 +250,38 @@ textarea{resize:vertical;min-height:80px}
 </head>
 <body>
 <!-- LOGIN -->
-<div id="loginView" class="login-wrap">
-<div class="login-box">
-<div class="login-logo">BL<span>UN</span></div>
-<div class="login-sub">Dashboard</div>
-<div id="loginTabs" style="display:flex;gap:0;margin-bottom:16px;border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,.1)">
-<div id="tabLogin" class="login-tab active" onclick="switchAuthTab('login')" style="flex:1;text-align:center;padding:8px;cursor:pointer;font-size:13px;font-weight:600;background:var(--b);color:#fff;transition:.2s">Anmelden</div>
-<div id="tabRegister" class="login-tab" onclick="switchAuthTab('register')" style="flex:1;text-align:center;padding:8px;cursor:pointer;font-size:13px;font-weight:600;background:transparent;color:var(--tx2);transition:.2s">Registrieren</div>
-</div>
-<div id="loginForm">
-<input id="loginEmail" type="email" placeholder="Email" autocomplete="email">
-<input id="loginPw" type="password" placeholder="Passwort" autocomplete="current-password">
-<div id="loginErr" class="login-err"></div>
-<button class="login-btn" onclick="doLogin()">Anmelden</button>
-</div>
-<div id="registerForm" style="display:none">
-<input id="regName" type="text" placeholder="Name" autocomplete="name">
-<input id="regEmail" type="email" placeholder="Email" autocomplete="email">
-<input id="regPw" type="password" placeholder="Passwort (min. 8 Zeichen)" autocomplete="new-password">
-<input id="regPw2" type="password" placeholder="Passwort wiederholen" autocomplete="new-password">
-<div id="regErr" class="login-err"></div>
-<button class="login-btn" onclick="doRegister()">Registrieren</button>
-</div>
+<div id="loginView" style="display:none;position:fixed;inset:0;background:#0a0a0a;z-index:10000;align-items:center;justify-content:center">
+<div style="width:100%;max-width:400px;padding:1.5rem">
+  <div style="text-align:center;margin-bottom:2rem">
+    <h1 style="font-size:2.2rem;font-weight:700;letter-spacing:-.03em"><span style="color:#fff">BL</span><span style="color:#3b82f6">UN</span></h1>
+    <p style="color:#737373;font-size:.85rem;margin-top:.25rem">AI Organisator</p>
+  </div>
+  <div style="background:#1a1a1a;border:1px solid #262626;border-radius:12px;padding:1.75rem">
+    <div style="display:flex;margin-bottom:1.5rem;background:#0a0a0a;border-radius:8px;padding:3px">
+      <button id="tabLogin" onclick="switchAuthTab('login')" style="flex:1;padding:.6rem;text-align:center;font-size:.9rem;font-weight:500;color:#fff;border:none;background:#262626;cursor:pointer;border-radius:6px;transition:all .2s">Anmelden</button>
+      <button id="tabRegister" onclick="switchAuthTab('register')" style="flex:1;padding:.6rem;text-align:center;font-size:.9rem;font-weight:500;color:#737373;border:none;background:none;cursor:pointer;border-radius:6px;transition:all .2s">Registrieren</button>
+    </div>
+    <div id="authError" style="background:#451a03;border:1px solid #92400e;color:#fbbf24;padding:.65rem .85rem;border-radius:8px;font-size:.8rem;margin-bottom:1rem;display:none"></div>
+    <form id="authForm" onsubmit="handleAuthSubmit(event)">
+      <div id="nameField" style="margin-bottom:1rem;display:none">
+        <label style="display:block;font-size:.8rem;color:#a3a3a3;margin-bottom:.4rem;font-weight:500">Name</label>
+        <input type="text" id="authName" placeholder="Dein Name" autocomplete="name" style="width:100%;padding:.7rem .85rem;background:#0a0a0a;border:1px solid #262626;border-radius:8px;color:#fff;font-size:.9rem;outline:none">
+      </div>
+      <div style="margin-bottom:1rem">
+        <label style="display:block;font-size:.8rem;color:#a3a3a3;margin-bottom:.4rem;font-weight:500">E-Mail</label>
+        <input type="email" id="authEmail" placeholder="deine@email.com" required autocomplete="email" style="width:100%;padding:.7rem .85rem;background:#0a0a0a;border:1px solid #262626;border-radius:8px;color:#fff;font-size:.9rem;outline:none">
+      </div>
+      <div style="margin-bottom:1rem">
+        <label style="display:block;font-size:.8rem;color:#a3a3a3;margin-bottom:.4rem;font-weight:500">Passwort</label>
+        <div style="position:relative">
+          <input type="password" id="authPassword" placeholder="Mindestens 8 Zeichen" required autocomplete="current-password" minlength="8" style="width:100%;padding:.7rem .85rem;background:#0a0a0a;border:1px solid #262626;border-radius:8px;color:#fff;font-size:.9rem;outline:none;padding-right:4.5rem">
+          <button type="button" onclick="toggleAuthPw()" style="position:absolute;right:.7rem;top:50%;transform:translateY(-50%);background:none;border:none;color:#525252;cursor:pointer;font-size:.8rem;padding:.2rem">Zeigen</button>
+        </div>
+      </div>
+      <button type="submit" id="authSubmitBtn" style="width:100%;padding:.8rem;background:#3b82f6;color:#fff;border:none;border-radius:8px;font-size:.9rem;font-weight:600;cursor:pointer;margin-top:.5rem;transition:background .2s">Anmelden</button>
+    </form>
+    <div id="forgotLink" style="text-align:center;margin-top:1rem"><a href="#" style="color:#737373;font-size:.8rem;text-decoration:none">Passwort vergessen?</a></div>
+  </div>
 </div>
 </div>
 
@@ -798,48 +808,55 @@ function api(path, opts) {
 }
 
 // ===== AUTH =====
-function switchAuthTab(tab) {
-  var tl = document.getElementById('tabLogin');
-  var tr = document.getElementById('tabRegister');
-  var fl = document.getElementById('loginForm');
-  var fr = document.getElementById('registerForm');
-  if (tab === 'login') {
-    tl.style.background='var(--b)'; tl.style.color='#fff';
-    tr.style.background='transparent'; tr.style.color='var(--tx2)';
-    fl.style.display='block'; fr.style.display='none';
-  } else {
-    tr.style.background='var(--b)'; tr.style.color='#fff';
-    tl.style.background='transparent'; tl.style.color='var(--tx2)';
-    fr.style.display='block'; fl.style.display='none';
+var authMode = 'login';
+function switchAuthTab(m) {
+  authMode = m;
+  document.getElementById('tabLogin').style.background = m==='login' ? '#262626' : 'none';
+  document.getElementById('tabLogin').style.color = m==='login' ? '#fff' : '#737373';
+  document.getElementById('tabRegister').style.background = m==='register' ? '#262626' : 'none';
+  document.getElementById('tabRegister').style.color = m==='register' ? '#fff' : '#737373';
+  document.getElementById('nameField').style.display = m==='register' ? 'block' : 'none';
+  document.getElementById('authSubmitBtn').textContent = m==='login' ? 'Anmelden' : 'Registrieren';
+  document.getElementById('forgotLink').style.display = m==='login' ? '' : 'none';
+  document.getElementById('authError').style.display = 'none';
+}
+function toggleAuthPw() {
+  var inp = document.getElementById('authPassword');
+  var btn = inp.parentElement.querySelector('button');
+  if (inp.type==='password') { inp.type='text'; btn.textContent='Verbergen'; }
+  else { inp.type='password'; btn.textContent='Zeigen'; }
+}
+function showAuthError(msg) {
+  var el = document.getElementById('authError');
+  el.textContent = msg; el.style.display = 'block';
+}
+function handleAuthSubmit(e) {
+  e.preventDefault();
+  var btn = document.getElementById('authSubmitBtn');
+  btn.disabled = true;
+  document.getElementById('authError').style.display = 'none';
+  var body = { email: document.getElementById('authEmail').value.trim(), password: document.getElementById('authPassword').value };
+  if (authMode === 'register') {
+    var nameVal = document.getElementById('authName').value.trim();
+    if (!nameVal) { showAuthError('Bitte gib deinen Namen ein.'); btn.disabled=false; return; }
+    body.name = nameVal;
   }
-}
-function doRegister() {
-  var name = document.getElementById('regName').value;
-  var email = document.getElementById('regEmail').value;
-  var pw = document.getElementById('regPw').value;
-  var pw2 = document.getElementById('regPw2').value;
-  document.getElementById('regErr').textContent = '';
-  if (!name || !email || !pw) { document.getElementById('regErr').textContent = 'Alle Felder ausfuellen'; return; }
-  if (pw !== pw2) { document.getElementById('regErr').textContent = 'Passwoerter stimmen nicht ueberein'; return; }
-  if (pw.length < 8) { document.getElementById('regErr').textContent = 'Passwort mind. 8 Zeichen'; return; }
-  fetch('/auth/register', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:name,email:email,password:pw})}).then(function(r){return r.json();}).then(function(d) {
-    if (d.error) { document.getElementById('regErr').textContent = d.error; return; }
-    TOKEN = d.token; localStorage.setItem('blun_token', TOKEN);
-    USER = d.user; showApp();
-  }).catch(function(e) { document.getElementById('regErr').textContent = 'Registrierung fehlgeschlagen'; });
-}
-function doLogin() {
-  var email = document.getElementById('loginEmail').value;
-  var pw = document.getElementById('loginPw').value;
-  document.getElementById('loginErr').textContent = '';
-  api('/auth/login', {method:'POST', body:JSON.stringify({email:email,password:pw})}).then(function(d) {
-    if (d.error) { document.getElementById('loginErr').textContent = d.error; return; }
-    TOKEN = d.token; localStorage.setItem('blun_token', TOKEN);
-    USER = d.user; showApp();
-  }).catch(function(e) { document.getElementById('loginErr').textContent = 'Login fehlgeschlagen'; });
+  fetch('/auth/' + authMode, { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body:JSON.stringify(body) })
+  .then(function(r){ return r.json().then(function(d){ return {ok:r.ok, data:d}; }); })
+  .then(function(res) {
+    if (!res.ok) {
+      var msg = res.data.error || 'Etwas ist schiefgelaufen.';
+      if (msg==='Invalid email or password') msg='E-Mail oder Passwort falsch.';
+      if (msg==='Email already registered') msg='Diese E-Mail ist bereits registriert.';
+      showAuthError(msg); btn.disabled=false; return;
+    }
+    TOKEN = res.data.token; localStorage.setItem('blun_token', TOKEN);
+    USER = res.data.user; showApp();
+    btn.disabled = false;
+  }).catch(function(){ showAuthError('Verbindungsfehler.'); btn.disabled=false; });
 }
 function doLogout() {
-  api('/auth/logout', {method:'POST'}).catch(function(){});
+  fetch('/auth/logout', {method:'POST', headers:{'Authorization':'Bearer '+TOKEN}, credentials:'include'}).catch(function(){});
   TOKEN = ''; USER = null; localStorage.removeItem('blun_token'); showLogin();
 }
 function showLogin() { document.getElementById('loginView').style.display='flex'; document.getElementById('appShell').style.display='none'; }
