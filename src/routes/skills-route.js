@@ -227,4 +227,46 @@ module.exports = function(router, query, queryOne) {
     } catch(e) { res.status(500).json({ error: e.message }); }
   });
 
+
+  // Skill Search — searches GitHub repos for SKILL.md files
+  router.get('/skills/search', async function(req, res) {
+    try {
+      var q = req.query.q || '';
+      if (!q || q.length < 2) return res.json([]);
+
+      var https = require('https');
+      var fetch = function(url) {
+        return new Promise(function(resolve, reject) {
+          https.get(url, { headers: { 'User-Agent': 'BLUN-Skill-Search', 'Accept': 'application/json' } }, function(r) {
+            var d = ''; r.on('data', function(c){ d += c; }); r.on('end', function(){
+              try { resolve(JSON.parse(d)); } catch(e) { resolve([]); }
+            });
+          }).on('error', function(){ resolve([]); });
+        });
+      };
+
+      // Search GitHub for SKILL.md files
+      var results = await fetch('https://api.github.com/search/code?q=' + encodeURIComponent(q + ' filename:SKILL.md') + '&per_page=20');
+      var skills = (results.items || []).map(function(item) {
+        return {
+          name: item.repository.full_name + '/' + item.path,
+          repo: item.repository.full_name,
+          path: item.path,
+          url: item.html_url,
+          raw_url: 'https://raw.githubusercontent.com/' + item.repository.full_name + '/main/' + item.path,
+          description: item.repository.description || '',
+          stars: item.repository.stargazers_count || 0
+        };
+      });
+
+      // Also search known repos
+      var knownRepos = [
+        {repo: 'PramodDutta/qaskills', dir: 'seed-skills'},
+        {repo: 'openclaw/skills', dir: 'skills'}
+      ];
+
+      res.json(skills);
+    } catch(e) { res.status(500).json({ error: e.message }); }
+  });
+
 };
