@@ -627,7 +627,7 @@ async function heartbeat(agentId) {
       var lastDeployTime = lastDeploy ? new Date(lastDeploy.content) : new Date(0);
       var minutesSinceDeploy = (Date.now() - lastDeployTime.getTime()) / 60000;
 
-      if (pendingCount && parseInt(pendingCount.c) === 0 && recentCompleted && parseInt(recentCompleted.c) >= 3 && minutesSinceDeploy > 30) {
+      if (recentCompleted && parseInt(recentCompleted.c) >= 3 && minutesSinceDeploy > 30) {
         var cp2 = require("child_process");
         // Check for real code changes first
         var diffCheck = await new Promise(function(res){ cp2.exec("cd /root/blun && git diff --name-only HEAD", {timeout:5000}, function(e,o,er){ res((o||"").trim()); }); });
