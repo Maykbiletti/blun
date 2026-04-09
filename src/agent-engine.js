@@ -857,7 +857,7 @@ async function heartbeat(agentId) {
 
       // Commit in agent worktree (no checkout switching needed!)
       try {
-        var hasChanges = await new Promise(function(res){ cp2.exec("cd " + worktreePath + " && git diff --name-only", {timeout:5000}, function(e,o){ res((o||"").trim().length > 0); }); });
+        var hasChanges = await new Promise(function(res){ cp2.exec("cd " + worktreePath + " && git status --porcelain", {timeout:5000}, function(e,o){ res((o||"").trim().length > 0); }); });
         if (hasChanges) {
           var commitMsg = agent.name + ": " + pendingTask.task.substring(0,60);
           await new Promise(function(res){ cp2.exec('cd ' + worktreePath + ' && git add -A && git commit -m "' + commitMsg.replace(/"/g, '\\"') + '"', {timeout:10000}, function(e,o,er){ res(true); }); });
