@@ -374,6 +374,10 @@ Agents <span class="badge-count" id="agentCount">0</span>
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M8 10l4 4 4-4"/></svg>
 Livelog
 </div>
+<div class="nav-item" data-page="kanban" onclick="showPage('kanban')" aria-label="Kanban Board">
+<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="5" height="18" rx="1"/><rect x="10" y="3" width="5" height="12" rx="1"/><rect x="17" y="3" width="5" height="8" rx="1"/></svg>
+<span>Kanban</span>
+</div>
 <div class="nav-section">Tools</div>
 <div class="nav-item" onclick="window.location='/dashboard/blun-code'" aria-label="BLUN Code öffnen">
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
@@ -732,6 +736,10 @@ Profil
 </div>
 
 <!-- PAGE: SETTINGS -->
+<div class="page" id="page-kanban" style="overflow:hidden;padding:0">
+<div id="kanbanContainer" style="height:100%;background:#0d1117"></div>
+</div>
+
 <div class="page" id="page-settings" style="overflow-y:auto;padding:16px">
 <div class="card" style="max-width:600px">
 <div class="card-title" style="margin-bottom:16px">Abteilungen verwalten</div>
@@ -960,6 +968,7 @@ function closeMobileSidebar() {
   if(ov) ov.classList.remove('show');
 }
 function showPage(name) {
+  if(name===kanban&&typeof renderKanban===function){setTimeout(function(){renderKanban(kanbanContainer);},50);}
   if(name !== 'agents') {
     // Close workspace when leaving agents page
     var ws = document.getElementById('wsPanel');
@@ -2745,4 +2754,5 @@ function initBlunWS() {
   </div>
 </div>
 
+<script src="/dashboard/components/kanban.js"></script>
 </body></html><!-- test -->

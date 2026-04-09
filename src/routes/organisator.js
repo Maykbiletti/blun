@@ -438,4 +438,28 @@ router.post("/agents/:id/merge", async function(req, res) {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+
+
+// === KANBAN ===
+router.get("/kanban", async function(req, res) {
+  try {
+    var cid = getCompanyId(req);
+    var sql = "SELECT t.id, t.agent_id, t.task, t.status, t.score, t.created_at, t.completed_at, a.name as agent_name, a.role as agent_role FROM agent_tasks t JOIN blun_agents a ON t.agent_id = a.id";
+    var params = [];
+    if (cid) { sql += " WHERE t.company_id = $1"; params.push(cid); }
+    sql += " ORDER BY t.created_at DESC";
+    var tasks = await query(sql, params);
+    res.json(tasks);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.put("/agents/:agentId/tasks/:taskId", async function(req, res) {
+  try {
+    var status = req.body.status;
+    if (["pending","processing","completed","failed"].indexOf(status) === -1) return res.status(400).json({ error: "Invalid status" });
+    await query("UPDATE agent_tasks SET status = $1, updated_at = NOW() WHERE id = $2", [status, req.params.taskId]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 module.exports = router;
