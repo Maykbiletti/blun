@@ -452,4 +452,50 @@ async function callLLM(model, messages, agentId) {
   return { content: content, tokens: tokens, cost: cost };
 }
 
-module.exports = { callLLM, callClaudeCLI, callCodexCLI, callCLI, getRateLimitStatus, acquireCliSlot, releaseCliSlot, pauseCli, getCliRateLimitStatus, decryptKey, fetchWithRateLimit, isRateLimited, setRateLimited, getProvider, getLLMPools, pickPool, agentSessions };
+
+// ===== AUTO PROVIDER SWITCH =====
+// When Claude hits rate limit -> switch all agents to Codex
+// When Claude resets -> switch back to Claude
+var autoSwitchState = { currentProvider: "codex", lastSwitch: 0, cooldownMs: 300000, checking: false };
+
+async function autoProviderSwitch() {
+  if (autoSwitchState.checking) return;
+  autoSwitchState.checking = true;
+  try {
+    var now = Date.now();
+    if (now - autoSwitchState.lastSwitch < autoSwitchState.cooldownMs) return;
+    
+    var claudeState = rateLimitState.anthropic;
+    var claudeBlocked = claudeState.blocked || (claudeState.remaining !== null && claudeState.remaining < 3);
+    
+    if (claudeBlocked && autoSwitchState.currentProvider === "claude") {
+      // Claude blocked -> switch all to Codex
+      console.log("[auto-switch] Claude rate limited! Switching all agents to Codex...");
+      await query("UPDATE blun_agents SET model = 'codex:gpt-4o'");
+      autoSwitchState.currentProvider = "codex";
+      autoSwitchState.lastSwitch = now;
+      console.log("[auto-switch] All agents now on Codex (gpt-4o)");
+    } else if (!claudeBlocked && autoSwitchState.currentProvider === "codex") {
+      // Check if Claude reset time passed
+      var resetPassed = claudeState.resetAt > 0 && now > claudeState.resetAt + 60000;
+      var neverBlocked = !claudeState.blocked && claudeState.remaining === null;
+      if (resetPassed) {
+        console.log("[auto-switch] Claude reset! Switching all agents back to Claude...");
+        await query("UPDATE blun_agents SET model = 'claude-haiku-4-5-20251001'");
+        autoSwitchState.currentProvider = "claude";
+        autoSwitchState.lastSwitch = now;
+        console.log("[auto-switch] All agents now on Claude Haiku");
+      }
+    }
+  } catch(e) {
+    console.error("[auto-switch] Error:", e.message);
+  } finally {
+    autoSwitchState.checking = false;
+  }
+}
+
+// Check every 30 seconds
+setInterval(autoProviderSwitch, 30000);
+// ===== END AUTO PROVIDER SWITCH =====
+
+module.exports = { autoProviderSwitch, callLLM, callClaudeCLI, callCodexCLI, callCLI, getRateLimitStatus, acquireCliSlot, releaseCliSlot, pauseCli, getCliRateLimitStatus, decryptKey, fetchWithRateLimit, isRateLimited, setRateLimited, getProvider, getLLMPools, pickPool, agentSessions };
