@@ -15,6 +15,7 @@ var visualQA = require("./agent/visual-qa");
 var memLayers = require("./agent/memory-layers");
 var dream = require("./agent/dream");
 var skillsLoader = require("./agent/skills-loader");
+var taskRunner = require("./agent/task-runner");
 
 // Re-export from modules
 var callLLM = llm.callLLM;
@@ -225,544 +226,52 @@ async function delegateTask(fromAgentId, toAgentId, task, reason) {
 // === HEARTBEAT (core orchestration) ===
 async function heartbeat(agentId) {
   var agent = await queryOne("SELECT * FROM blun_agents WHERE id = $1", [agentId]);
-  if (!agent || agent.status === "idle") {
-    stopAgent(agentId);
-    return;
-  }
+  if (!agent || agent.status === "idle") { stopAgent(agentId); return; }
 
+  // Check for pending task
   var pendingTask = await queryOne(
-    "SELECT * FROM agent_tasks WHERE agent_id = $1 AND status IN ('pending', 'in_progress') ORDER BY created_at ASC LIMIT 1",
+    "SELECT * FROM agent_tasks WHERE agent_id = $1 AND status IN ('pending') ORDER BY created_at ASC LIMIT 1",
     [agentId]
   );
 
-  var status = "active";
-  var tokens = 0, cost = 0;
-
-  // === OPERATOR AUTO-DISPATCH: If operator has no tasks, assign to idle agents ===
-  if (!pendingTask && agent.company_id) {
-    try {
-      var isOperator = await queryOne("SELECT id FROM blun_agents WHERE company_id = $1 ORDER BY id LIMIT 1", [agent.company_id]);
-      if (isOperator && isOperator.id === agentId) {
-        var idleAgents = await query(
-          "SELECT a.id, a.name, a.role FROM blun_agents a WHERE a.company_id = $1 AND a.id != $2 AND a.status = 'active' AND NOT EXISTS (SELECT 1 FROM agent_tasks t WHERE t.agent_id = a.id AND t.status IN ('pending','in_progress','processing')) LIMIT 5",
-          [agent.company_id, agentId]
-        );
-        if (idleAgents.length > 0) {
-          var agentList = idleAgents.map(function(a) { return a.name + " (ID " + a.id + ", " + (a.role||"no role") + ")"; }).join(", ");
-          var dispatchPrompt = "Agents brauchen CODE-Tasks: " + agentList + "." + "\nJeder Task MUSS einen Dateipfad (.js/.css/.html) enthalten!" + "\nBEISPIELE:" + "\n[TOOL:ASSIGN_TASK:5:Erstelle dashboard/components/notifications.js — Toast-Notification System mit show/hide/auto-dismiss]" + "\n[TOOL:ASSIGN_TASK:8:Fix src/routes/v1/auth.js Zeile 42 — bcrypt.compare fehlt bei Login-Validierung]" + "\n[TOOL:ASSIGN_TASK:12:Baue dashboard/css/dark-theme.css — CSS Custom Properties fuer Dark Mode]" + "\nVERBOTEN: Analyse, Report, Konzept, Planung, Recherche, Dokumentation" + "\nGESCHUETZT (NIEMALS Tasks dafuer erstellen): agent-engine.js, code-tools.js, server.js, .env, package.json, index.html, dieter-daemon.js, auth.js, db.js. NUR Tasks fuer NEUE Dateien vergeben! DESIGN: Keine Emojis, kein Blau, Windows Dark Theme Grau (#1e1e1e/#2d2d2d/#3c3c3c), keine Dummy-Daten!" + "\nStruktur: src/routes/ (API), dashboard/ (Frontend+Components), src/middleware/, public/" + "\nNUR [TOOL:ASSIGN_TASK:id:task] Zeilen!";
-          var identityRow = await queryOne("SELECT content FROM agent_memory WHERE agent_id = $1 AND key = 'identity'", [agentId]);
-          var sysPrompt = (identityRow ? identityRow.content : "Du bist der Operator.") + "\nDu verteilst autonom Tasks an dein Team.";
-          var dispatchResult = await callLLM(agent.model || "claude-sonnet", [{ role: "system", content: sysPrompt }, { role: "user", content: dispatchPrompt }], agentId);
-          if (dispatchResult && dispatchResult.content) {
-            var dLines = dispatchResult.content.split("\n");
-            for (var di = 0; di < dLines.length; di++) {
-              var dm = dLines[di].match(/\[TOOL:ASSIGN_TASK:(\d+):([^\]]+)\]/i);
-              if (dm) {
-                var taskDesc = dm[2].trim();
-                var tdl = taskDesc.toLowerCase();
-                // Quality Gate: MUST have file path AND code verb, checked BEFORE insert
-                var hasFile = /\.(js|css|html|json|ts|jsx|tsx)/.test(tdl) || tdl.indexOf("src/") !== -1 || tdl.indexOf("dashboard/") !== -1 || tdl.indexOf("routes/") !== -1 || tdl.indexOf("components/") !== -1;
-                var hasVerb = tdl.indexOf("erstell") !== -1 || tdl.indexOf("bau") !== -1 || tdl.indexOf("fix") !== -1 || tdl.indexOf("implement") !== -1 || tdl.indexOf("refactor") !== -1 || tdl.indexOf("schreib") !== -1 || tdl.indexOf("add") !== -1 || tdl.indexOf("code") !== -1 || tdl.indexOf("optimier") !== -1;
-                var banned = tdl.indexOf("analys") !== -1 || tdl.indexOf("report") !== -1 || tdl.indexOf("pipeline") !== -1 || tdl.indexOf("strategi") !== -1 || tdl.indexOf("konzept") !== -1 || tdl.indexOf("recherch") !== -1 || tdl.indexOf("dokumentation") !== -1 || tdl.indexOf("bewert") !== -1 || tdl.indexOf("zusammenfass") !== -1;
-                if (!hasFile || !hasVerb || banned) {
-                  console.log("[operator] REJECTED (need file+verb, no analysis): " + taskDesc.substring(0,80));
-                  continue;
-                }
-                await query("INSERT INTO agent_tasks (agent_id, task, status, created_at) VALUES ($1, $2, 'pending', NOW())", [parseInt(dm[1]), taskDesc]);
-                console.log("[operator] ACCEPTED task for agent " + dm[1] + ": " + taskDesc.substring(0,80));
-              }
-            }
-            tokens = (dispatchResult.usage && dispatchResult.usage.output_tokens) || 0;
-            cost = tokens * 0.000003;
-          }
-        }
-      }
-    } catch(dispatchErr) { console.error("[operator] Auto-dispatch error:", dispatchErr.message); }
-
-    // === OPERATOR WORKTREE MONITOR: Check if agents are producing code ===
-    try {
-      var cp6 = require("child_process");
-      var fs3 = require("fs");
-      var wtDir = "/root/blun-worktrees/";
-      if (fs3.existsSync(wtDir)) {
-        var worktrees = fs3.readdirSync(wtDir).filter(function(d) { return fs3.statSync(wtDir + d).isDirectory(); });
-        for (var wi = 0; wi < worktrees.length; wi++) {
-          var wtPath = wtDir + worktrees[wi];
-          var wtDiff = await new Promise(function(res){ cp6.exec("cd " + wtPath + " && git diff --stat HEAD 2>/dev/null && git diff --cached --stat 2>/dev/null", {timeout:5000}, function(e,o){ res((o||"").trim()); }); });
-          var wtLog = await new Promise(function(res){ cp6.exec("cd " + wtPath + " && git log main..HEAD --oneline 2>/dev/null", {timeout:5000}, function(e,o){ res((o||"").trim()); }); });
-          if (wtDiff || wtLog) {
-            console.log("[operator-monitor] " + worktrees[wi] + " hat Aenderungen: " + (wtLog || wtDiff).substring(0,150));
-          } else {
-            console.log("[operator-monitor] " + worktrees[wi] + " — keine Code-Aenderungen");
-          }
-        }
-      }
-    } catch(wtErr) { console.error("[operator-monitor] Worktree check error:", wtErr.message); }
-
-    // === OPERATOR MERGE: Merge agent branches into main ===
-    try {
-      var cp5 = require("child_process");
-      var branches = await new Promise(function(res){ cp5.exec("cd /root/blun && git branch --list 'agent/*'", {timeout:5000}, function(e,o){ res((o||"").trim()); }); });
-      if (branches) {
-        var brList = branches.split("\n").map(function(b){ return b.trim().replace("* ",""); }).filter(function(b){ return b.length > 0; });
-        for (var bi = 0; bi < brList.length; bi++) {
-          var br = brList[bi];
-          // Check if branch has commits ahead of main
-          var ahead = await new Promise(function(res){ cp5.exec("cd /root/blun && git log main.." + br + " --oneline", {timeout:5000}, function(e,o){ res((o||"").trim()); }); });
-          if (ahead) {
-            console.log("[operator] QA review + merge for " + br + ": " + ahead.substring(0,100));
-            var brWorktree = "/root/blun-worktrees/" + br.replace(/\//g, "-");
-            var brDiff = await new Promise(function(res){ cp5.exec("cd /root/blun && git diff main..." + br, {timeout:10000,maxBuffer:500000}, function(e,o,er){ res((o||"").substring(0,5000)); }); });
-            var qaCwd = require("fs").existsSync(brWorktree) ? brWorktree : "/root/blun";
-            var qaPrompt = "Du bist Helmut, QA-Lead. Pruefe diesen Code-Diff vom Branch " + br + ":" + "\n\n" + brDiff + "\n\n" + "CHECKLISTE (ALLE Punkte pruefen!):" + "\n1. SYNTAX: Fuehre node -c auf alle geaenderten .js Dateien aus" + "\n2. SICHERHEIT: Keine XSS, SQL-Injection, fehlende Auth-Checks" + "\n3. INTEGRATION: Sind neue CSS/JS Dateien in dashboard/index.html eingebunden? Neue .css braucht <link>, neue .js in components/ braucht <script>. Wenn nicht: QA:FAIL — Dieter muss das einbinden!" + "\n4. REFERENZEN: Werden neue Funktionen/Variablen auch aufgerufen? Tote Imports?" + "\n5. VERBOTENE DATEIEN: agent-engine.js, code-tools.js, server.js, .env, package.json, index.html, dieter-daemon.js, auth.js, db.js — wenn geaendert: QA:FAIL" + "\n6. FUNKTIONSTEST: Stelle sicher dass die Aenderung sichtbar/nutzbar ist (nicht nur Backend ohne Frontend)" + "\nWenn du Probleme findest: NUR in Agent-eigenen Dateien fixen. Geschuetzte Dateien NICHT anfassen — QA:FAIL melden. Antworte am Ende mit QA:PASS oder QA:FAIL + Begruendung.";
-            var qaArgs = ["--print", "-", "--output-format", "text", "--max-turns", "15", "--model", "claude-sonnet-4-20250514"];
-            var qaResult = await new Promise(function(resolve) {
-              var child = cp5.spawn("claude", qaArgs, { cwd: qaCwd, timeout: 120000, env: Object.assign({}, process.env, { DISABLE_INTERACTIVITY: "1" }) });
-              var out = "";
-              child.stdin.write(qaPrompt);
-              child.stdin.end();
-              child.stdout.on("data", function(d) { if (out.length < 500000) out += d.toString(); });
-              child.stderr.on("data", function(d) { if (out.length < 500000) out += d.toString(); });
-              child.on("close", function(code) { resolve({ output: out, code: code }); });
-              child.on("error", function(err) { resolve({ output: "", code: -1 }); });
-              setTimeout(function() { try { child.kill("SIGTERM"); } catch(e){} }, 120000);
-            });
-            var qaOutput = qaResult.output || "";
-            var qaPassed = qaOutput.indexOf("QA:PASS") !== -1 || qaOutput.indexOf("PASS") !== -1;
-            console.log("[operator] QA result for " + br + ": " + (qaPassed ? "PASS" : "FAIL") + " (" + qaOutput.length + " chars)");
-            if (require("fs").existsSync(brWorktree)) {
-              await new Promise(function(res){ cp5.exec("cd " + brWorktree + " && git add -A && git diff --cached --quiet || git commit -m 'QA fixes by Helmut'", {timeout:10000}, function(e,o,er){ res(true); }); });
-            }
-            if (qaPassed) {
-              // NO AUTO-MERGE: Only Dieter Junior approves merges
-              console.log("[operator] QA PASSED for " + br + " — awaiting Dieter Junior approval to merge. NO auto-merge.");
-              await query("INSERT INTO agent_tasks (agent_id, task, status, created_at) VALUES ((SELECT id FROM agents WHERE LOWER(name) = 'dieter junior' LIMIT 1), $1, 'pending', NOW())", ["MERGE APPROVAL: Branch " + br + " hat QA bestanden (Helmut: PASS). Pruefe den Diff und entscheide: MERGE oder REJECT. Branch: " + br]);
-            } else {
-              console.log("[operator] Branch " + br + " NOT merged - QA failed. Keeping worktree for rework.");
-            }
-          }
-        }
-      }
-    } catch(mergeErr) { console.error("[operator] Merge error:", mergeErr.message); }
-
-    // === AUTO-INTEGRATE: Detect new components and add to index.html ===
-    try {
-      var fs4 = require("fs");
-      var cp7 = require("child_process");
-      var indexPath = "/root/blun/dashboard/index.html";
-      var compDir = "/root/blun/dashboard/components/";
-      if (false && fs4.existsSync(indexPath) && fs4.existsSync(compDir)) { // DISABLED: No auto-integrate into index.html
-        var indexHtml = fs4.readFileSync(indexPath, "utf8");
-        var compFiles = fs4.readdirSync(compDir).filter(function(f) { return f.endsWith(".js"); });
-        var added = [];
-        for (var ci = 0; ci < compFiles.length; ci++) {
-          var scriptTag = 'components/' + compFiles[ci];
-          if (indexHtml.indexOf(scriptTag) === -1) {
-            // Insert before closing </body> tag
-            var insertPoint = indexHtml.lastIndexOf("</body>");
-            if (insertPoint !== -1) {
-              var newTag = '  <script src="components/' + compFiles[ci] + '"></script>\n';
-              indexHtml = indexHtml.substring(0, insertPoint) + newTag + indexHtml.substring(insertPoint);
-              added.push(compFiles[ci]);
-            }
-          }
-        }
-        if (added.length > 0) {
-          fs4.writeFileSync(indexPath, indexHtml);
-          console.log("[auto-integrate] Added " + added.length + " new components to index.html: " + added.join(", "));
-          await new Promise(function(res){ cp7.exec("cd /root/blun && BLUN_DEPLOYER=dieter git add dashboard/index.html && BLUN_DEPLOYER=dieter git commit -m 'Auto-integrate: " + added.join(", ") + "'", {timeout:10000}, function(e,o,er){ res(true); }); });
-        }
-      }
-    } catch(intErr) { console.error("[auto-integrate] Error:", intErr.message); }
-
-    // === AUTO-DEPLOY: Schedule-based deploy system ===
-    try {
-      // Deploy schedule from settings (default: 7:00, 10:00, 13:00, 16:00, 19:00)
-      var deploySettingsRow = await queryOne("SELECT content FROM agent_memory WHERE agent_id = $1 AND key = 'deploy_schedule'", [agentId]);
-      var deploySchedule = deploySettingsRow ? JSON.parse(deploySettingsRow.content) : { hours: [7, 10, 13, 16, 19], windowMinutes: 15 };
-      var now = new Date();
-      var currentHour = now.getHours();
-      var currentMin = now.getMinutes();
-      var lastDeploy = await queryOne("SELECT content FROM agent_memory WHERE agent_id = $1 AND key = 'last_auto_deploy'", [agentId]);
-      var lastDeployTime = lastDeploy ? new Date(lastDeploy.content) : new Date(0);
-
-      // Check if we're in a deploy window
-      var inDeployWindow = false;
-      for (var dh = 0; dh < deploySchedule.hours.length; dh++) {
-        if (currentHour === deploySchedule.hours[dh] && currentMin < (deploySchedule.windowMinutes || 15)) {
-          inDeployWindow = true;
-          break;
-        }
-      }
-      // Also allow deploy if 30min since last and enough work done
-      var minutesSinceDeploy = (Date.now() - lastDeployTime.getTime()) / 60000;
-      var recentCompleted = await queryOne("SELECT count(*) as c FROM agent_tasks WHERE agent_id IN (SELECT id FROM blun_agents WHERE company_id = $1) AND status = 'completed' AND completed_at > NOW() - interval '60 min'", [agent.company_id]);
-      var enoughWork = recentCompleted && parseInt(recentCompleted.c) >= 3;
-
-      if ((inDeployWindow || (enoughWork && minutesSinceDeploy > 60)) && minutesSinceDeploy > 15) {
-        console.log("[operator] Deploy check: window=" + inDeployWindow + " enough=" + enoughWork + " lastDeploy=" + Math.round(minutesSinceDeploy) + "min ago");
-        var cp2 = require("child_process");
-        // Check for real code changes first
-        var diffCheck = await new Promise(function(res){ cp2.exec("cd /root/blun && git diff --name-only HEAD", {timeout:5000}, function(e,o,er){ res((o||"").trim()); }); });
-        var codeFiles = diffCheck.split("\n").filter(function(f){ return f.match(/\.(js|html|css|json)$/) && !f.startsWith("test-"); });
-        if (codeFiles.length === 0) {
-          console.log("[operator] No real code changes, skipping deploy. Only: " + diffCheck.substring(0,200));
-          await query("INSERT INTO agent_memory (agent_id, key, content) VALUES ($1, $2, $3) ON CONFLICT (agent_id, key) DO UPDATE SET content = $3, updated_at = NOW()", [agentId, "last_auto_deploy", new Date().toISOString()]);
-        } else {
-          console.log("[operator] Real code changes: " + codeFiles.join(", ").substring(0,200));
-          var check = await new Promise(function(res){ cp2.exec("node -c /root/blun/server.js && node -c /root/blun/src/agent-engine.js && node -c /root/blun/src/code-tools.js", {timeout:10000}, function(e,o,er){ res({err:e,out:(o||"")+(er||"")}); }); });
-          if (!check.err) {
-            var gitConn = await queryOne("SELECT config FROM user_connections WHERE type = 'git' AND company_id = $1 ORDER BY id LIMIT 1", [agent.company_id]);
-            var sshKey = "/root/.ssh/id_ed25519_github_pro";
-            var gitUrl = "blun-pro";
-            if (gitConn && gitConn.config) {
-              var cfg = typeof gitConn.config === "string" ? JSON.parse(gitConn.config) : gitConn.config;
-              if (cfg.ssh_key) sshKey = cfg.ssh_key;
-              if (cfg.url) gitUrl = cfg.url;
-            }
-            var pushCmd = 'BLUN_DEPLOYER=dieter git add -A && BLUN_DEPLOYER=dieter git commit -m "Auto-deploy: ' + recentCompleted.c + ' tasks completed" && GIT_SSH_COMMAND="ssh -i ' + sshKey + ' -o StrictHostKeyChecking=no" git push ' + gitUrl + ' main 2>&1';
-            var pushOut = await new Promise(function(res){ cp2.exec(pushCmd, {cwd:"/root/blun",timeout:60000,maxBuffer:500000}, function(e,o,er){ res((o||"")+(er||"")); }); });
-            console.log("[operator] Auto-push: " + pushOut.substring(0,200));
-            var restart = await new Promise(function(res){ cp2.exec("pm2 restart blun", {timeout:15000}, function(e,o,er){ res((o||"")+(er||"")); }); });
-            console.log("[operator] Auto-deploy done: " + restart.substring(0,100));
-            await query("INSERT INTO agent_memory (agent_id, key, content) VALUES ($1, $2, $3) ON CONFLICT (agent_id, key) DO UPDATE SET content = $3, updated_at = NOW()", [agentId, "last_auto_deploy", new Date().toISOString()]);
-          } else {
-            console.error("[operator] Auto-deploy blocked — syntax error: " + check.out.substring(0,200));
-          }
-        }
-      }
-    } catch(deployErr) { console.error("[operator] Auto-deploy error:", deployErr.message); }
+  // Skip operator — handled by dieter-daemon
+  var isOperator = false;
+  if (agent.company_id) {
+    var firstAgent = await queryOne("SELECT id FROM blun_agents WHERE company_id = $1 ORDER BY id LIMIT 1", [agent.company_id]);
+    isOperator = firstAgent && firstAgent.id === agentId;
   }
 
-  if (pendingTask) {
-    status = "working";
-    await query("UPDATE blun_agents SET status = $1, last_heartbeat = NOW() WHERE id = $2", ["working", agentId]);
-    await query("UPDATE agent_tasks SET status = $1 WHERE id = $2", ["processing", pendingTask.id]);
-
-    try {
-      // Load identity
-      var identityRow = await queryOne("SELECT content FROM agent_memory WHERE agent_id = $1 AND key = 'IDENTITY'", [agentId]);
-      if (!identityRow) {
-        var identityContent = "# " + (agent.name || "Agent") + "\n" +
-          "- Rolle: " + (agent.role || "KI-Agent") + "\n" +
-          (agent.department ? "- Abteilung: " + agent.department + "\n" : "") +
-          "- Team: BLUN.ai Agent-Team\n" +
-          "- Sprache: Deutsch\n" +
-          "Ich bin " + (agent.name || "ein Agent") + " und Teil des BLUN Agent-Teams.";
-        await query("INSERT INTO agent_memory (agent_id, key, content) VALUES ($1, 'IDENTITY', $2) ON CONFLICT (agent_id, key) DO NOTHING", [agentId, identityContent]);
-        identityRow = { content: identityContent };
-      }
-      // Load skills
-      var agentSkills = await query(
-        "SELECT s.name, s.code, s.description FROM skills s JOIN agent_skills as2 ON as2.skill_id = s.id WHERE as2.agent_id = $1 AND s.safe = true",
-        [agentId]
-      );
-      var nl = String.fromCharCode(10);
-      var skillStr = "";
-      if (agentSkills.length) {
-        skillStr = nl+nl+"=== DEINE SKILLS (AKTIV NUTZEN!) ==="+nl;
-        skillStr += "Du MUSST die folgenden Skills bei jeder Aufgabe aktiv anwenden. Sie enthalten Regeln, Frameworks und Methoden die deine Arbeit leiten."+nl+nl;
-        for (var si = 0; si < agentSkills.length; si++) {
-          var sk = agentSkills[si];
-          var content = (sk.code || sk.description || "").substring(0, 3000);
-          skillStr += "### SKILL: " + sk.name + nl + content + nl + nl;
-        }
-      }
-      // Load memory
-      var memBudget = (agent.model && (agent.model.startsWith("local:") || agent.model.includes("gemma") || agent.model.includes("llama"))) ? 500 : 8000;
-      var memStr = await loadSmartMemory(agentId, pendingTask.task, memBudget);
-      var msgStr = await getUnreadSummary(agentId);
-      if (msgStr) memStr += msgStr;
-      // Load auto_memory (decisions/blockers from previous tasks)
-      try {
-        var autoMemRow = await queryOne("SELECT content FROM agent_memory WHERE agent_id = $1 AND key = 'auto_memory'", [agentId]);
-        if (autoMemRow && autoMemRow.content) {
-          var am = JSON.parse(autoMemRow.content);
-          var amStr = '';
-          if (am.decisions && am.decisions.length) amStr += '\nFruehere Entscheidungen: ' + am.decisions.join('; ');
-          if (am.blockers && am.blockers.length) amStr += '\nBekannte Blocker: ' + am.blockers.join('; ');
-          if (am.context && am.context.length) amStr += '\nKontext: ' + am.context.join('; ');
-          if (am.last_task) amStr += '\nLetzter Task: ' + am.last_task;
-          if (amStr) memStr += '\n\n=== AUTO-MEMORY ===\n' + amStr;
-        }
-      } catch(amLoad) { /* silent */ }
-
-      // === PAPERCLIP-STYLE CLI EXECUTION ===
-      var sysContext = (identityRow ? identityRow.content + "\n\n" : "") + (agent.system_prompt || "Du bist ein hilfreicher Agent.") + skillStr + "\n\nKONTEXT AUS MEMORY:\n" + memStr;
-      var taskPrompt = sysContext + "\n\nTask: " + pendingTask.task + "\n\nWICHTIG: Schreibe SOFORT Code in die genannte Datei. KEIN Analysieren, kein Erklaeren, kein Planen. Erster Schritt = Write Tool benutzen. Du hast Zugriff auf Read, Write, Edit, Bash. Benutze sie JETZT." + "\nVERBOTENE DATEIEN (NIEMALS aendern, NIEMALS lesen, NIEMALS oeffnen): agent-engine.js, code-tools.js, server.js, .env, package.json, package-lock.json, index.html, login.html, dieter-daemon.js, auth.js, db.js. DU DARFST NUR NEUE DATEIEN ERSTELLEN. Bestehende Dateien NICHT modifizieren! Erstelle immer neue .js/.css Dateien in dashboard/components/, dashboard/css/, src/routes/v1/, src/middleware/." + "\nDEIN ARBEITSVERZEICHNIS: " + worktreePath + " -- Alle Dateien MUESSEN hier geschrieben werden. NIEMALS in /tmp oder andere Verzeichnisse schreiben! Nutze IMMER relative Pfade." + "\nVERBOTEN: Erstelle KEINE Markdown-Dateien wie OPERATOR-EMERGENCY, QA-REPORT, QA-CATASTROPHIC, SABOTAGE-ALERT etc. Du bist ein CODER, kein Berichteschreiber. Schreibe NUR Code-Dateien (.js, .css, .html). Keine Reports, keine Alerts, keine Emergency-Meldungen als Dateien. DESIGN-REGELN(PFLICHT): Keine Emojis. Kein Blau (#3b82f6). Farbschema: Windows Dark Theme Grau — #1e1e1e (bg), #2d2d2d (cards), #3c3c3c (hover), #cccccc (text), #ffffff (headings). Akzent: #0078d4 NUR fuer Links/Buttons. Keine Dummy-Daten — nur echte API-Calls. Keine selbst-rendernden Components (kein document.body.appendChild). Clean, minimalistisch, professionell.";
-
-      // === ISOLATED WORKSPACE (Paperclip-style): Agent gets empty dir, only produces new files ===
-      var cp2 = require("child_process");
-      var fs2 = require("fs");
-      var pathMod = require("path");
-      var branchName = "agent/" + (agent.name || "agent-" + agentId).toLowerCase().replace(/[^a-z0-9]/g, "-");
-      var worktreePath = "/root/blun-worktrees/" + branchName.replace(/\//g, "-");
-      var workspacePath = "/root/blun-workspaces/" + branchName.replace(/\//g, "-");
-      // Ensure worktree exists for committing later
-      try {
-        if (!fs2.existsSync("/root/blun-worktrees")) fs2.mkdirSync("/root/blun-worktrees", {recursive:true});
-        if (!fs2.existsSync(worktreePath)) {
-          var branchExists = await new Promise(function(res){ cp2.exec("cd /root/blun && git branch --list " + branchName, {timeout:5000}, function(e,o){ res((o||"").trim().length > 0); }); });
-          if (!branchExists) {
-            await new Promise(function(res){ cp2.exec("cd /root/blun && git branch " + branchName + " main", {timeout:5000}, function(e,o,er){ res(true); }); });
-          }
-          await new Promise(function(res){ cp2.exec("cd /root/blun && git worktree add " + worktreePath + " " + branchName, {timeout:10000}, function(e,o,er){ res(true); }); });
-        }
-      } catch(brErr) { console.error("[agent-cli] Worktree error:", brErr.message); }
-      // Fresh isolated workspace — agent can ONLY create new files here
-      try {
-        if (fs2.existsSync(workspacePath)) cp2.execSync("rm -rf " + workspacePath, {timeout:5000});
-        fs2.mkdirSync(workspacePath, {recursive:true});
-        // Copy ONLY task-relevant files (read-only context)
-        var taskFiles = [];
-        var pathPatterns = (pendingTask.task || "").match(/(?:dashboard|src|shared|electron|blun-mobile)\/[a-zA-Z0-9_.\/-]+/g) || [];
-        for (var pp = 0; pp < pathPatterns.length; pp++) {
-          var srcFile = "/root/blun/" + pathPatterns[pp];
-          if (fs2.existsSync(srcFile)) taskFiles.push(pathPatterns[pp]);
-        }
-        for (var tf = 0; tf < taskFiles.length; tf++) {
-          var destDir = pathMod.dirname(workspacePath + "/" + taskFiles[tf]);
-          fs2.mkdirSync(destDir, {recursive:true});
-          fs2.copyFileSync("/root/blun/" + taskFiles[tf], workspacePath + "/" + taskFiles[tf]);
-        }
-        fs2.writeFileSync(workspacePath + "/WORKSPACE.md", "# Agent Workspace\nIsolierter Workspace. Schreibe neue Dateien hier.\nHauptprojekt: /root/blun (NUR LESEN!)\nNur Dateien in diesem Verzeichnis werden uebernommen.\n");
-        console.log("[agent-cli] Isolated workspace: " + workspacePath + " (" + taskFiles.length + " files copied)");
-      } catch(wsErr) { console.error("[agent-cli] Workspace error:", wsErr.message); workspacePath = worktreePath; }
-
-      // Check for existing session to resume (Paperclip-style)
-      var sessionRow = await queryOne("SELECT content FROM agent_memory WHERE agent_id = $1 AND key = 'cli_session_id'", [agentId]);
-      var sessionId = sessionRow ? sessionRow.content.trim() : null;
-
-      // Determine CLI: claude or codex based on agent model
-      var cliCmd = "claude";
-      var cliModel = "claude-sonnet-4-20250514";
-      if (agent.model && (agent.model.includes("codex") || agent.model.includes("gpt"))) {
-        cliCmd = "codex";
-        cliModel = "";
-      }
-
-      // Build args (from Paperclip adapter-claude-local)
-      var cp2 = require("child_process");
-      var cliArgs;
-      if (cliCmd === "codex") {
-        cliArgs = ["exec", "--skip-git-repo-check", "--full-auto"];
-        if (cliModel) cliArgs.push("--model", cliModel);
-      } else {
-        cliArgs = ["--print", "-", "--output-format", "stream-json", "--verbose", "--max-turns", "15"];
-        if (cliModel) cliArgs.push("--model", cliModel);
-      }
-
-      if (cliCmd === "codex") cliArgs.push(taskPrompt.substring(0,2000));
-      await acquireCliSlot(agent.name);
-      var cliResult = await new Promise(function(resolve) {
-        var child = cp2.spawn(cliCmd, cliArgs, {
-          cwd: worktreePath,
-          timeout: 180000,
-          env: Object.assign({}, process.env, { DISABLE_INTERACTIVITY: "1" })
-        });
-        var stdout = "", stderr = "";
-        if (cliCmd !== "codex") child.stdin.write(taskPrompt);
-        child.stdin.end();
-        child.stdout.on("data", function(d) { if (stdout.length < 2000000) stdout += d.toString(); });
-        child.stderr.on("data", function(d) { if (stderr.length < 500000) stderr += d.toString(); });
-        child.on("close", function(code) { resolve({ stdout: stdout, stderr: stderr, code: code }); });
-        child.on("error", function(err) { resolve({ stdout: stdout, stderr: stderr, code: -1, err: err }); });
-        setTimeout(function() { try { child.kill("SIGTERM"); } catch(e){} }, 180000);
-      });
-
-      // Parse session ID from stream-json for resume next time
-      var newSessionId = null;
-      try {
-        var sjLines = (cliResult.stdout || "").split("\n");
-        for (var si = sjLines.length - 1; si >= 0; si--) {
-          if (sjLines[si].indexOf("session_id") !== -1) {
-            var sjObj = JSON.parse(sjLines[si]);
-            if (sjObj.session_id) { newSessionId = sjObj.session_id; break; }
-          }
-        }
-      } catch(parseErr) {}
-      if (newSessionId) {
-        await query("INSERT INTO agent_memory (agent_id, key, content) VALUES ($1, $2, $3) ON CONFLICT (agent_id, key) DO UPDATE SET content = $3, updated_at = NOW()", [agentId, "cli_session_id", newSessionId]);
-      }
-
-      // Extract text from stream-json events
-      var finalContent = "";
-      try {
-        var sjLines2 = (cliResult.stdout || "").split("\n");
-        for (var si2 = 0; si2 < sjLines2.length; si2++) {
-          try {
-            var ev = JSON.parse(sjLines2[si2]);
-            if (ev.type === "assistant" && ev.message && ev.message.content) {
-              for (var pi = 0; pi < ev.message.content.length; pi++) {
-                if (ev.message.content[pi].type === "text") finalContent += ev.message.content[pi].text + "\n";
-              }
-            }
-            if (ev.result) finalContent += ev.result;
-          } catch(e2) {}
-        }
-      } catch(e3) {}
-      if (!finalContent) finalContent = (cliResult.stdout || "").substring(0, 5000);
-      if (!finalContent) finalContent = "CLI returned no output";
-
-      releaseCliSlot(agent.name);
-      // Detect ratelimit from CLI output
-      if ((cliResult.stderr || "").indexOf("rate") !== -1 || (cliResult.stderr || "").indexOf("429") !== -1 || (cliResult.stderr || "").indexOf("overloaded") !== -1) {
-        pauseCli(120);
-        console.log("[ratelimit] CLI hit rate limit for " + agent.name);
-      }
-      tokens = 0; cost = 0;
-      console.log("[agent-cli] " + agent.name + " exit=" + cliResult.code + " session=" + (newSessionId||"none") + " output=" + finalContent.length + "ch");
-
-      // Paperclip model: detect changes via git status in worktree, then commit
-      try {
-        
-// === AUTO-QA: Reject bad code before commit ===
-function autoQaReject(filePath, worktreePath) {
-  try {
-    var fs = require("fs");
-    var fullPath = worktreePath + "/" + filePath;
-    if (!fs.existsSync(fullPath)) return [];
-    var content = fs.readFileSync(fullPath, "utf8");
-    var issues = [];
-    var emojiRegex = /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/u;
-    if (emojiRegex.test(content)) issues.push("EMOJI");
-    if (content.includes("#3b82f6") || content.includes("blue-500") || content.includes("blue-600")) issues.push("BLUE");
-    if (content.includes("Agent-X") || content.includes("Example Agent") || content.includes("Demo Agent")) issues.push("DUMMY");
-    if (content.includes("document.body.appendChild") || content.includes("document.body.innerHTML")) issues.push("SELF-RENDER");
-    // Block QA-report/emergency/operator MD files (agents spam these instead of coding)
-    var bn = filePath.split("/").pop().toUpperCase();
-    if (bn.endsWith(".MD") && (bn.includes("OPERATOR") || bn.includes("EMERGENCY") || bn.includes("CATASTROPH") || bn.includes("SABOTAGE") || bn.includes("DESTRUCTION") || bn.includes("LOCKDOWN") || bn.includes("QA-REPORT") || bn.includes("QA-FINAL") || bn.includes("QA-CRITICAL") || bn.includes("QA-CATASTROPH"))) issues.push("SPAM-MD");
-    // Block any file in project root that is .md and not README
-    if (bn.endsWith(".MD") && filePath.split("/").length <= 2 && bn !== "README.MD") issues.push("ROOT-MD");
-    return issues;
-  } catch(e) { return []; }
-}
-
-        var _protected = ["agent-engine.js","code-tools.js","server.js",".env","package.json","package-lock.json","index.html","login.html","dieter-daemon.js","auth.js","db.js","blun.db"];
-        var statusOut = await new Promise(function(res){ cp2.exec("cd " + worktreePath + " && git status --porcelain", {timeout:10000}, function(e,o){ res((o||"").trim()); }); });
-        var changedFiles = statusOut.split("\n").filter(function(l){ return l.trim().length > 0; }).map(function(l){ return l.trim().substring(3); });
-        var safeFiles = changedFiles.filter(function(f){ var bn = f.split("/").pop(); return _protected.indexOf(bn) === -1; });
-        var blocked = changedFiles.length - safeFiles.length;
-        if (blocked > 0) console.log("[agent-cli] BLOCKED " + blocked + " protected files");
-        // Auto-QA: reject files with emojis, blue, dummy data
-        var qaClean = safeFiles.filter(function(f) {
-          var issues = autoQaReject(f, worktreePath);
-          if (issues.length > 0) { console.log("[auto-qa] REJECTED " + f + ": " + issues.join(", ")); return false; }
-          return true;
-        });
-        if (qaClean.length < safeFiles.length) console.log("[auto-qa] " + (safeFiles.length - qaClean.length) + " files rejected by QA gate");
-        safeFiles = qaClean;
-        var hasChanges = safeFiles.length > 0;
-        if (hasChanges) {
-          var commitMsg = agent.name + ": " + pendingTask.task.substring(0,60);
-          var _gitAddList = safeFiles.map(function(f){ return '"' + f.replace(/"/g, '') + '"'; }).join(' ');
-          await new Promise(function(res){ cp2.exec('cd ' + worktreePath + ' && git add -- ' + _gitAddList + ' && git commit -m "' + commitMsg.replace(/"/g, '\"') + '"', {timeout:10000}, function(e,o,er){ res(true); }); });
-          console.log("[agent-cli] Committed in worktree " + worktreePath);
-          // Push QA task to Helmut (ID 29)
-          try {
-            // QA REVIEWS DISABLED - caused spam spiral
-            // await query("INSERT INTO agent_tasks (agent_id, task, status, created_at) VALUES (29, $1, 'pending', NOW())", ["QA REVIEW: Branch " + branchName + " von " + agent.name + " hat neue Commits. Pruefe den Code in " + worktreePath + " mit git diff main.." + branchName + ". Bei QA:PASS melde an Operator zum Mergen. Bei QA:FAIL beschreibe die Probleme."]);
-            console.log("[agent-cli] QA task created for Helmut: " + branchName);
-          } catch(qaErr) { console.error("[agent-cli] QA task creation error:", qaErr.message); }
-        }
-      } catch(gitErr) { console.error("[agent-cli] Git commit error:", gitErr.message); }
-      // Quality check: only mark completed if agent ACTUALLY committed in this run
-      if (hasChanges) {
-        await query("UPDATE agent_tasks SET status = $1, result = $2, completed_at = NOW() WHERE id = $3", ["completed", finalContent, pendingTask.id]);
-        console.log("[agent-cli] " + agent.name + " PRODUCED CODE in worktree " + worktreePath);
-        try { await autoScoreTask(pendingTask.id, true, null); await awardXP(agentId, 10, 'task_completed'); } catch(se) {}
-      } else {
-        await query("UPDATE agent_tasks SET status = $1, result = $2, completed_at = NOW() WHERE id = $3", ["completed_no_code", finalContent, pendingTask.id]);
-        console.log("[agent-cli] " + agent.name + " produced NO code changes, marked as completed_no_code");
-        try { await selfHealTask(pendingTask.id); } catch(shErr) { console.error('[self-heal] Error:', shErr.message); }
-        try { await autoScoreTask(pendingTask.id, false, null); } catch(se) {}
-      }
-      await query("INSERT INTO agent_conversations (agent_id, role, content) VALUES ($1, $2, $3)", [agentId, "user", pendingTask.task]);
-      await query("INSERT INTO agent_conversations (agent_id, role, content) VALUES ($1, $2, $3)", [agentId, "assistant", finalContent]);
-  // Auto-memory: save last activity
-  try {
-    var today = new Date().toISOString().substring(0,10);
-    var fc = typeof finalContent !== 'undefined' ? finalContent : '';
-    var summary = (fc || "").substring(0,300).replace(/\n/g,' ');
-    await saveAgentMemory(agentId, 'zuletzt_' + today, 'Chat: ' + (typeof message !== 'undefined' && message ? message : (typeof pendingTask !== 'undefined' && pendingTask ? pendingTask.task : '')).substring(0,80) + ' | Antwort: ' + summary);
-  } catch(me) { console.error('[auto-memory]', me.message); }
-
-  // === AUTO-MEMORY SKILL: Extract decisions, blockers, context ===
-  try {
-    var fc2 = typeof finalContent !== 'undefined' ? (finalContent || '') : '';
-    if (fc2.length > 50) {
-      var lines = fc2.split('\n');
-      var decisions = [];
-      var blockers = [];
-      var context = [];
-      for (var li = 0; li < lines.length; li++) {
-        var line = lines[li].trim();
-        var lower = line.toLowerCase();
-        if (line.length < 15 || line.length > 300) continue;
-        // Decision patterns
-        if (lower.match(/\b(implemented|created|added|fixed|changed|switched|replaced|built|wrote|deployed|installed|configured|set up|refactored)\b/)) {
-          decisions.push(line.substring(0, 200));
-        }
-        // Blocker patterns
-        if (lower.match(/\b(error|failed|blocked|cannot|broken|missing|timeout|rejected|denied|permission|not found|crash)\b/)) {
-          blockers.push(line.substring(0, 200));
-        }
-        // Context patterns (file paths, configs)
-        if (line.match(/\/(root|src|dashboard|api|config)\//)) {
-          context.push(line.substring(0, 200));
-        }
-      }
-      var autoMem = {
-        decisions: filterNoiseFromDecisions(decisions).slice(-5),
-        blockers: blockers.slice(-3),
-        context: context.slice(-3),
-        last_task: (typeof pendingTask !== 'undefined' && pendingTask ? pendingTask.task : '').substring(0, 100),
-        has_code: typeof hasChanges !== 'undefined' ? hasChanges : false,
-        updated: new Date().toISOString()
-      };
-      var autoTags = ['auto_memory'];
-      if (autoMem.has_code) autoTags.push('code_change');
-      if (autoMem.blockers.length > 0) autoTags.push('has_blockers');
-      await saveAgentMemory(agentId, 'auto_memory', JSON.stringify(autoMem), autoTags, 'auto');
-      if (decisions.length > 0 || blockers.length > 0) {
-        console.log('[auto-memory] ' + agent.name + ': ' + decisions.length + ' decisions, ' + blockers.length + ' blockers saved');
-      }
-    }
-  } catch(amErr) { console.error('[auto-memory-extract]', amErr.message); }
-
-      status = "active";
-    } catch (err) {
-      console.error("[agent-engine] Task error for " + agentId + ":", err.message);
-      await query("UPDATE agent_tasks SET status = $1, result = $2 WHERE id = $3", ["error", err.message, pendingTask.id]);
-      status = "error";
-    }
+  if (!pendingTask) {
+    // Record idle heartbeat
+    await query("INSERT INTO agent_heartbeats (agent_id, status, tokens_used, cost) VALUES ($1, 'idle', 0, 0)", [agentId]);
+    return;
   }
 
-  // === HEALTH MONITORING: Track consecutive failures, auto-pause ===
-  try {
-    var recentTasks = await query("SELECT status FROM agent_tasks WHERE agent_id = $1 ORDER BY id DESC LIMIT 3", [agentId]);
-    var rows = recentTasks ? recentTasks.rows || recentTasks : [];
-    var consecutiveFails = 0;
-    for (var fi = 0; fi < rows.length; fi++) {
-      if (rows[fi].status === "error" || rows[fi].status === "completed_no_code") consecutiveFails++;
-      else break;
-    }
-    if (consecutiveFails >= 3) {
-      console.error("[health] Agent " + agentId + " (" + agent.name + ") failed 3x in a row — AUTO-PAUSING");
-      await query("UPDATE blun_agents SET status = 'paused' WHERE id = $1", [agentId]);
-      await saveAgentMemory(agentId, "health_paused", "Auto-paused after 3 consecutive failures at " + new Date().toISOString());
-      // Notify operator
-      var operatorRow = await queryOne("SELECT id FROM blun_agents WHERE company_id = $1 AND role = 'operator' LIMIT 1", [agent.company_id]);
-      if (operatorRow) {
-        await query("INSERT INTO agent_tasks (agent_id, task, status, priority) VALUES ($1, $2, 'pending', 'high')", [operatorRow.id, "HEALTH ALERT: Agent " + agent.name + " wurde nach 3 Fehlschlaegen auto-pausiert. Pruefe die letzten Tasks und entscheide ob der Agent reaktiviert werden soll."]);
-      }
-      status = "paused";
-    }
-  } catch(healthErr) { console.error("[health] Check error:", healthErr.message); }
+  if (isOperator) {
+    // Operator doesn't code — skip
+    await query("INSERT INTO agent_heartbeats (agent_id, status, tokens_used, cost) VALUES ($1, 'dispatching', 0, 0)", [agentId]);
+    return;
+  }
 
-  await query("UPDATE blun_agents SET status = $1, last_heartbeat = NOW() WHERE id = $2", [status, agentId]);
-  await query("INSERT INTO agent_heartbeats (agent_id, status, model, tokens_used, cost) VALUES ($1, $2, $3, $4, $5)", [agentId, status, agent.model, tokens, cost]);
+  // === TASK RUNNER: Execute task with validation ===
+  try {
+    var result = await taskRunner.runAgentTasks(agent, query, queryOne);
+    var status = result.pass ? "completed" : (result.idle ? "idle" : "retry");
+    var tokens = result.pass ? 500 : 0;
+    await query("INSERT INTO agent_heartbeats (agent_id, status, tokens_used, cost) VALUES ($1, $2, $3, $4)",
+      [agentId, status, tokens, tokens * 0.000003]);
+    
+    // Log to conversations for UI visibility
+    if (result.pass) {
+      await query("INSERT INTO agent_conversations (agent_id, role, content) VALUES ($1, 'assistant', $2)",
+        [agentId, "Task erledigt: " + result.commits + " Commits, " + result.files + " Dateien geaendert."]);
+    }
+  } catch(taskErr) {
+    console.error("[heartbeat] Task runner error for " + agent.name + ":", taskErr.message);
+    await query("INSERT INTO agent_heartbeats (agent_id, status, tokens_used, cost) VALUES ($1, 'error', 0, 0)", [agentId]);
+  }
 }
+
 function startAgent(agentId) {
   if (activeAgents.has(agentId)) return;
 
