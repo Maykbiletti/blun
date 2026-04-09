@@ -1673,7 +1673,7 @@ function renderCompanies() {
     return '<div class="card" onclick="switchCompany('+c.id+',this)" style="cursor:pointer;border:'+(isActive?'2px solid var(--b)':'1px solid var(--brd)')+'"><div class="card-head"><div class="card-title">'+esc(c.name)+(isActive?' <span class=\'badge badge-green\'>Aktiv</span>':'')+'</div><span class="badge badge-blue">'+(c.agent_count||0)+' Agents</span></div>'+
       '<div style="font-size:12px;color:var(--tx2)">'+esc((c.config&&c.config.description)||'')+'</div>'+
       (c.logo_url?'<img src="'+esc(c.logo_url)+'" style="height:32px;margin-top:8px;border-radius:4px">':'')+
-      '<input type="file" id="logoUpload_'+c.id+'" style="display:none" accept="image/*" onchange="uploadLogo('+c.id+',this)">'+(isActive?'<button class="btn btn-sm btn-outline" style="margin-top:6px;font-size:11px" onclick="event.stopPropagation();document.getElementById('logoUpload_'+c.id+'').click()">Logo hochladen</button>':'')+
+      '<input type="file" id="logoUpload_'+c.id+'" style="display:none" accept="image/*" onchange="uploadLogo('+c.id+',this)">'+(isActive?'<button class="btn btn-sm btn-outline" style="margin-top:6px;font-size:11px" onclick="event.stopPropagation();document.getElementById(this.previousElementSibling.id).click()">Logo</button>':'')+
       '</div>';
   }).join('');
 }
