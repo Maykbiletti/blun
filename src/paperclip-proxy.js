@@ -11,7 +11,7 @@ var _blunCacheTs = 0;
 async function getBlunAgents() {
   if (_blunCache && Date.now() - _blunCacheTs < 30000) return _blunCache;
   try {
-    _blunCache = await query("SELECT id, name, role, model, department, system_prompt, personality, heartbeat_interval FROM blun_agents");
+    _blunCache = await query("SELECT id, name, role, model, department, system_prompt, personality, heartbeat_interval, status FROM blun_agents");
     _blunCacheTs = Date.now();
   } catch(e) { _blunCache = []; }
   return _blunCache;
@@ -36,7 +36,7 @@ function transformAgent(pa, blunData) {
     name: pa.name,
     role: old ? old.role : (pa.title || pa.role || "general"),
     model: old ? old.model : ((pa.adapterConfig && pa.adapterConfig.model) || pa.adapterType || "unknown"),
-    status: pa.status || "idle",
+    status: old ? (old.status || "idle") : (pa.status || "idle"),
     department: old ? (old.department || "") : (pa.role || ""),
     company_id: pa.companyId,
     company_name: "BLUN AI",

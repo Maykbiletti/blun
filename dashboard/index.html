@@ -994,7 +994,7 @@ function getPageFromPath(){
 
 // ===== LOAD ALL =====
 function loadAll() {
-  api('/api/organisator/agents').then(function(d){agents=d;renderAgents();renderChatList();document.getElementById('agentCount').textContent=d.length;var op=getOperator();var la=localStorage.getItem('blun_last_agent');if(la){openAgentWorkspace(parseInt(la));}else if(op){openAgentWorkspace(op.id);}});
+  api('/api/organisator/agents').then(function(d){agents=d;renderAgents();renderChatList();document.getElementById('agentCount').textContent=d.length;var op=getOperator();// Don't auto-open last agent on refresh});
   api('/api/organisator/companies').then(function(d){companies=d;renderCompanies();});
   initBulkModelSelect();
   api('/api/organisator/stats').then(function(d){renderStats(d);}).catch(function(){});
