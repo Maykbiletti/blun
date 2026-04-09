@@ -548,6 +548,26 @@ async function heartbeat(agentId) {
       }
     } catch(dispatchErr) { console.error("[operator] Auto-dispatch error:", dispatchErr.message); }
 
+    // === OPERATOR WORKTREE MONITOR: Check if agents are producing code ===
+    try {
+      var cp6 = require("child_process");
+      var fs3 = require("fs");
+      var wtDir = "/root/blun-worktrees/";
+      if (fs3.existsSync(wtDir)) {
+        var worktrees = fs3.readdirSync(wtDir).filter(function(d) { return fs3.statSync(wtDir + d).isDirectory(); });
+        for (var wi = 0; wi < worktrees.length; wi++) {
+          var wtPath = wtDir + worktrees[wi];
+          var wtDiff = await new Promise(function(res){ cp6.exec("cd " + wtPath + " && git diff --stat HEAD 2>/dev/null && git diff --cached --stat 2>/dev/null", {timeout:5000}, function(e,o){ res((o||"").trim()); }); });
+          var wtLog = await new Promise(function(res){ cp6.exec("cd " + wtPath + " && git log main..HEAD --oneline 2>/dev/null", {timeout:5000}, function(e,o){ res((o||"").trim()); }); });
+          if (wtDiff || wtLog) {
+            console.log("[operator-monitor] " + worktrees[wi] + " hat Aenderungen: " + (wtLog || wtDiff).substring(0,150));
+          } else {
+            console.log("[operator-monitor] " + worktrees[wi] + " — keine Code-Aenderungen");
+          }
+        }
+      }
+    } catch(wtErr) { console.error("[operator-monitor] Worktree check error:", wtErr.message); }
+
     // === OPERATOR MERGE: Merge agent branches into main ===
     try {
       var cp5 = require("child_process");
