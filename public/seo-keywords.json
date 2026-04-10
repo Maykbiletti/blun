@@ -1,0 +1,111 @@
+{
+  "primary_keywords": [
+    "AI Platform",
+    "Workflow Automation",
+    "Business Intelligence",
+    "Data Analysis",
+    "Machine Learning",
+    "Enterprise AI",
+    "Process Optimization",
+    "Business Automation",
+    "Intelligent Analytics",
+    "AI Solutions"
+  ],
+  "secondary_keywords": [
+    "Künstliche Intelligenz",
+    "Geschäftsautomatisierung",
+    "Datenanalyse",
+    "Prozessoptimierung",
+    "Unternehmens-KI",
+    "Workflow Management",
+    "Business Process Management",
+    "Automatisierte Prozesse",
+    "KI-gestützte Analytik",
+    "Digitale Transformation"
+  ],
+  "long_tail_keywords": [
+    "AI Platform für Unternehmen",
+    "Workflow Automation Software",
+    "Business Intelligence Dashboard",
+    "Machine Learning für Geschäftsprozesse",
+    "Enterprise AI Lösungen",
+    "Automatisierung von Geschäftsprozessen",
+    "KI-basierte Datenanalyse",
+    "Intelligente Prozessoptimierung",
+    "Business Intelligence Software",
+    "AI-gestützte Workflow Automation"
+  ],
+  "brand_keywords": [
+    "BLUN.AI",
+    "BLUN AI Platform",
+    "BLUN Workflow Automation",
+    "BLUN Business Intelligence",
+    "BLUN AI Solutions",
+    "BLUN Enterprise AI",
+    "BLUN Data Analysis",
+    "BLUN Machine Learning",
+    "BLUN Process Optimization",
+    "BLUN Dashboard"
+  ],
+  "competitor_keywords": [
+    "Alternative zu Zapier",
+    "Alternative zu Power Automate",
+    "Alternative zu UiPath",
+    "Alternative zu Blue Prism",
+    "Alternative zu Automation Anywhere",
+    "Bessere Workflow Automation",
+    "Enterprise AI Alternative",
+    "Business Intelligence Alternative",
+    "Machine Learning Platform Alternative",
+    "Process Automation Alternative"
+  ],
+  "local_keywords": [
+    "AI Platform Deutschland",
+    "Workflow Automation Deutschland",
+    "Business Intelligence Deutschland",
+    "KI Platform Deutschland",
+    "Enterprise AI Deutschland",
+    "Geschäftsautomatisierung Deutschland",
+    "AI Lösungen Deutschland",
+    "Machine Learning Deutschland",
+    "Process Optimization Deutschland",
+    "Business Intelligence Software Deutschland"
+  ],
+  "intent_keywords": {
+    "informational": [
+      "Was ist Workflow Automation",
+      "Wie funktioniert Business Intelligence",
+      "AI Platform Vorteile",
+      "Machine Learning Anwendungen",
+      "Process Optimization Beispiele"
+    ],
+    "commercial": [
+      "Beste AI Platform",
+      "Workflow Automation Software Vergleich",
+      "Business Intelligence Tools",
+      "Enterprise AI Anbieter",
+      "AI Platform Preise"
+    ],
+    "transactional": [
+      "AI Platform kaufen",
+      "Workflow Automation Software",
+      "Business Intelligence Demo",
+      "Enterprise AI Implementation",
+      "AI Platform kostenlos testen"
+    ]
+  },
+  "seo_meta": {
+    "title_templates": [
+      "BLUN.AI - {keyword} für moderne Unternehmen",
+      "{keyword} - BLUN.AI Enterprise Platform",
+      "Professionelle {keyword} mit BLUN.AI",
+      "{keyword} Software - BLUN.AI Lösung",
+      "BLUN.AI {keyword} - Digitale Transformation"
+    ],
+    "description_templates": [
+      "Optimieren Sie Ihre {keyword} mit BLUN.AI. Moderne AI-Platform für Workflow-Automation, Business Intelligence und Machine Learning.",
+      "BLUN.AI bietet professionelle {keyword} Lösungen. Enterprise AI Platform für intelligente Geschäftsprozesse und Automatisierung.",
+      "Revolutionieren Sie Ihre {keyword} mit BLUN.AI. KI-gestützte Platform für Workflow-Automation und Business Intelligence."
+    ]
+  }
+}

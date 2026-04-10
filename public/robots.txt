@@ -1,0 +1,26 @@
+User-agent: *
+Allow: /
+
+# SEO optimized robots.txt for blun.ai
+Disallow: /admin/
+Disallow: /api/
+Disallow: /private/
+Disallow: /*.json
+Disallow: /*.log
+Disallow: /scripts/
+Disallow: /config/
+Disallow: /bin/
+
+# Important pages
+Allow: /
+Allow: /dashboard
+Allow: /features
+Allow: /pricing
+Allow: /about
+Allow: /contact
+
+# Sitemap location
+Sitemap: https://blun.ai/sitemap.xml
+
+# Crawl delay for better server performance
+Crawl-delay: 1
