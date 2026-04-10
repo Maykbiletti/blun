@@ -648,6 +648,30 @@ function renderInfraList(type, containerId) {
 
 function escH(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
 
+function startGithubOAuth() {
+  fetch("/api/connections/github/status", {headers:{"Authorization":"Bearer "+localStorage.getItem("token")}})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if (!d.configured) {
+        alert("GitHub OAuth ist auf dem Server noch nicht eingerichtet.
+
+Server-Admin muss BLUN_GITHUB_CLIENT_ID und BLUN_GITHUB_CLIENT_SECRET setzen.
+
+Fuer jetzt: Personal Access Token unten eintragen.");
+        return;
+      }
+      window.open("/api/connections/github/oauth/start", "github-oauth", "width=720,height=720");
+      window.addEventListener("message", function handler(ev) {
+        if (ev.data && ev.data.type === "github-oauth-done") {
+          window.removeEventListener("message", handler);
+          closeInfraModal();
+          loadInfraConnections();
+        }
+      });
+    });
+}
+
+
 function openInfraModal(type) {
   infraType = type;
   var titles = {git:'Git Repository hinzufuegen', ssh:'SSH Verbindung hinzufuegen', tailscale:'Tailscale Node hinzufuegen'};
@@ -655,9 +679,16 @@ function openInfraModal(type) {
   var inp = 'style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--tx);margin-top:4px"';
   var fields = '';
   if (type === 'git') {
-    fields = '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--tx2)">NAME</label><input id="inf_name" placeholder="z.B. blun" '+inp+'></div>' +
-      '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--tx2)">URL</label><input id="inf_url" placeholder="git@github.com:user/repo.git" '+inp+'></div>' +
-      '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--tx2)">SSH KEY PATH</label><input id="inf_sshkey" placeholder="/root/.ssh/id_ed25519" '+inp+'></div>';
+    fields = '<div style="margin-bottom:10px;padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;display:flex;align-items:center;justify-content:space-between;gap:8px">' +
+        '<div><div style="font-size:13px;font-weight:600;color:var(--tx)">Mit GitHub anmelden</div><div style="font-size:11px;color:var(--tx2)">OAuth — empfohlen für private Repos</div></div>' +
+        '<button type="button" onclick="startGithubOAuth()" style="background:#1a1a1a;color:#fff;border:1px solid #333;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600">GitHub Login</button>' +
+      '</div>' +
+      '<div style="text-align:center;color:var(--tx2);font-size:11px;margin:8px 0">— oder manuell —</div>' +
+      '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--tx2)">NAME</label><input id="inf_name" placeholder="z.B. blun" '+inp+'></div>' +
+      '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--tx2)">URL</label><input id="inf_url" placeholder="https://github.com/user/repo.git oder git@github.com:user/repo.git" '+inp+'></div>' +
+      '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--tx2)">GITHUB TOKEN <span style="color:var(--tx2);font-weight:400">(für private Repos via HTTPS)</span></label><input id="inf_token" type="password" placeholder="ghp_..." '+inp+'></div>' +
+      '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--tx2)">SSH KEY PATH <span style="color:var(--tx2);font-weight:400">(Alternative zu Token)</span></label><input id="inf_sshkey" placeholder="/root/.ssh/id_ed25519" '+inp+'></div>' +
+      '<div style="font-size:11px;color:var(--tx2);margin-top:4px">Token erstellen: <a href="https://github.com/settings/tokens/new?scopes=repo&description=BLUN" target="_blank" style="color:#3b82f6">github.com/settings/tokens</a> (Scope: repo)</div>';
   } else if (type === 'ssh') {
     fields = '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--tx2)">NAME</label><input id="inf_name" placeholder="z.B. 65er" '+inp+'></div>' +
       '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--tx2)">HOST/IP</label><input id="inf_host" placeholder="65.21.76.124" '+inp+'></div>' +
@@ -686,7 +717,7 @@ async function saveInfraModal() {
   if (!name) return;
   var config = {};
   if (infraType === 'git') {
-    config = {url: (document.getElementById('inf_url')||{}).value||'', ssh_key: (document.getElementById('inf_sshkey')||{}).value||''};
+    config = {url: (document.getElementById('inf_url')||{}).value||'', ssh_key: (document.getElementById('inf_sshkey')||{}).value||'', token: (document.getElementById('inf_token')||{}).value||''};
   } else if (infraType === 'ssh') {
     config = {host: (document.getElementById('inf_host')||{}).value||'', user: (document.getElementById('inf_user')||{}).value||'root', password: (document.getElementById('inf_pw')||{}).value||''};
   } else {

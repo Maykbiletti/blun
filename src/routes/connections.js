@@ -27,6 +27,41 @@ function decrypt(data) {
   return decipher.update(encrypted, "hex", "utf8") + decipher.final("utf8");
 }
 
+
+// === Sensitive config helpers ===
+var SENSITIVE_KEYS = ["token", "password", "oauth_token"];
+function encryptConfigSecrets(cfg) {
+  if (!cfg || typeof cfg !== "object") return cfg;
+  var out = {};
+  for (var k in cfg) {
+    if (SENSITIVE_KEYS.indexOf(k) !== -1 && cfg[k] && String(cfg[k]).indexOf("enc:") !== 0) {
+      try { out[k] = "enc:" + encrypt(String(cfg[k])); } catch(e) { out[k] = cfg[k]; }
+    } else { out[k] = cfg[k]; }
+  }
+  return out;
+}
+function maskConfigSecrets(cfg) {
+  if (!cfg) return cfg;
+  if (typeof cfg === "string") { try { cfg = JSON.parse(cfg); } catch(e) { return cfg; } }
+  var out = {};
+  for (var k in cfg) {
+    if (SENSITIVE_KEYS.indexOf(k) !== -1 && cfg[k]) out[k] = "***";
+    else out[k] = cfg[k];
+  }
+  return out;
+}
+function decryptConfigSecrets(cfg) {
+  if (typeof cfg === "string") { try { cfg = JSON.parse(cfg); } catch(e) { return cfg; } }
+  if (!cfg) return cfg;
+  var out = {};
+  for (var k in cfg) {
+    if (SENSITIVE_KEYS.indexOf(k) !== -1 && typeof cfg[k] === "string" && cfg[k].indexOf("enc:") === 0) {
+      try { out[k] = decrypt(cfg[k].slice(4)); } catch(e) { out[k] = ""; }
+    } else { out[k] = cfg[k]; }
+  }
+  return out;
+}
+
 var PROVIDERS = {
   anthropic: { name: "Claude / Anthropic", color: "#d97706" },
   openai: { name: "ChatGPT / OpenAI", color: "#10b981" },
@@ -352,7 +387,12 @@ router.get("/infra", async function(req, res) {
       "SELECT uc.*, c.name as company_name FROM user_connections uc LEFT JOIN companies c ON c.id = uc.company_id WHERE uc.user_id = $1 ORDER BY uc.type, uc.name",
       [userId]
     );
-    res.json(rows.rows);
+    var masked = rows.rows.map(function(r){
+      var cfg = typeof r.config === "string" ? (function(){try{return JSON.parse(r.config);}catch(e){return {};}})() : (r.config || {});
+      r.config = maskConfigSecrets(cfg);
+      return r;
+    });
+    res.json(masked);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -364,7 +404,7 @@ router.post("/infra", async function(req, res) {
     if (!type || !name) return res.status(400).json({ error: "type and name required" });
     var r = await pool.query(
       "INSERT INTO user_connections (user_id, type, name, config, company_id) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-      [userId, type, name, JSON.stringify(config || {}), company_id || null]
+      [userId, type, name, JSON.stringify(encryptConfigSecrets(config || {})), company_id || null]
     );
     await syncToOperatorMemory(userId);
     res.json(r.rows[0]);
@@ -378,7 +418,7 @@ router.put("/infra/:id", async function(req, res) {
     var { name, config, company_id } = req.body;
     var r = await pool.query(
       "UPDATE user_connections SET name = COALESCE($1, name), config = COALESCE($2::jsonb, config), company_id = COALESCE($3, company_id) WHERE id = $4 AND user_id = $5 RETURNING *",
-      [name, config ? JSON.stringify(config) : null, company_id, req.params.id, userId]
+      [name, config ? JSON.stringify(encryptConfigSecrets(config)) : null, company_id, req.params.id, userId]
     );
     if (!r.rows.length) return res.status(404).json({ error: "Not found" });
     res.json(r.rows[0]);
@@ -394,5 +434,71 @@ router.delete("/infra/:id", async function(req, res) {
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
+
+
+// === GitHub OAuth + Token endpoints ===
+var GH_CLIENT_ID = process.env.BLUN_GITHUB_CLIENT_ID || "";
+var GH_CLIENT_SECRET = process.env.BLUN_GITHUB_CLIENT_SECRET || "";
+var GH_REDIRECT = process.env.BLUN_GITHUB_REDIRECT || "https://blun.ai/api/connections/github/oauth/callback";
+var GH_OAUTH_STATES = {};
+
+router.get("/github/status", function(req, res) {
+  res.json({ configured: !!(GH_CLIENT_ID && GH_CLIENT_SECRET), redirect_uri: GH_REDIRECT });
+});
+
+router.post("/github/test", async function(req, res) {
+  var token = req.body && req.body.token;
+  if (!token) return res.status(400).json({ ok: false, error: "token required" });
+  try {
+    var r = await fetch("https://api.github.com/user", { headers: { Authorization: "token " + token, "User-Agent": "blun" } });
+    if (!r.ok) return res.json({ ok: false, error: "GitHub: " + r.status });
+    var u = await r.json();
+    res.json({ ok: true, login: u.login, name: u.name });
+  } catch(e) { res.json({ ok: false, error: e.message }); }
+});
+
+router.get("/github/oauth/start", function(req, res) {
+  if (!GH_CLIENT_ID || !GH_CLIENT_SECRET) {
+    return res.status(503).send("GitHub OAuth ist nicht konfiguriert. Setze BLUN_GITHUB_CLIENT_ID und BLUN_GITHUB_CLIENT_SECRET.");
+  }
+  var uid = req.user ? req.user.id : null;
+  if (!uid) return res.status(401).send("login required");
+  var state = crypto.randomBytes(16).toString("hex");
+  GH_OAUTH_STATES[state] = { user_id: uid, ts: Date.now() };
+  for (var k in GH_OAUTH_STATES) { if (Date.now() - GH_OAUTH_STATES[k].ts > 600000) delete GH_OAUTH_STATES[k]; }
+  var url = "https://github.com/login/oauth/authorize?client_id=" + encodeURIComponent(GH_CLIENT_ID) +
+            "&redirect_uri=" + encodeURIComponent(GH_REDIRECT) +
+            "&scope=" + encodeURIComponent("repo read:user") +
+            "&state=" + state;
+  res.redirect(url);
+});
+
+router.get("/github/oauth/callback", async function(req, res) {
+  try {
+    var code = req.query.code;
+    var state = req.query.state;
+    if (!code || !state || !GH_OAUTH_STATES[state]) return res.status(400).send("invalid state");
+    var sess = GH_OAUTH_STATES[state];
+    delete GH_OAUTH_STATES[state];
+    var tr = await fetch("https://github.com/login/oauth/access_token", {
+      method: "POST",
+      headers: { "Accept": "application/json", "Content-Type": "application/json", "User-Agent": "blun" },
+      body: JSON.stringify({ client_id: GH_CLIENT_ID, client_secret: GH_CLIENT_SECRET, code: code, redirect_uri: GH_REDIRECT })
+    });
+    var td = await tr.json();
+    if (!td.access_token) return res.status(400).send("GitHub error: " + JSON.stringify(td));
+    var ur = await fetch("https://api.github.com/user", { headers: { Authorization: "token " + td.access_token, "User-Agent": "blun" } });
+    var u = await ur.json();
+    var cfg = encryptConfigSecrets({ oauth: true, login: u.login, scope: td.scope || "", token: td.access_token });
+    await pool.query(
+      "INSERT INTO user_connections (user_id, type, name, config) VALUES ($1, 'git', $2, $3)",
+      [sess.user_id, "GitHub: " + (u.login || "oauth"), JSON.stringify(cfg)]
+    );
+    res.send("<html><body style='font-family:sans-serif;background:#0a0a0a;color:#e5e5e5;padding:40px;text-align:center'><h2>GitHub verbunden</h2><p>Du kannst dieses Fenster schliessen.</p><script>setTimeout(function(){window.close();},1500);if(window.opener){window.opener.postMessage({type:'github-oauth-done'},'*');}</script></body></html>");
+  } catch(e) {
+    res.status(500).send("OAuth error: " + e.message);
+  }
+});
+
 
 module.exports = router;
