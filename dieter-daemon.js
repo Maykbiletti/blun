@@ -3,7 +3,9 @@
 // NEVER codes — only organizes, monitors, delegates
 
 const http = require('http');
-const { Client } = require('pg');
+const { Client, Pool } = require('pg');
+var taskPool = new Pool({ host: 'localhost', database: 'blun', user: 'blun', password: 'blun2026secure', max: 10 });
+taskPool.on('error', function(e){ console.error('[taskPool]', e.message); });
 const { execSync } = require('child_process');
 const autoIntegrator = require('./src/agent/auto-integrator');
 const taskRunner = require('./src/agent/task-runner');
@@ -193,6 +195,14 @@ async function checkRAM() {
 
 
 // === AUTO-QA GATE: Prueft Agent-Code vor Merge ===
+function getBaseBranch() {
+  try {
+    var b = execSync("cd /root/blun && git symbolic-ref --short HEAD 2>/dev/null").toString().trim();
+    return b || "main";
+  } catch(e) { return "main"; }
+}
+var BASE_BRANCH = getBaseBranch();
+
 function autoQaCheck(filePath, content) {
   var issues = [];
 
@@ -350,7 +360,7 @@ async function distributeTasks(db) {
         log('Task ' + task.id + ' -> ' + agentRow.name + ' via task-runner');
         // Fire-and-forget: let Claude CLI run in background, task-runner updates DB
         (function(a, t){
-          taskRunner.executeTask(a, t, db.query.bind(db))
+          taskRunner.executeTask(a, t, taskPool.query.bind(taskPool))
             .then(function(r){ log('Task ' + t.id + ' result: ' + JSON.stringify(r).substring(0, 200)); })
             .catch(function(err){ log('Task ' + t.id + ' runner error: ' + err.message); })
             .finally(function(){ _runningTasks.delete(t.id); });
@@ -486,7 +496,7 @@ async function autoIntegrate(db) {
       var ahead = execSync("cd " + dir + " && git log main..HEAD --oneline 2>/dev/null | wc -l").toString().trim();
       if (parseInt(ahead) === 0) continue;
 
-      var files = execSync("cd " + dir + " && git diff main...HEAD --name-only --diff-filter=AM 2>/dev/null").toString().trim();
+      var files = execSync("cd " + dir + " && git diff " + BASE_BRANCH + "...HEAD --name-only --diff-filter=AM 2>/dev/null").toString().trim();
       if (!files) continue;
 
       var fileList = files.split(String.fromCharCode(10));
@@ -502,7 +512,7 @@ async function autoIntegrate(db) {
           if (!fileExists) continue;
           var diffOnly = "";
           try {
-            var rawDiff = execSync("cd " + dir + " && git diff main...HEAD -- " + JSON.stringify(filePath) + " 2>/dev/null").toString();
+            var rawDiff = execSync("cd " + dir + " && git diff " + BASE_BRANCH + "...HEAD -- " + JSON.stringify(filePath) + " 2>/dev/null").toString();
             diffOnly = rawDiff.split(String.fromCharCode(10)).filter(function(ln){return ln.length>0 && ln.charAt(0)==="+" && ln.substring(0,3)!=="+++";}).map(function(ln){return ln.substring(1);}).join(String.fromCharCode(10));
           } catch(eDiff) { diffOnly = ""; }
           var issues = autoQaCheck(filePath, diffOnly);

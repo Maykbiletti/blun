@@ -5,6 +5,8 @@ var fs = require("fs");
 var crypto = require("crypto");
 
 var WORKTREE_BASE = "/root/blun-worktrees/";
+var BEHAVIOR_CONTRACT = "";
+try { BEHAVIOR_CONTRACT = fs.readFileSync("/root/blun/src/agent/prompts/behavior-contract.md", "utf8"); } catch (e) { console.log("[task-runner] behavior-contract load failed: " + e.message); }
 var TIMEOUT = 180000; // 3 min per task
 var ENC_KEY = process.env.BLUN_ENCRYPTION_KEY || "blun-dev-encryption-key-32chars!";
 
@@ -50,7 +52,7 @@ function pickCLI(model) {
 }
 
 function buildPrompt(agent, task, agentDir) {
-  return "Du bist " + agent.name + ", " + (agent.role || "Entwickler") + " bei BLUN.\n" +
+  return (BEHAVIOR_CONTRACT ? BEHAVIOR_CONTRACT + "\n\n---\n\n" : "") + "Du bist " + agent.name + ", " + (agent.role || "Entwickler") + " bei BLUN.\n" +
     "Arbeitsverzeichnis: " + agentDir + "\n\n" +
     "TASK: " + task.task + "\n\n" +
     "REGELN:\n" +
@@ -77,7 +79,7 @@ function runCLI(cliName, model, prompt, agentDir) {
       if (model) args.push("-m", model);
       env = Object.assign(baseEnv, _keyCache.google ? { GEMINI_API_KEY: _keyCache.google } : {});
     } else if (cliName === "codex") {
-      args = ["exec", "--skip-git-repo-check", "-"];
+      args = ["exec", "--full-auto", "--skip-git-repo-check", "-"];
       if (model) args.push("-c", "model=\"" + model + "\"");
       env = baseEnv;
       stdinPrompt = prompt;
@@ -212,9 +214,9 @@ async function validateOutput(agentDir) {
     cp.exec(
       "cd " + agentDir + " && " +
       "COMMITS=$(git log --oneline --since='5 minutes ago' 2>/dev/null | wc -l) && " +
-      "CHANGED=$(git diff --name-only 2>/dev/null | wc -l) && " +
+      "DIRTY=$(git status --porcelain 2>/dev/null | wc -l) && " +
       "STAGED=$(git diff --cached --name-only 2>/dev/null | wc -l) && " +
-      "echo \"$COMMITS|$CHANGED|$STAGED\"",
+      "echo \"$COMMITS|$DIRTY|$STAGED\"",
       { timeout: 5000 },
       function (err, stdout) {
         var parts = (stdout || "0|0|0").trim().split("|");

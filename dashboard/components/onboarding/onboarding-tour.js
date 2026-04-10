@@ -5,14 +5,12 @@ class OnboardingTour {
             {
                 title: "Willkommen bei BLUN!",
                 content: "BLUN ist Ihre KI-gestützte Plattform für automatisierte Geschäftsprozesse. Lassen Sie uns gemeinsam die wichtigsten Funktionen entdecken.",
-                video: "/assets/videos/welcome.mp4",
                 target: null,
                 position: "center"
             },
             {
                 title: "Was sind BLUN Agents?",
                 content: "Agents sind spezialisierte KI-Assistenten, die komplexe Aufgaben automatisch erledigen. Jeder Agent hat seine eigene Expertise - von Marketing bis Buchhaltung.",
-                image: "/assets/images/agents-overview.png",
                 target: ".nav-item[data-page='agents']",
                 position: "right"
             },
@@ -20,34 +18,49 @@ class OnboardingTour {
                 title: "Ihre erste Firma anlegen",
                 content: "Hier verwalten Sie Ihre Unternehmensdaten, Teams und Projekte. Klicken Sie auf 'Neue Firma' um zu beginnen.",
                 target: ".nav-item[data-page='companies']",
-                position: "right",
-                highlight: ".btn-primary"
+                position: "right"
             },
             {
                 title: "API-Keys verbinden",
-                content: "Verbinden Sie Ihre bevorzugten Tools und Services über API-Keys. Dies ermöglicht es den Agents, nahtlos mit Ihren bestehenden Systemen zu arbeiten.",
-                target: ".nav-item[data-page='settings']",
-                position: "right",
-                screenshot: "/assets/images/api-keys-setup.png"
+                content: "Verbinden Sie Ihre KI-Anbieter (Claude, OpenAI, Gemini) oder tragen Sie Ihren API-Key ein. Sie können auch eine unserer lokalen KIs installieren.",
+                target: ".nav-item[aria-label='Verbindungen verwalten']",
+                position: "right"
             },
             {
-                title: "Ihr erstes Projekt starten",
-                content: "Erstellen Sie ein neues Projekt und weisen Sie es einem oder mehreren Agents zu. Definieren Sie Ziele und lassen Sie die KI für Sie arbeiten.",
+                title: "Websites bauen",
+                content: "Mit dem Website-Picker erstellen Sie in Minuten eine eigene Webseite. Template auswählen, anpassen, fertig. Optional mit eigener Domain gehostet bei uns.",
+                target: ".nav-item[aria-label='Websites verwalten']",
+                position: "right"
+            },
+            {
+                title: "Software & Apps",
+                content: "Hier bauen Sie eigene Software und Apps ohne Programmierkenntnisse: Sie beschreiben was Ihre Software oder App können soll, die Agents setzen es um. Am Ende Signen Sie Ihr fertiges Produkt — das heißt Sie bestätigen mit einem Klick, dass alles so passt wie Sie es wollten. Erst danach wird es ausgeliefert. So haben Sie immer die Kontrolle und nichts läuft ohne Ihr OK.",
+                target: ".nav-item[aria-label='Software-Tools öffnen']",
+                position: "right"
+            },
+            {
+                title: "Projekte starten",
+                content: "Erstellen Sie ein neues Projekt und instruieren Sie einfach Ihren Operator — er kümmert sich dann um die gesamte Arbeit, verteilt Aufgaben an seine Agents und liefert Ihnen Ergebnisse. Sie müssen sich um nichts weiter kümmern.",
                 target: ".nav-item[data-page='projects']",
-                position: "right",
-                video: "/assets/videos/first-project.mp4"
+                position: "right"
             },
             {
-                title: "Dashboard im Überblick",
-                content: "Hier sehen Sie alle wichtigen Metriken, laufende Projekte und Agent-Status auf einen Blick. Ihr Kontrollzentrum für alle Aktivitäten.",
-                target: ".nav-item[data-page='dashboard']",
+                title: "Abrechnung & Pläne",
+                content: "Hier sehen Sie Ihren aktuellen Plan, verbrauchte Credits und Rechnungen. Upgrade jederzeit möglich, keine Vertragsbindung.",
+                target: ".nav-item[aria-label='Abrechnung einsehen']",
+                position: "right"
+            },
+            {
+                title: "Affiliate-Programm",
+                content: "Wenn Sie mit BLUN Geld verdienen möchten, dann machen Sie Werbung für uns. Hier finden Sie Ihren Empfehlungslink, Provisionen und Auszahlungen.",
+                target: ".nav-item[data-page='affiliate']",
                 position: "right"
             },
             {
                 title: "Los geht's!",
-                content: "Sie sind bereit! Nutzen Sie jederzeit das Hilfe-Menü (?) für weitere Informationen. Viel Erfolg mit BLUN!",
-                target: ".help-btn",
-                position: "left",
+                content: "Sie sind bereit! Nutzen Sie jederzeit das Hilfe-Menü (?) unten rechts für weitere Informationen. Viel Erfolg mit BLUN!",
+                target: null,
+                position: "center",
                 final: true
             }
         ];
@@ -61,10 +74,22 @@ class OnboardingTour {
         this.createStyles();
         this.bindEvents();
 
-        // Check if user is new (first login)
-        if (!localStorage.getItem('blun_onboarding_completed')) {
-            setTimeout(() => this.start(), 1000);
-        }
+        // Only run AFTER user is logged in — poll for blun_token + user data
+        var self = this;
+        var tries = 0;
+        var gate = setInterval(function () {
+            tries++;
+            var token = localStorage.getItem('blun_token');
+            var loginVisible = document.getElementById('authForm') && document.getElementById('authForm').offsetParent !== null;
+            if (token && !loginVisible) {
+                clearInterval(gate);
+                if (!localStorage.getItem('blun_onboarding_completed')) {
+                    setTimeout(function () { self.start(); }, 800);
+                }
+            } else if (tries > 300) {
+                clearInterval(gate); // give up after ~5 min
+            }
+        }, 1000);
     }
 
     createStyles() {
@@ -76,12 +101,12 @@ class OnboardingTour {
                 left: 0;
                 width: 100%;
                 height: 100%;
-                background: rgba(0, 0, 0, 0.8);
+                background: transparent; pointer-events: none;
                 z-index: 10000;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                backdrop-filter: blur(2px);
+                backdrop-filter: none;
                 opacity: 0;
                 transition: opacity 0.3s ease;
             }
@@ -91,7 +116,7 @@ class OnboardingTour {
             }
 
             .onboarding-card {
-                background: var(--bg3);
+                background: var(--bg3); pointer-events: auto;
                 border: 2px solid var(--b);
                 border-radius: 16px;
                 padding: 24px;
@@ -234,10 +259,12 @@ class OnboardingTour {
             }
 
             .onboarding-target-highlight {
-                position: relative;
-                z-index: 9999;
-                box-shadow: 0 0 0 4px var(--b), 0 0 0 8px rgba(59, 130, 246, 0.3);
-                border-radius: 8px;
+                position: relative !important;
+                z-index: 10002 !important;
+                box-shadow: 0 0 0 4px #3b82f6, 0 0 0 8px rgba(59, 130, 246, 0.4) !important;
+                outline: 3px solid #3b82f6 !important;
+                outline-offset: 2px !important;
+                border-radius: 8px !important;
                 animation: pulse-highlight 2s infinite;
             }
 
