@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>BLUN Pixel Office</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: monospace; background: #1a1a1a; overflow: hidden; }
+        #header { position: fixed; top: 0; left: 0; right: 0; height: 30px; background: #333; padding: 8px 12px; color: #fff; z-index: 100; border-bottom: 1px solid #0ff; }
+        #header a { color: #0ff; text-decoration: none; margin-right: 20px; }
+        #header a:hover { text-decoration: underline; }
+        canvas { display: block; margin-top: 30px; }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <a href="/">← Dashboard</a><span id="status">Pixel Office</span>
+    </div>
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const statusEl = document.getElementById('status');
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight - 30;
+
+        // 4 zones layout
+        const zoneW = canvas.width / 2;
+        const zoneH = canvas.height / 2;
+        const zones = [
+            { x: 0, y: 0, w: zoneW, h: zoneH, label: 'API', color: '#f08' },
+            { x: zoneW, y: 0, w: zoneW, h: zoneH, label: 'AUTH', color: '#08f' },
+            { x: 0, y: zoneH, w: zoneW, h: zoneH, label: 'DB', color: '#0f8' },
+            { x: zoneW, y: zoneH, w: zoneW, h: zoneH, label: 'BILLING', color: '#ff8' }
+        ];
+
+        let agents = [];
+        let lastFetch = 0;
+        const pollInterval = 3000;
+        const lerpDuration = 500;
+
+        // Utility: smooth interpolation
+        const lerp = (a, b, t) => a + (b - a) * Math.min(t, 1);
+
+        // Utility: assign agent to zone based on name/id
+        const getZoneForAgent = (agent, idx) => zones[idx % 4];
+
+        // Fetch agents from /api/agents
+        async function fetchAgents() {
+            try {
+                const res = await fetch('/api/agents');
+                if (!res.ok) return;
+                const data = await res.json();
+
+                // Map new data to agents
+                agents = (data || []).map((item, idx) => {
+                    const zone = getZoneForAgent(item, idx);
+                    const targetX = zone.x + Math.random() * (zone.w - 40) + 20;
+                    const targetY = zone.y + Math.random() * (zone.h - 40) + 20;
+
+                    const existing = agents.find(a => a.id === item.id);
+                    if (existing) {
+                        existing.targetX = targetX;
+                        existing.targetY = targetY;
+                        existing.status = item.status || 'idle';
+                        existing.startTime = Date.now();
+                        if (existing.message !== (item.message || '')) {
+                            existing.message = item.message || '';
+                            existing.msgTime = 3000;
+                        }
+                        return existing;
+                    }
+
+                    return {
+                        id: item.id || Math.random(),
+                        name: item.name || `Agent${idx}`,
+                        x: targetX,
+                        y: targetY,
+                        targetX,
+                        targetY,
+                        status: item.status || 'idle',
+                        message: item.message || '',
+                        msgTime: 0,
+                        startTime: Date.now()
+                    };
+                });
+
+                statusEl.textContent = `Pixel Office (${agents.length} agents)`;
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        // Draw zone background + label
+        function drawZone(zone) {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.fillRect(zone.x, zone.y, zone.w, zone.h);
+
+            ctx.strokeStyle = zone.color;
+            ctx.lineWidth = 2;
+            ctx.strokeRect(zone.x, zone.y, zone.w, zone.h);
+
+            ctx.fillStyle = zone.color;
+            ctx.font = 'bold 18px monospace';
+            ctx.fillText(zone.label, zone.x + 12, zone.y + 28);
+        }
+
+        // Draw agent sprite + speech bubble
+        function drawAgent(agent, t) {
+            const x = lerp(agent.x, agent.targetX, t);
+            const y = lerp(agent.y, agent.targetY, t);
+            const size = 16;
+
+            // Status color
+            const statusColor = agent.status === 'busy' ? '#f00' :
+                               agent.status === 'blocked' ? '#ff0' : '#0f0';
+
+            // Sprite circle
+            ctx.fillStyle = statusColor;
+            ctx.beginPath();
+            ctx.arc(x, y, size, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Name label
+            ctx.fillStyle = '#fff';
+            ctx.font = '10px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText(agent.name.slice(0, 2), x, y + 3);
+
+            // Speech bubble
+            if (agent.msgTime > 0) {
+                agent.msgTime -= 16;
+                const bx = x + 28, by = y - 20, bw = 90, bh = 28;
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+                ctx.fillRect(bx, by, bw, bh);
+                ctx.strokeStyle = '#0ff';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(bx, by, bw, bh);
+                ctx.fillStyle = '#0ff';
+                ctx.font = '9px monospace';
+                ctx.textAlign = 'left';
+                const msg = agent.message.slice(0, 12);
+                ctx.fillText(msg, bx + 4, by + 18);
+            }
+
+            agent.x = x;
+            agent.y = y;
+        }
+
+        // Main animation loop
+        function animate() {
+            const now = Date.now();
+
+            // Background
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Zones
+            zones.forEach(drawZone);
+
+            // Agents
+            agents.forEach(agent => {
+                const elapsed = Math.min(now - agent.startTime, lerpDuration);
+                const t = elapsed / lerpDuration;
+                drawAgent(agent, t);
+            });
+
+            // Poll check
+            if (now - lastFetch > pollInterval) {
+                fetchAgents();
+                lastFetch = now;
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        // Responsive
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight - 30;
+        });
+
+        // Start
+        fetchAgents();
+        animate();
+    </script>
+</body>
+</html>
