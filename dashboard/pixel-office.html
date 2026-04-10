@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BLUN Pixel Office</title>
+<style>
+:root {
+  --bg: #12131a;
+  --panel: #1d2030;
+  --line: #2f3348;
+  --text: #e9eef9;
+}
+* { box-sizing: border-box; }
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: radial-gradient(circle at 20% 15%, #1f2536 0%, var(--bg) 55%, #0d0e13 100%);
+  color: var(--text);
+  font-family: "Trebuchet MS", "Verdana", sans-serif;
+}
+.page {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+.topbar {
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(18, 19, 26, 0.92);
+  backdrop-filter: blur(4px);
+}
+.title {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.back {
+  color: var(--text);
+  text-decoration: none;
+  font-size: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.canvas-wrap {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+}
+#pixelOfficeCanvas {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  border: 2px solid #3a3f58;
+  border-radius: 10px;
+  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.45);
+  background: #1a1e2e;
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="topbar">
+    <a class="back" href="/dashboard">&larr; Dashboard</a>
+    <div class="title">Pixel Office MVP</div>
+    <div style="font-size:12px;opacity:.78">Live alle 3s</div>
+  </div>
+  <div class="canvas-wrap">
+    <canvas id="pixelOfficeCanvas" width="960" height="600" aria-label="Pixel Office"></canvas>
+  </div>
+</div>
+<script src="/dashboard/js/pixel-office-page.js"></script>
+</body>
+</html>
