@@ -1,0 +1,173 @@
+/* Mobile Dashboard CSS - iPhone SE (375px) Fix */
+
+@media (max-width: 375px) {
+    /* Hamburger Menu Button */
+    .hamburger-menu {
+        position: fixed;
+        top: 15px;
+        left: 15px;
+        z-index: 1001;
+        width: 44px;
+        height: 44px;
+        background: #2563eb;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+    }
+
+    .hamburger-menu span {
+        width: 20px;
+        height: 2px;
+        background: white;
+        transition: all 0.3s ease;
+    }
+
+    .hamburger-menu.active span:nth-child(1) {
+        transform: rotate(45deg) translate(5px, 5px);
+    }
+
+    .hamburger-menu.active span:nth-child(2) {
+        opacity: 0;
+    }
+
+    .hamburger-menu.active span:nth-child(3) {
+        transform: rotate(-45deg) translate(7px, -6px);
+    }
+
+    /* Sidebar as Drawer */
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: -280px;
+        width: 280px;
+        height: 100vh;
+        background: #1f2937;
+        z-index: 1000;
+        transition: left 0.3s ease;
+        overflow-y: auto;
+        padding-top: 60px;
+    }
+
+    .sidebar.open {
+        left: 0;
+    }
+
+    /* Overlay */
+    .sidebar-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 999;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+    }
+
+    .sidebar-overlay.active {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    /* Navigation Items - 44px Touch Targets */
+    .sidebar nav ul li {
+        margin: 0;
+    }
+
+    .sidebar nav ul li a {
+        display: block;
+        min-height: 44px;
+        padding: 12px 20px;
+        color: #d1d5db;
+        text-decoration: none;
+        border-bottom: 1px solid #374151;
+        display: flex;
+        align-items: center;
+        font-size: 16px;
+        line-height: 20px;
+        touch-action: manipulation;
+    }
+
+    .sidebar nav ul li a:hover,
+    .sidebar nav ul li a:focus {
+        background: #374151;
+        color: white;
+    }
+
+    .sidebar nav ul li a.active {
+        background: #2563eb;
+        color: white;
+    }
+
+    /* Main Content Adjustment */
+    .main-content {
+        margin-left: 0;
+        width: 100%;
+        padding: 70px 15px 20px;
+        transition: none;
+    }
+
+    /* Header Adjustment */
+    .header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 60px;
+        background: white;
+        border-bottom: 1px solid #e5e7eb;
+        z-index: 998;
+        padding: 0 70px 0 15px;
+        display: flex;
+        align-items: center;
+    }
+
+    /* Navigation Icons */
+    .sidebar nav ul li a .icon {
+        width: 20px;
+        height: 20px;
+        margin-right: 12px;
+        flex-shrink: 0;
+    }
+
+    /* Close Button in Sidebar */
+    .sidebar .close-btn {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        width: 44px;
+        height: 44px;
+        background: none;
+        border: none;
+        color: #9ca3af;
+        font-size: 24px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+    }
+
+    .sidebar .close-btn:hover {
+        background: #374151;
+        color: white;
+    }
+}
+
+/* JavaScript Toggle Functions */
+.js-sidebar-toggle {
+    display: none;
+}
+
+@media (max-width: 375px) {
+    .js-sidebar-toggle {
+        display: block;
+    }
+}
