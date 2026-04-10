@@ -1,75 +1,102 @@
-// /root/blun/src/middleware/rate-limiter.js
-// IP-basiertes Rate Limiting: Differenziert Public (10/min) vs. Protected (120/min)
+const { Redis } = require('@upstash/redis');
 
-const WINDOW_MS = 60 * 1000;
-const PUBLIC_LIMIT = 10;      // /api/contact, /api/newsletter/subscribe
-const PROTECTED_LIMIT = 120;   // All /api/* routes (auth required)
-const ADMIN_LIMIT = 30;        // /api/admin/* routes (extra strict)
-
-// Track hits: { ip: { count: N, start: timestamp, type: 'public'|'protected'|'admin' } }
-const hits = new Map();
-
-// Cleanup old entries every 5 minutes
-setInterval(function () {
-  const now = Date.now();
-  for (const [ip, entry] of hits) {
-    if (now - entry.start > WINDOW_MS) {
-      hits.delete(ip);
-    }
-  }
-}, 5 * 60 * 1000);
-
-function rateLimiter(req, res, next) {
-  const ip = req.ip || req.socket.remoteAddress || 'unknown';
-
-  // Localhost / internal requests are EXEMPT
-  if (ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1') {
-    return next();
-  }
-
-  // Determine endpoint type
-  let endpointType = 'protected';
-  let limit = PROTECTED_LIMIT;
-
-  // Public endpoints (strict limit)
-  if (req.path === '/api/contact' ||
-      req.path === '/api/newsletter/subscribe' ||
-      req.path === '/api/newsletter/unsubscribe' ||
-      req.path === '/api/i18n/detect' ||
-      req.path === '/api/i18n/languages' ||
-      req.path.startsWith('/api/i18n/')) {
-    endpointType = 'public';
-    limit = PUBLIC_LIMIT;
-  }
-  // Admin endpoints (very strict)
-  else if (req.path.startsWith('/api/admin')) {
-    endpointType = 'admin';
-    limit = ADMIN_LIMIT;
-  }
-
-  const now = Date.now();
-  let entry = hits.get(ip);
-
-  // New time window or first request
-  if (!entry || now - entry.start > WINDOW_MS) {
-    entry = { count: 1, start: now, type: endpointType };
-    hits.set(ip, entry);
-    return next();
-  }
-
-  entry.count++;
-
-  // Check limit
-  if (entry.count > limit) {
-    return res.status(429).json({
-      error: 'Too many requests',
-      type: endpointType,
-      limit: limit,
-      retry_after: Math.ceil((entry.start + WINDOW_MS - now) / 1000)
-    });
-  }
-
-  next();
+let redis;
+try {
+  redis = new Redis({
+    url: process.env.UPSTASH_REDIS_REST_URL,
+    token: process.env.UPSTASH_REDIS_REST_TOKEN,
+  });
+} catch (e) {
+  console.warn('Redis connection failed, falling back to in-memory rate limiter.');
+  redis = null;
 }
+
+const inMemoryStore = {};
+
+const plans = {
+  free: {
+    limit: 60,
+    window: 60, // 60 seconds
+  },
+  pro: {
+    limit: 300,
+    window: 60, // 60 seconds
+  },
+};
+
+const rateLimiter = async (req, res, next) => {
+  const userId = req.user ? req.user.id : req.ip; // Fallback to IP if no user
+  if (!userId) {
+    return res.status(401).send('Unauthorized');
+  }
+
+  const userPlan = (req.user && req.user.plan && plans[req.user.plan]) ? req.user.plan : 'free';
+  const { limit, window } = plans[userPlan];
+  const key = `rate-limit:${userId}`;
+  const now = Math.floor(Date.now() / 1000);
+
+  let requests = [];
+  let remaining = limit;
+
+  try {
+    if (redis) {
+      const transaction = redis.multi();
+      transaction.lrange(key, 0, -1);
+      transaction.expire(key, window);
+      const [history, _] = await transaction.exec();
+      
+      requests = history.map(Number);
+
+    } else {
+      requests = inMemoryStore[key] || [];
+    }
+
+    // Filter out requests that are outside the current window
+    const validRequests = requests.filter(timestamp => timestamp > now - window);
+
+    if (validRequests.length >= limit) {
+        const resetTime = (validRequests.length > 0 ? validRequests[0] : now) + window;
+        res.setHeader('X-RateLimit-Limit', limit);
+        res.setHeader('X-RateLimit-Remaining', 0);
+        res.setHeader('Retry-After', resetTime - now);
+        return res.status(429).send('Too Many Requests');
+    }
+    
+    remaining = limit - validRequests.length -1;
+    
+    // Add current request timestamp
+    validRequests.push(now);
+
+    if (redis) {
+      const transaction = redis.multi();
+      transaction.del(key);
+      transaction.rpush(key, ...validRequests);
+      transaction.expire(key, window);
+      await transaction.exec();
+    } else {
+      inMemoryStore[key] = validRequests;
+      // Clean up old entries from in-memory store periodically
+      setTimeout(() => {
+        const cleanupNow = Math.floor(Date.now() / 1000);
+        if(inMemoryStore[key]){
+             inMemoryStore[key] = inMemoryStore[key].filter(timestamp => timestamp > cleanupNow - window);
+             if(inMemoryStore[key].length === 0){
+                 delete inMemoryStore[key];
+             }
+        }
+      }, window * 1000 + 100);
+    }
+
+    res.setHeader('X-RateLimit-Limit', limit);
+    res.setHeader('X-RateLimit-Remaining', remaining);
+
+    return next();
+
+  } catch (error) {
+    console.error('Rate limiter error:', error);
+    // If there's an error (e.g., Redis down), fail open and let the request through.
+    return next();
+  }
+};
 
 module.exports = rateLimiter;
