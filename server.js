@@ -154,6 +154,8 @@ const inputSanitizer = require("./src/middleware/input-sanitizer");
 const inputValidator = require("./src/middleware/input-validator");
 const rateLimiter = require("./src/middleware/rate-limiter");
 const requestLogger = require("./src/middleware/request-logger");
+const errorHandler = require("./src/middleware/error-handler");
+const rateLimit = require("./src/middleware/rate-limit");
 app.use(inputValidator);
 app.use(inputSanitizer);
 app.use(rateLimiter);
