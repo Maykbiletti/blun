@@ -48,6 +48,7 @@ const voiceRoutes = require("./src/routes/voice");
 const blunCodeRoutes = require("./src/routes/blun-code");
 const monitorRoutes = require("./src/routes/monitor");
 const adminPlansRoutes = require("./src/routes/admin-plans");
+const tenantApiRoutes = require("./src/routes/tenant-api");
 const i18nRoutes = require("./src/routes/i18n");
 const teamsRoutes = require("./src/routes/teams");
 const connectionsRoutes = require("./src/routes/connections");
@@ -162,6 +163,7 @@ app.use(inputValidator);
 app.use(inputSanitizer);
 app.use(rateLimiter);
 
+app.use("/", tenantApiRoutes);
 app.use("/api/i18n", i18nRoutes);
 // Auth middleware — accept cookie session OR x-blun-key header
 app.use("/api", function (req, res, next) {
