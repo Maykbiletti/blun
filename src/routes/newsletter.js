@@ -3,6 +3,7 @@
 const express = require("express");
 const { pool } = require("../db");
 const { authenticate } = require("../middleware/auth");
+const { validateNewsletterPayload, renderNewsletterHtml } = require("../services/newsletter-renderer");
 
 var router = express.Router();
 
@@ -91,22 +92,91 @@ router.post("/send", authenticate, async function (req, res) {
       return res.status(403).json({ error: "Admin access required." });
     }
     var { subject, body, template, scheduled_at } = req.body;
-    if (!subject || !body) {
+    if (!subject) {
+      return res.status(400).json({ error: "Subject and body are required." });
+    }
+    if ((template || "simple") !== "marketing_rich" && !body) {
       return res.status(400).json({ error: "Subject and body are required." });
     }
     // Validate subject/body length
-    if (subject.length > 200 || body.length > 10000) {
+    if (subject.length > 200 || (body && body.length > 10000)) {
       return res.status(400).json({ error: "Subject or body too long." });
     }
+    var finalSubject = subject.trim();
+    var finalBody = body ? body.trim() : "";
+    var selectedTemplate = template || "simple";
+    if (selectedTemplate === "marketing_rich") {
+      var payloadValidation = validateNewsletterPayload({
+        subject: finalSubject,
+        body: finalBody,
+        preheader: req.body.preheader,
+        cta_label: req.body.cta_label,
+        cta_url: req.body.cta_url,
+        sections: req.body.sections,
+        campaign: req.body.campaign
+      });
+      if (!payloadValidation.valid) {
+        return res.status(400).json({ error: payloadValidation.error });
+      }
+      var rendered = renderNewsletterHtml({
+        subject: finalSubject,
+        body: finalBody,
+        preheader: req.body.preheader,
+        cta_label: req.body.cta_label,
+        cta_url: req.body.cta_url,
+        sections: req.body.sections,
+        campaign: req.body.campaign
+      });
+      if (!rendered.ok) {
+        return res.status(400).json({ error: rendered.error || "Failed to render template." });
+      }
+      finalBody = rendered.html;
+    }
+
     var status = scheduled_at ? "scheduled" : "draft";
     var result = await pool.query(
       "INSERT INTO newsletters (subject, body, template, status, scheduled_at) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-      [subject.trim(), body.trim(), template || "simple", status, scheduled_at || null]
+      [finalSubject, finalBody, selectedTemplate, status, scheduled_at || null]
     );
     res.json({ ok: true, newsletter: result.rows[0] });
   } catch (err) {
     console.error("[newsletter] Send error:", err.message);
     res.status(500).json({ error: "Failed to save newsletter." });
+  }
+});
+
+// POST /api/newsletter/preview — admin only (auth required)
+router.post("/preview", authenticate, async function (req, res) {
+  try {
+    if (!req.user || (req.user.role !== "admin" && req.user.role !== "owner")) {
+      return res.status(403).json({ error: "Admin access required." });
+    }
+    var payload = {
+      subject: req.body.subject,
+      body: req.body.body || req.body.intro,
+      preheader: req.body.preheader,
+      cta_label: req.body.cta_label,
+      cta_url: req.body.cta_url,
+      sections: req.body.sections,
+      campaign: req.body.campaign
+    };
+    var validation = validateNewsletterPayload(payload);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
+    }
+    var rendered = renderNewsletterHtml(payload);
+    if (!rendered.ok) {
+      return res.status(400).json({ error: rendered.error || "Template rendering failed." });
+    }
+    res.json({
+      ok: true,
+      html: rendered.html,
+      text: rendered.text,
+      meta: rendered.meta
+    });
+  } catch (err) {
+    console.error("[newsletter] Preview error:", err.message);
+    res.status(500).json({ error: "Failed to render newsletter preview." });
   }
 });
 
