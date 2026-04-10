@@ -64,6 +64,93 @@ function buildPrompt(agent, task, agentDir) {
     "6. NIEMALS agent-engine.js, server.js, index.html, db.js aendern";
 }
 
+function sanitizeText(value, maxLen) {
+  var v = (value || "").toString();
+  v = v.replace(/\u0000/g, "");
+  if (v.length > maxLen) return v.substring(0, maxLen);
+  return v;
+}
+
+function safeJsonParse(value, fallback) {
+  try { return JSON.parse(value); } catch (e) { return fallback; }
+}
+
+async function collectTaskEvidence(agentDir, taskId, startHead, cliResult) {
+  return new Promise(function (resolve) {
+    var command =
+      "cd " + agentDir + " && " +
+      "START='" + String(startHead || "").replace(/'/g, "") + "'; " +
+      "if [ -n \"$START\" ] && git rev-parse --verify \"$START\" >/dev/null 2>&1; then RANGE=\"$START..HEAD\"; else RANGE=\"HEAD~10..HEAD\"; fi; " +
+      "COMMITS=$(git rev-list --max-count=10 \"$RANGE\" 2>/dev/null | tr '\\n' ' '); " +
+      "FILES=$(git diff --name-only \"$RANGE\" 2>/dev/null | tr '\\n' ' '); " +
+      "LATEST=$(git show --name-only --pretty=format: --no-renames HEAD 2>/dev/null | awk 'NF' | head -n 120 | tr '\\n' ' '); " +
+      "STATS=$(git show --shortstat --pretty=format: HEAD 2>/dev/null | tail -n 1 | sed 's/^[[:space:]]*//'); " +
+      "echo \"{\\\"task_id\\\":" + Number(taskId || 0) + ",\\\"commit_shas\\\":\\\"$COMMITS\\\",\\\"files\\\":\\\"$FILES\\\",\\\"latest_files\\\":\\\"$LATEST\\\",\\\"latest_stat\\\":\\\"$STATS\\\"}\"";
+
+    cp.exec(command, { timeout: 8000 }, function (err, stdout) {
+      if (err) {
+        resolve({
+          task_id: taskId,
+          commit_shas: [],
+          files: [],
+          latest_files: [],
+          latest_stat: "",
+          cli_output_excerpt: sanitizeText(cliResult && cliResult.output, 4000),
+          cli_exit_code: cliResult && cliResult.code
+        });
+        return;
+      }
+
+      var parsed = safeJsonParse((stdout || "").trim(), {});
+      var commits = (parsed.commit_shas || "").trim().split(/\s+/).filter(function (x) { return x && x.length > 0; });
+      var files = (parsed.files || "").trim().split(/\s+/).filter(function (x) { return x && x.length > 0; });
+      var latestFiles = (parsed.latest_files || "").trim().split(/\s+/).filter(function (x) { return x && x.length > 0; }).slice(0, 120);
+
+      resolve({
+        task_id: taskId,
+        commit_shas: commits,
+        files: files,
+        latest_files: latestFiles,
+        latest_stat: sanitizeText(parsed.latest_stat || "", 600),
+        cli_output_excerpt: sanitizeText(cliResult && cliResult.output, 4000),
+        cli_exit_code: cliResult && cliResult.code
+      });
+    });
+  });
+}
+
+function isMetadataOnlyDelivery(payload) {
+  if (!payload || typeof payload !== "object") return true;
+  var hasCommitEvidence = Array.isArray(payload.commit_shas) && payload.commit_shas.length > 0;
+  var hasFileEvidence =
+    (Array.isArray(payload.files) && payload.files.length > 0) ||
+    (Array.isArray(payload.latest_files) && payload.latest_files.length > 0);
+  var hasOutputEvidence = typeof payload.cli_output_excerpt === "string" && payload.cli_output_excerpt.trim().length >= 120;
+  return !(hasCommitEvidence || hasFileEvidence || hasOutputEvidence);
+}
+
+function buildCompletedResultPayload(agent, task, cliName, cliResult, validation, commitsAfter, evidence) {
+  var payload = {
+    task_id: task.id,
+    task_title: sanitizeText(task.task, 240),
+    agent_id: agent.id || null,
+    agent_name: agent.name || null,
+    cli: cliName,
+    model: agent.model || null,
+    status: "completed",
+    commits: commitsAfter,
+    changed_files_count: validation.changedFiles,
+    output_length: (cliResult.output || "").length,
+    commit_shas: evidence.commit_shas || [],
+    files: evidence.files || [],
+    latest_files: evidence.latest_files || [],
+    latest_stat: evidence.latest_stat || "",
+    cli_exit_code: evidence.cli_exit_code,
+    cli_output_excerpt: evidence.cli_output_excerpt || ""
+  };
+  return payload;
+}
+
 function runCLI(cliName, model, prompt, agentDir) {
   return new Promise(function (resolve) {
     var args, env, stdinPrompt = null;
@@ -111,6 +198,12 @@ async function executeTask(agent, task, queryFn) {
 
   var cliName = pickCLI(agent.model);
   var prompt = buildPrompt(agent, task, agentDir);
+  var startHead = "";
+  try {
+    startHead = cp.execSync("cd " + agentDir + " && git rev-parse --verify HEAD 2>/dev/null", { timeout: 2500 }).toString().trim();
+  } catch (e) {
+    startHead = "";
+  }
 
   await queryFn("UPDATE agent_tasks SET status = 'processing' WHERE id = $1", [task.id]);
   console.log("[task-runner] " + agent.name + " [" + cliName + "/" + (agent.model || "default") + "] task #" + task.id + ": " + task.task.substring(0, 80));
@@ -171,8 +264,24 @@ async function executeTask(agent, task, queryFn) {
   }
 
   // All good: complete
+  var evidence = await collectTaskEvidence(agentDir, task.id, startHead, result);
+  var completedPayload = buildCompletedResultPayload(agent, task, cliName, result, validation, commitsAfter, evidence);
+
+  if (isMetadataOnlyDelivery(completedPayload)) {
+    await queryFn("UPDATE agent_tasks SET status = 'failed', result = $1 WHERE id = $2",
+      [JSON.stringify({
+        cli: cliName,
+        model: agent.model,
+        reason: "metadata-only delivery blocked",
+        output_length: (result.output || "").length,
+        changed_files: validation.changedFiles
+      }), task.id]);
+    console.log("[task-runner] " + agent.name + " FAIL #" + task.id + " — metadata-only delivery blocked");
+    return { pass: false, cli: cliName, reason: "metadata-only delivery blocked" };
+  }
+
   await queryFn("UPDATE agent_tasks SET status = 'completed', result = $1, completed_at = NOW() WHERE id = $2",
-    [JSON.stringify({ cli: cliName, model: agent.model, commits: commitsAfter, files: validation.changedFiles, output_length: result.output.length }), task.id]);
+    [JSON.stringify(completedPayload), task.id]);
   console.log("[task-runner] " + agent.name + " PASS #" + task.id + " — " + commitsAfter + " commits, " + validation.changedFiles + " files, clean tree");
   return { pass: true, cli: cliName, commits: commitsAfter, files: validation.changedFiles };
 }
