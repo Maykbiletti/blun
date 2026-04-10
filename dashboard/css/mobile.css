@@ -1,0 +1,329 @@
+/* Mobile Dashboard CSS - iPhone SE (375px) Fix */
+
+@media (max-width: 375px) {
+    /* Hamburger Menu Button */
+    .hamburger-menu {
+        position: fixed;
+        top: 15px;
+        left: 15px;
+        z-index: 1001;
+        width: 44px;
+        height: 44px;
+        background: #2563eb;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+    }
+
+    .hamburger-menu span {
+        width: 20px;
+        height: 2px;
+        background: white;
+        transition: all 0.3s ease;
+    }
+
+    .hamburger-menu.active span:nth-child(1) {
+        transform: rotate(45deg) translate(5px, 5px);
+    }
+
+    .hamburger-menu.active span:nth-child(2) {
+        opacity: 0;
+    }
+
+    .hamburger-menu.active span:nth-child(3) {
+        transform: rotate(-45deg) translate(7px, -6px);
+    }
+
+    /* Sidebar as Drawer */
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 280px;
+        height: 100vh;
+        background: #1f2937;
+        z-index: 1000;
+        transform: translateX(-100%);
+        transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+        overflow-y: auto;
+        padding-top: 60px;
+        will-change: transform;
+    }
+
+    .sidebar.open {
+        transform: translateX(0);
+    }
+
+    /* Overlay */
+    .sidebar-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 999;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), visibility 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+        cursor: pointer;
+        backdrop-filter: blur(2px);
+    }
+
+    .sidebar-overlay.active {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    /* Navigation Items - 44px Touch Targets */
+    .sidebar nav ul li {
+        margin: 0;
+    }
+
+    .sidebar nav ul li a {
+        display: block;
+        min-height: 44px;
+        padding: 12px 20px;
+        color: #d1d5db;
+        text-decoration: none;
+        border-bottom: 1px solid #374151;
+        display: flex;
+        align-items: center;
+        font-size: 16px;
+        line-height: 20px;
+        touch-action: manipulation;
+    }
+
+    .sidebar nav ul li a:hover,
+    .sidebar nav ul li a:focus {
+        background: #374151;
+        color: white;
+    }
+
+    .sidebar nav ul li a.active {
+        background: #2563eb;
+        color: white;
+    }
+
+    /* Main Content Adjustment */
+    .main-content {
+        margin-left: 0;
+        width: 100%;
+        padding: 70px 15px 20px;
+        transition: none;
+    }
+
+    /* Header Adjustment */
+    .header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 60px;
+        background: white;
+        border-bottom: 1px solid #e5e7eb;
+        z-index: 998;
+        padding: 0 70px 0 15px;
+        display: flex;
+        align-items: center;
+    }
+
+    /* Navigation Icons */
+    .sidebar nav ul li a .icon {
+        width: 20px;
+        height: 20px;
+        margin-right: 12px;
+        flex-shrink: 0;
+    }
+
+    /* Close Button in Sidebar */
+    .sidebar .close-btn {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        width: 44px;
+        height: 44px;
+        background: none;
+        border: none;
+        color: #9ca3af;
+        font-size: 24px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+    }
+
+    .sidebar .close-btn:hover {
+        background: #374151;
+        color: white;
+    }
+
+    /* Billing Page - Pricing Table Fixes */
+    .pricing-container {
+        max-width: 100%;
+        overflow-x: hidden;
+        padding: 0 10px;
+    }
+
+    .pricing-table {
+        display: none; /* Hide table on mobile */
+    }
+
+    /* Convert Table to Cards */
+    .pricing-cards {
+        display: block;
+        gap: 15px;
+    }
+
+    .pricing-card {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 20px 15px;
+        margin-bottom: 15px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .pricing-card h3 {
+        font-size: 18px;
+        font-weight: 600;
+        margin: 0 0 10px 0;
+        color: #111827;
+    }
+
+    .pricing-card .price {
+        font-size: 24px;
+        font-weight: 700;
+        color: #2563eb;
+        margin: 10px 0 15px 0;
+    }
+
+    .pricing-card .features {
+        list-style: none;
+        padding: 0;
+        margin: 15px 0;
+    }
+
+    .pricing-card .features li {
+        padding: 5px 0;
+        border-bottom: 1px solid #f3f4f6;
+        font-size: 14px;
+        line-height: 20px;
+    }
+
+    .pricing-card .features li:last-child {
+        border-bottom: none;
+    }
+
+    .pricing-card .cta-button {
+        width: 100%;
+        padding: 12px;
+        background: #2563eb;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 16px;
+        font-weight: 500;
+        cursor: pointer;
+        text-align: center;
+        text-decoration: none;
+        display: block;
+        margin-top: 15px;
+    }
+
+    .pricing-card .cta-button:hover {
+        background: #1d4ed8;
+    }
+
+    /* Billing Tables General */
+    .billing-table-wrapper {
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        border-radius: 8px;
+        margin: 15px 0;
+    }
+
+    .billing-table {
+        min-width: 100%;
+        font-size: 14px;
+    }
+
+    .billing-table th,
+    .billing-table td {
+        padding: 8px 10px;
+        white-space: nowrap;
+    }
+
+    /* Invoice Summary Cards */
+    .invoice-summary {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .invoice-summary-card {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 15px;
+    }
+
+    .invoice-summary-card .label {
+        font-size: 12px;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 5px;
+    }
+
+    .invoice-summary-card .value {
+        font-size: 18px;
+        font-weight: 600;
+        color: #1e293b;
+    }
+}
+
+/* Mobile Devices 376px - 768px */
+@media (min-width: 376px) and (max-width: 768px) {
+    .pricing-container {
+        max-width: 100%;
+        overflow-x: hidden;
+        padding: 0 15px;
+    }
+
+    .pricing-table {
+        font-size: 14px;
+        width: 100%;
+        table-layout: fixed;
+    }
+
+    .pricing-table th,
+    .pricing-table td {
+        padding: 8px 5px;
+        word-wrap: break-word;
+    }
+
+    .billing-table-wrapper {
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+/* JavaScript Toggle Functions */
+.js-sidebar-toggle {
+    display: none;
+}
+
+@media (max-width: 375px) {
+    .js-sidebar-toggle {
+        display: block;
+    }
+}
