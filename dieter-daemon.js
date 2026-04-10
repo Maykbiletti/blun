@@ -12,7 +12,7 @@ var _runningTasks = new Set();
 const BLUN_PORT = process.env.BLUN_PORT || 3200;
 const API_KEY = process.env.BLUN_API_KEY || 'blun-dev-key';
 const AGENT_ID = 1; // Dieter
-const CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
+const CHECK_INTERVAL = 1 * 60 * 1000; // 1 minute
 const DEPLOY_INTERVAL = 150 * 60 * 1000; // 2.5 hours between deploys
 var lastDeployTime = 0;
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
@@ -546,10 +546,28 @@ async function autoIntegrate(db) {
       }
 
       var branch = "agent/" + agent.name.toLowerCase();
+      // Safety: skip if agent worktree is on a non-agent branch (feature/*, etc.)
+      var worktreeBranch = "";
       try {
-        var mergeOut = execSync("cd /root/blun && git merge " + branch + " --no-edit 2>&1").toString();
+        worktreeBranch = execSync("cd " + dir + " && git rev-parse --abbrev-ref HEAD 2>/dev/null").toString().trim();
+      } catch(eBr) { worktreeBranch = ""; }
+      if (worktreeBranch && worktreeBranch !== branch) {
+        log("Skip auto-merge " + agent.name + ": worktree on " + worktreeBranch + " (not " + branch + ")");
+        continue;
+      }
+      try {
+        var mergeOut = "";
+        try {
+          mergeOut = execSync("cd /root/blun && git merge " + branch + " --no-edit 2>&1").toString();
+        } catch(mergeExecErr) {
+          // execSync throws on non-zero exit — ALWAYS abort to clean up half-merge state
+          try { execSync("cd /root/blun && git merge --abort 2>/dev/null"); } catch(eAbort) {}
+          log("Merge failed " + agent.name + ": " + (mergeExecErr.stdout || mergeExecErr.message || "unknown").toString().substring(0, 200));
+          failed.push(agent.name + " (merge failed)");
+          continue;
+        }
         if (mergeOut.indexOf("CONFLICT") !== -1) {
-          execSync("cd /root/blun && git merge --abort 2>/dev/null");
+          try { execSync("cd /root/blun && git merge --abort 2>/dev/null"); } catch(eAbort) {}
           failed.push(agent.name + " (merge conflict)");
           continue;
         }
@@ -583,6 +601,7 @@ async function autoIntegrate(db) {
         execSync("cd " + dir + " && git reset --hard main 2>/dev/null");
         await db.query("UPDATE agent_tasks SET status = 'completed', completed_at = NOW() WHERE agent_id = $1 AND status IN ('processing', 'in_progress')", [agent.id]);
       } catch(mergeErr) {
+        try { execSync("cd /root/blun && git merge --abort 2>/dev/null"); } catch(eA) {}
         log("Merge error " + agent.name + ": " + mergeErr.message);
         failed.push(agent.name + " (merge error)");
       }

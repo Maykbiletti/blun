@@ -123,17 +123,88 @@ async function executeTask(agent, task, queryFn) {
 
   var validation = await validateOutput(agentDir);
 
-  if (validation.hasCommit || validation.hasChanges) {
-    await queryFn("UPDATE agent_tasks SET status = 'completed', result = $1, completed_at = NOW() WHERE id = $2",
-      [JSON.stringify({ cli: cliName, model: agent.model, commits: validation.commits, files: validation.changedFiles, output_length: result.output.length }), task.id]);
-    console.log("[task-runner] " + agent.name + " PASS #" + task.id + " — " + validation.commits + " commits, " + validation.changedFiles + " files");
-    return { pass: true, cli: cliName, commits: validation.commits, files: validation.changedFiles };
-  } else {
+  // STRICT RULE 1: No changes at all -> no code output, retry
+  if (!validation.hasCommit && !validation.hasChanges) {
     await queryFn("UPDATE agent_tasks SET status = 'pending', result = $1 WHERE id = $2",
       [JSON.stringify({ cli: cliName, model: agent.model, reason: "no code output", code: result.code, sample: (result.output || "").substring(0, 300) }), task.id]);
     console.log("[task-runner] " + agent.name + " FAIL #" + task.id + " — no code output (cli=" + cliName + ", code=" + result.code + ")");
     return { pass: false, cli: cliName, reason: "no code output" };
   }
+
+  // STRICT RULE 2: Check for merge conflict markers — agents must not leave them
+  var conflictCheck = await checkConflicts(agentDir);
+  if (conflictCheck.hasConflicts) {
+    await queryFn("UPDATE agent_tasks SET status = 'failed', result = $1 WHERE id = $2",
+      [JSON.stringify({ cli: cliName, model: agent.model, reason: "merge conflict markers in working tree", files: conflictCheck.files }), task.id]);
+    // Create fix-task for the same agent
+    var fixText = "FIX MERGE CONFLICT [task #" + task.id + "]: Dein letzter Task hat Merge-Konflikt-Marker hinterlassen in: " + conflictCheck.files.join(", ") + ". Loese die Konflikte auf (manuell entscheiden welche Seite oder beide zusammenfuehren), git add, git commit. Dann ist der Task done.";
+    try {
+      await queryFn("INSERT INTO agent_tasks (agent_id, task, status, priority) VALUES ($1, $2, 'pending', 30)", [agent.id, fixText]);
+    } catch(e) {}
+    console.log("[task-runner] " + agent.name + " FAIL #" + task.id + " — merge conflict markers: " + conflictCheck.files.join(","));
+    return { pass: false, cli: cliName, reason: "merge conflict markers" };
+  }
+
+  // STRICT RULE 3: Uncommitted changes exist -> auto-commit so work is preserved
+  var commitsAfter = validation.commits;
+  if (validation.hasChanges && !validation.hasCommit) {
+    var autoCommit = await autoCommitChanges(agentDir, agent.name, task.id);
+    if (!autoCommit.success) {
+      await queryFn("UPDATE agent_tasks SET status = 'failed', result = $1 WHERE id = $2",
+        [JSON.stringify({ cli: cliName, model: agent.model, reason: "auto-commit failed", error: autoCommit.error }), task.id]);
+      console.log("[task-runner] " + agent.name + " FAIL #" + task.id + " — auto-commit failed: " + autoCommit.error);
+      return { pass: false, cli: cliName, reason: "auto-commit failed" };
+    }
+    commitsAfter = (commitsAfter || 0) + 1;
+    console.log("[task-runner] " + agent.name + " AUTO-COMMIT #" + task.id + " — " + autoCommit.sha);
+  }
+
+  // STRICT RULE 4: Working tree must be clean after commit
+  var finalCheck = await validateOutput(agentDir);
+  if (finalCheck.hasChanges) {
+    await queryFn("UPDATE agent_tasks SET status = 'failed', result = $1 WHERE id = $2",
+      [JSON.stringify({ cli: cliName, model: agent.model, reason: "working tree still dirty after commit attempt" }), task.id]);
+    console.log("[task-runner] " + agent.name + " FAIL #" + task.id + " — working tree still dirty");
+    return { pass: false, cli: cliName, reason: "working tree dirty" };
+  }
+
+  // All good: complete
+  await queryFn("UPDATE agent_tasks SET status = 'completed', result = $1, completed_at = NOW() WHERE id = $2",
+    [JSON.stringify({ cli: cliName, model: agent.model, commits: commitsAfter, files: validation.changedFiles, output_length: result.output.length }), task.id]);
+  console.log("[task-runner] " + agent.name + " PASS #" + task.id + " — " + commitsAfter + " commits, " + validation.changedFiles + " files, clean tree");
+  return { pass: true, cli: cliName, commits: commitsAfter, files: validation.changedFiles };
+}
+
+async function checkConflicts(agentDir) {
+  return new Promise(function (resolve) {
+    cp.exec(
+      "cd " + agentDir + " && git diff --check 2>&1 | grep -E 'leftover conflict|conflict marker' | awk -F: '{print $1}' | sort -u",
+      { timeout: 5000 },
+      function (err, stdout) {
+        var files = (stdout || "").trim().split("\n").filter(function(x){ return x.length > 0; });
+        resolve({ hasConflicts: files.length > 0, files: files });
+      }
+    );
+  });
+}
+
+async function autoCommitChanges(agentDir, agentName, taskId) {
+  return new Promise(function (resolve) {
+    var msg = "auto: task #" + taskId + " (" + agentName + ")";
+    cp.exec(
+      "cd " + agentDir + " && git add -A && BLUN_DEPLOYER=dieter GIT_SSH_COMMAND='ssh -i ~/.ssh/id_ed25519_github -o StrictHostKeyChecking=no' git -c user.email='" + agentName.toLowerCase() + "@blun.ai' -c user.name='" + agentName + "' commit -m '" + msg.replace(/'/g, "") + "' 2>&1 && git rev-parse --short HEAD",
+      { timeout: 15000 },
+      function (err, stdout, stderr) {
+        if (err) {
+          resolve({ success: false, error: (stderr || stdout || err.message).substring(0, 300) });
+          return;
+        }
+        var lines = (stdout || "").trim().split("\n");
+        var sha = lines[lines.length - 1] || "unknown";
+        resolve({ success: true, sha: sha });
+      }
+    );
+  });
 }
 
 async function validateOutput(agentDir) {
