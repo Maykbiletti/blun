@@ -1,4 +1,8 @@
 /* Modal Base Styles */
+body.modal-open {
+  overflow: hidden;
+}
+
 .modal {
   position: fixed;
   top: 0;
