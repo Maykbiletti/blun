@@ -212,3 +212,13 @@
     font-size: 1rem;
   }
 }
+
+@media (max-width: 640px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .agent-card {
+    padding: 12px;
+  }
+}
