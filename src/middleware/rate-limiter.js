@@ -1,102 +1,73 @@
-const { Redis } = require('@upstash/redis');
+"use strict";
 
-let redis;
-try {
-  redis = new Redis({
-    url: process.env.UPSTASH_REDIS_REST_URL,
-    token: process.env.UPSTASH_REDIS_REST_TOKEN,
-  });
-} catch (e) {
-  console.warn('Redis connection failed, falling back to in-memory rate limiter.');
-  redis = null;
+const WINDOW_MS = 60 * 1000;
+const MAX_REQUESTS = 100;
+const agentBuckets = new Map();
+
+function getAgentId(req) {
+  if (req.agent && req.agent.id != null) return String(req.agent.id);
+  if (req.user && req.user.agent_id != null) return String(req.user.agent_id);
+  if (req.user && req.user.agentId != null) return String(req.user.agentId);
+  if (req.params && req.params.agentId != null) return String(req.params.agentId);
+  if (req.body && req.body.agentId != null) return String(req.body.agentId);
+  if (req.query && req.query.agentId != null) return String(req.query.agentId);
+
+  const headerAgentId = req.headers && (
+    req.headers["x-agent-id"] ||
+    req.headers["x-blun-agent-id"] ||
+    req.headers["agent-id"]
+  );
+  if (headerAgentId != null && headerAgentId !== "") return String(headerAgentId);
+
+  return null;
 }
 
-const inMemoryStore = {};
+function prune(now) {
+  for (const [agentId, state] of agentBuckets.entries()) {
+    if (now >= state.resetAt) {
+      agentBuckets.delete(agentId);
+    }
+  }
+}
 
-const plans = {
-  free: {
-    limit: 60,
-    window: 60, // 60 seconds
-  },
-  pro: {
-    limit: 300,
-    window: 60, // 60 seconds
-  },
-};
+function rateLimiter(req, res, next) {
+  const now = Date.now();
 
-const rateLimiter = async (req, res, next) => {
-  const userId = req.user ? req.user.id : req.ip; // Fallback to IP if no user
-  if (!userId) {
-    return res.status(401).send('Unauthorized');
+  if (Math.random() < 0.05) {
+    prune(now);
   }
 
-  const userPlan = (req.user && req.user.plan && plans[req.user.plan]) ? req.user.plan : 'free';
-  const { limit, window } = plans[userPlan];
-  const key = `rate-limit:${userId}`;
-  const now = Math.floor(Date.now() / 1000);
-
-  let requests = [];
-  let remaining = limit;
-
-  try {
-    if (redis) {
-      const transaction = redis.multi();
-      transaction.lrange(key, 0, -1);
-      transaction.expire(key, window);
-      const [history, _] = await transaction.exec();
-      
-      requests = history.map(Number);
-
-    } else {
-      requests = inMemoryStore[key] || [];
-    }
-
-    // Filter out requests that are outside the current window
-    const validRequests = requests.filter(timestamp => timestamp > now - window);
-
-    if (validRequests.length >= limit) {
-        const resetTime = (validRequests.length > 0 ? validRequests[0] : now) + window;
-        res.setHeader('X-RateLimit-Limit', limit);
-        res.setHeader('X-RateLimit-Remaining', 0);
-        res.setHeader('Retry-After', resetTime - now);
-        return res.status(429).send('Too Many Requests');
-    }
-    
-    remaining = limit - validRequests.length -1;
-    
-    // Add current request timestamp
-    validRequests.push(now);
-
-    if (redis) {
-      const transaction = redis.multi();
-      transaction.del(key);
-      transaction.rpush(key, ...validRequests);
-      transaction.expire(key, window);
-      await transaction.exec();
-    } else {
-      inMemoryStore[key] = validRequests;
-      // Clean up old entries from in-memory store periodically
-      setTimeout(() => {
-        const cleanupNow = Math.floor(Date.now() / 1000);
-        if(inMemoryStore[key]){
-             inMemoryStore[key] = inMemoryStore[key].filter(timestamp => timestamp > cleanupNow - window);
-             if(inMemoryStore[key].length === 0){
-                 delete inMemoryStore[key];
-             }
-        }
-      }, window * 1000 + 100);
-    }
-
-    res.setHeader('X-RateLimit-Limit', limit);
-    res.setHeader('X-RateLimit-Remaining', remaining);
-
-    return next();
-
-  } catch (error) {
-    console.error('Rate limiter error:', error);
-    // If there's an error (e.g., Redis down), fail open and let the request through.
+  const agentId = getAgentId(req);
+  if (!agentId) {
     return next();
   }
-};
+
+  let state = agentBuckets.get(agentId);
+  if (!state || now >= state.resetAt) {
+    state = { count: 0, resetAt: now + WINDOW_MS };
+    agentBuckets.set(agentId, state);
+  }
+
+  if (state.count >= MAX_REQUESTS) {
+    const retryAfterSeconds = Math.max(1, Math.ceil((state.resetAt - now) / 1000));
+    res.setHeader("X-RateLimit-Limit", String(MAX_REQUESTS));
+    res.setHeader("X-RateLimit-Remaining", "0");
+    res.setHeader("X-RateLimit-Reset", String(Math.ceil(state.resetAt / 1000)));
+    res.setHeader("Retry-After", String(retryAfterSeconds));
+    return res.status(429).json({
+      error: "Too Many Requests",
+      message: "Rate limit exceeded for this agent.",
+      retryAfter: retryAfterSeconds,
+    });
+  }
+
+  state.count += 1;
+
+  res.setHeader("X-RateLimit-Limit", String(MAX_REQUESTS));
+  res.setHeader("X-RateLimit-Remaining", String(Math.max(0, MAX_REQUESTS - state.count)));
+  res.setHeader("X-RateLimit-Reset", String(Math.ceil(state.resetAt / 1000)));
+
+  return next();
+}
 
 module.exports = rateLimiter;
