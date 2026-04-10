@@ -81,9 +81,7 @@
 }
 
 .agent-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1),
-              0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  transform: scale(1.02);
 }
 
 .agent-card:active {
@@ -235,5 +233,48 @@
 
   .notification-badge {
     border: 1px solid currentColor;
+  }
+}
+
+/* Status Dot Pulse Animation */
+.status-dot.active {
+  animation: status-pulse 2s infinite;
+}
+
+@keyframes status-pulse {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Modal Fade-In Animation */
+.modal {
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+.modal.show {
+  opacity: 1;
+}
+
+.modal.fade-in {
+  animation: modalFadeIn 200ms ease forwards;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }
