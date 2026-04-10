@@ -1,0 +1,195 @@
+/* Dashboard Micro-Animations */
+
+/* Notification Badge Pulse */
+@keyframes badge-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.notification-badge {
+  animation: badge-pulse 2s ease-in-out infinite;
+  transform-origin: center;
+}
+
+.notification-badge.new {
+  animation-duration: 1.5s;
+}
+
+/* Task Status Transitions */
+@keyframes status-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes status-fade-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+}
+
+.task-status {
+  transition: all 0.3s ease-in-out;
+}
+
+.task-status.idle {
+  opacity: 0.7;
+  color: #6b7280;
+}
+
+.task-status.busy {
+  opacity: 1;
+  color: #f59e0b;
+  animation: status-fade-in 0.2s ease-out;
+}
+
+.task-status.done {
+  opacity: 1;
+  color: #10b981;
+  animation: status-fade-in 0.2s ease-out;
+}
+
+.task-status.changing {
+  animation: status-fade-out 0.15s ease-in forwards;
+}
+
+/* Agent Card Hover Effects */
+.agent-card {
+  transition: all 0.2s cubic-bezier(0.4, 0.0, 0.2, 1);
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+.agent-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1),
+              0 8px 10px -6px rgba(0, 0, 0, 0.1);
+}
+
+.agent-card:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+              0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Loading Spinner for busy states */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.status-spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #e5e7eb;
+  border-top: 2px solid #f59e0b;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-right: 6px;
+}
+
+/* Success checkmark animation */
+@keyframes checkmark {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.status-checkmark {
+  animation: checkmark 0.3s ease-out;
+}
+
+/* Subtle fade transitions for content changes */
+.fade-transition {
+  transition: opacity 0.15s ease-in-out;
+}
+
+.fade-transition.fade-out {
+  opacity: 0;
+}
+
+.fade-transition.fade-in {
+  opacity: 1;
+}
+
+/* Reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .notification-badge,
+  .status-spinner {
+    animation: none;
+  }
+
+  .agent-card {
+    transition: box-shadow 0.2s ease-in-out;
+  }
+
+  .agent-card:hover {
+    transform: none;
+  }
+
+  .task-status,
+  .fade-transition {
+    transition: opacity 0.2s ease-in-out;
+  }
+
+  @keyframes badge-pulse {
+    0%, 100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  @keyframes status-fade-in,
+  @keyframes status-fade-out,
+  @keyframes checkmark {
+    from, to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .agent-card:hover {
+    box-shadow: 0 0 0 2px currentColor;
+  }
+
+  .notification-badge {
+    border: 1px solid currentColor;
+  }
+}
