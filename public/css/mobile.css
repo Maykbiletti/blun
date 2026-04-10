@@ -1,0 +1,7 @@
+@media (max-width: 479px) {
+  .agent-card {
+    padding: 12px;
+    gap: 8px;
+    font-size: 14px;
+  }
+}
