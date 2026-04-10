@@ -1,0 +1,198 @@
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 8px;
+  padding: 24px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #eee;
+}
+
+.modal-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+  color: #666;
+}
+
+.modal-close:hover {
+  color: #333;
+}
+
+.modal-body {
+  margin-bottom: 20px;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid #eee;
+}
+
+.modal-footer button {
+  padding: 8px 16px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.modal-footer .btn-primary {
+  background: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+.modal-footer .btn-secondary {
+  background: #6c757d;
+  color: white;
+  border-color: #6c757d;
+}
+
+/* Mobile Fixes für <768px */
+@media (max-width: 767px) {
+  .modal {
+    padding: 0;
+    align-items: flex-start;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .modal-content {
+    width: 100%;
+    max-width: 100%;
+    min-height: 100vh;
+    margin: 0;
+    border-radius: 0;
+    padding: 20px 16px;
+    box-shadow: none;
+    max-height: none;
+    overflow-y: visible;
+    position: relative;
+  }
+
+  .modal-header {
+    position: sticky;
+    top: 0;
+    background: white;
+    z-index: 10;
+    margin: -20px -16px 16px -16px;
+    padding: 16px 16px 12px 16px;
+    border-bottom: 1px solid #eee;
+  }
+
+  .modal-title {
+    font-size: 1.125rem;
+    line-height: 1.4;
+  }
+
+  .modal-close {
+    padding: 8px;
+    min-width: 40px;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-body {
+    padding-bottom: 80px;
+  }
+
+  .modal-footer {
+    position: sticky;
+    bottom: 0;
+    background: white;
+    margin: 20px -16px -20px -16px;
+    padding: 16px;
+    border-top: 1px solid #eee;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .modal-footer button {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 1rem;
+    order: 2;
+  }
+
+  .modal-footer .btn-primary {
+    order: 1;
+  }
+}
+
+/* Landscape Mobile Fixes */
+@media (max-width: 767px) and (orientation: landscape) {
+  .modal-content {
+    min-height: auto;
+    max-height: 100vh;
+    overflow-y: auto;
+  }
+
+  .modal-body {
+    padding-bottom: 20px;
+  }
+}
+
+/* Scroll Bar Styling */
+.modal-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.modal-content::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Firefox scrollbar */
+.modal-content {
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 #f1f1f1;
+}
