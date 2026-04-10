@@ -1,75 +1,54 @@
-// /root/blun/src/middleware/rate-limiter.js
-// IP-basiertes Rate Limiting: Differenziert Public (10/min) vs. Protected (120/min)
+const rateStore = new Map();
+const RATE_LIMIT = 100;
+const WINDOW_SIZE = 60000; // 1 minute in ms
 
-const WINDOW_MS = 60 * 1000;
-const PUBLIC_LIMIT = 10;      // /api/contact, /api/newsletter/subscribe
-const PROTECTED_LIMIT = 120;   // All /api/* routes (auth required)
-const ADMIN_LIMIT = 30;        // /api/admin/* routes (extra strict)
-
-// Track hits: { ip: { count: N, start: timestamp, type: 'public'|'protected'|'admin' } }
-const hits = new Map();
-
-// Cleanup old entries every 5 minutes
-setInterval(function () {
-  const now = Date.now();
-  for (const [ip, entry] of hits) {
-    if (now - entry.start > WINDOW_MS) {
-      hits.delete(ip);
+function cleanup() {
+    const now = Date.now();
+    for (const [ip, data] of rateStore.entries()) {
+        data.requests = data.requests.filter(timestamp => now - timestamp < WINDOW_SIZE);
+        if (data.requests.length === 0) {
+            rateStore.delete(ip);
+        }
     }
-  }
-}, 5 * 60 * 1000);
+}
 
 function rateLimiter(req, res, next) {
-  const ip = req.ip || req.socket.remoteAddress || 'unknown';
+    // Only apply to /api/* routes
+    if (!req.path.startsWith('/api/')) {
+        return next();
+    }
 
-  // Localhost / internal requests are EXEMPT
-  if (ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1') {
-    return next();
-  }
+    const clientIP = req.ip || req.connection.remoteAddress || req.socket.remoteAddress || 'unknown';
+    const now = Date.now();
 
-  // Determine endpoint type
-  let endpointType = 'protected';
-  let limit = PROTECTED_LIMIT;
+    // Initialize or get client data
+    if (!rateStore.has(clientIP)) {
+        rateStore.set(clientIP, { requests: [] });
+    }
 
-  // Public endpoints (strict limit)
-  if (req.path === '/api/contact' ||
-      req.path === '/api/newsletter/subscribe' ||
-      req.path === '/api/newsletter/unsubscribe' ||
-      req.path === '/api/i18n/detect' ||
-      req.path === '/api/i18n/languages' ||
-      req.path.startsWith('/api/i18n/')) {
-    endpointType = 'public';
-    limit = PUBLIC_LIMIT;
-  }
-  // Admin endpoints (very strict)
-  else if (req.path.startsWith('/api/admin')) {
-    endpointType = 'admin';
-    limit = ADMIN_LIMIT;
-  }
+    const clientData = rateStore.get(clientIP);
 
-  const now = Date.now();
-  let entry = hits.get(ip);
+    // Filter out old requests (outside time window)
+    clientData.requests = clientData.requests.filter(timestamp => now - timestamp < WINDOW_SIZE);
 
-  // New time window or first request
-  if (!entry || now - entry.start > WINDOW_MS) {
-    entry = { count: 1, start: now, type: endpointType };
-    hits.set(ip, entry);
-    return next();
-  }
+    // Check if limit exceeded
+    if (clientData.requests.length >= RATE_LIMIT) {
+        return res.status(429).json({
+            error: 'Too Many Requests',
+            message: `Rate limit exceeded. Maximum ${RATE_LIMIT} requests per minute allowed.`,
+            retryAfter: Math.ceil(WINDOW_SIZE / 1000)
+        });
+    }
 
-  entry.count++;
+    // Add current request
+    clientData.requests.push(now);
 
-  // Check limit
-  if (entry.count > limit) {
-    return res.status(429).json({
-      error: 'Too many requests',
-      type: endpointType,
-      limit: limit,
-      retry_after: Math.ceil((entry.start + WINDOW_MS - now) / 1000)
-    });
-  }
+    // Cleanup old entries periodically
+    if (Math.random() < 0.01) { // 1% chance to cleanup
+        setImmediate(cleanup);
+    }
 
-  next();
+    next();
 }
 
 module.exports = rateLimiter;
