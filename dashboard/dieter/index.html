@@ -960,6 +960,63 @@ if (window.visualViewport) {
   window.visualViewport.addEventListener('scroll', fixViewport);
 }
 
+function showToast(msg, type) {
+  var toastType = type || 'info';
+  var colors = {
+    info: { bg: '#2563eb', border: '#1d4ed8' },
+    success: { bg: '#16a34a', border: '#15803d' },
+    error: { bg: '#dc2626', border: '#b91c1c' }
+  };
+  var tone = colors[toastType] || colors.info;
+  var host = document.getElementById('toast-host');
+
+  if (!host) {
+    host = document.createElement('div');
+    host.id = 'toast-host';
+    host.style.position = 'fixed';
+    host.style.top = '16px';
+    host.style.right = '16px';
+    host.style.zIndex = '9999';
+    host.style.display = 'flex';
+    host.style.flexDirection = 'column';
+    host.style.gap = '8px';
+    host.style.maxWidth = '340px';
+    host.style.pointerEvents = 'none';
+    document.body.appendChild(host);
+  }
+
+  var toast = document.createElement('div');
+  toast.textContent = msg;
+  toast.style.background = tone.bg;
+  toast.style.border = '1px solid ' + tone.border;
+  toast.style.color = '#fff';
+  toast.style.padding = '10px 12px';
+  toast.style.borderRadius = '8px';
+  toast.style.boxShadow = '0 8px 24px rgba(0,0,0,.25)';
+  toast.style.fontSize = '14px';
+  toast.style.fontWeight = '600';
+  toast.style.opacity = '0';
+  toast.style.transform = 'translateY(-6px)';
+  toast.style.transition = 'opacity .18s ease, transform .18s ease';
+  toast.style.pointerEvents = 'auto';
+
+  host.appendChild(toast);
+
+  requestAnimationFrame(function() {
+    toast.style.opacity = '1';
+    toast.style.transform = 'translateY(0)';
+  });
+
+  setTimeout(function() {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(-6px)';
+    setTimeout(function() {
+      if (toast.parentNode) toast.parentNode.removeChild(toast);
+      if (host && !host.children.length && host.parentNode) host.parentNode.removeChild(host);
+    }, 180);
+  }, 3000);
+}
+
 // BOOT
 (async function() {
   var saved = localStorage.getItem('blun_user');
