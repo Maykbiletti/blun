@@ -2969,6 +2969,70 @@ function initBlunWS() {
 <script src="components/onboarding-tour.js"></script>
 
 <script>
+function getRelativeTime(dateStr) {
+  if (!dateStr) return '?';
+  var date = new Date(dateStr);
+  var now = new Date();
+  var diff = Math.floor((now - date) / 1000);
+
+  if (diff < 60) return diff + 's';
+  if (diff < 3600) return Math.floor(diff / 60) + 'min';
+  if (diff < 86400) return Math.floor(diff / 3600) + 'h';
+  return Math.floor(diff / 86400) + 'd';
+}
+
+function loadNotifications() {
+  var bellList = document.getElementById('__bellList');
+  if (!bellList) return;
+
+  bellList.innerHTML = '<div style="padding:8px;color:#9ca3af">Laden...</div>';
+
+  fetch('/api/agent-tasks?limit=5&status=completed')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data || !Array.isArray(data) || data.length === 0) {
+        bellList.innerHTML = 'Keine neuen Benachrichtigungen.';
+        return;
+      }
+
+      var items = data.map(function(task) {
+        var agentName = task.agent || 'Unknown';
+        var taskText = (task.title || task.name || '').substring(0, 60);
+        var relativeTime = getRelativeTime(task.completedAt || task.updated_at);
+
+        var div = document.createElement('div');
+        div.style.cssText = 'padding:8px;border-bottom:1px solid #374151;font-size:12px';
+
+        var agentDiv = document.createElement('div');
+        agentDiv.style.fontWeight = '600';
+        agentDiv.textContent = agentName;
+
+        var textDiv = document.createElement('div');
+        textDiv.style.color = '#9ca3af';
+        textDiv.textContent = taskText;
+
+        var timeDiv = document.createElement('div');
+        timeDiv.style.cssText = 'color:#6b7280;font-size:11px';
+        timeDiv.textContent = 'vor ' + relativeTime;
+
+        div.appendChild(agentDiv);
+        div.appendChild(textDiv);
+        div.appendChild(timeDiv);
+
+        return div;
+      });
+
+      bellList.innerHTML = '';
+      items.forEach(function(item) {
+        bellList.appendChild(item);
+      });
+    })
+    .catch(function(err) {
+      console.error('Failed to load notifications:', err);
+      bellList.innerHTML = 'Keine neuen Benachrichtigungen.';
+    });
+}
+
 // Bell click wrapper (injected 2026-04-10) — bridges legacy onclick to NotificationCenter instance
 window.toggleNotificationCenter = function() {
   try {
@@ -2988,7 +3052,12 @@ window.toggleNotificationCenter = function() {
     dd.innerHTML = '<div style="font-weight:600;margin-bottom:8px">Benachrichtigungen</div><div id="__bellList">Keine neuen Benachrichtigungen.</div>';
     document.body.appendChild(dd);
   }
-  dd.style.display = dd.style.display === 'block' ? 'none' : 'block';
+  var isCurrentlyVisible = dd.style.display === 'block';
+  dd.style.display = isCurrentlyVisible ? 'none' : 'block';
+
+  if (!isCurrentlyVisible) {
+    loadNotifications();
+  }
 };
 </script>
 
