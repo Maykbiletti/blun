@@ -5,6 +5,7 @@
 const http = require('http');
 const { Client } = require('pg');
 const { execSync } = require('child_process');
+const autoIntegrator = require('./src/agent/auto-integrator');
 
 const BLUN_PORT = process.env.BLUN_PORT || 3200;
 const API_KEY = process.env.BLUN_API_KEY || 'blun-dev-key';
@@ -494,6 +495,31 @@ async function autoIntegrate(db) {
         }
         log("MERGED " + agent.name + ": " + fileList.length + " files");
         merged.push(agent.name);
+
+        // Auto-integrate each new file into running system
+        var integrations = [];
+        for (var fi = 0; fi < fileList.length; fi++) {
+          var fpath = fileList[fi].trim();
+          if (!fpath) continue;
+          try {
+            var ir = autoIntegrator.integrateFile(fpath, "/root/blun");
+            if (ir.action) {
+              integrations.push(fpath + " -> " + ir.action);
+              log("INTEGRATED " + fpath + ": " + ir.action);
+            }
+          } catch(intErr) {
+            log("Integrate file error " + fpath + ": " + intErr.message);
+          }
+        }
+
+        // If we modified index.html or server.js, commit those changes
+        if (integrations.length > 0) {
+          try {
+            execSync("cd /root/blun && git add dashboard/index.html server.js 2>/dev/null");
+            execSync("cd /root/blun && BLUN_DEPLOYER=dieter git commit -m 'auto-integrate: " + agent.name + " files (" + integrations.length + ")' 2>&1");
+          } catch(commitErr) { log("Integration commit skipped: " + commitErr.message.substring(0, 100)); }
+        }
+
         execSync("cd " + dir + " && git reset --hard main 2>/dev/null");
         await db.query("UPDATE agent_tasks SET status = 'completed', completed_at = NOW() WHERE agent_id = $1 AND status IN ('processing', 'in_progress')", [agent.id]);
       } catch(mergeErr) {

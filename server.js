@@ -51,6 +51,7 @@ const adminPlansRoutes = require("./src/routes/admin-plans");
 const i18nRoutes = require("./src/routes/i18n");
 const teamsRoutes = require("./src/routes/teams");
 const connectionsRoutes = require("./src/routes/connections");
+const dashboardStatsRoutes = require("./src/routes/dashboard-stats");
 const { router: companiesRoutes, companyContext } = require("./src/routes/companies");
 const { startAllBots, activeBots } = require("./src/channels/telegram");
 
@@ -148,6 +149,7 @@ app.use(cookieParser());
 const inputSanitizer = require("./src/middleware/input-sanitizer");
 const inputValidator = require("./src/middleware/input-validator");
 const rateLimiter = require("./src/middleware/rate-limiter");
+const requestLogger = require("./src/middleware/request-logger");
 app.use(inputValidator);
 app.use(inputSanitizer);
 app.use(rateLimiter);
@@ -241,6 +243,7 @@ app.use("/telegram/api", telegramRoutes);
 
 // Federation (receive is public, rest requires auth)
 app.use("/federation", federationRoutes);
+app.use("/api/dashboard-stats", dashboardStatsRoutes);
 
 // --- Page routes (authenticated) ---
 function authPage(path, file, adminOnly) {
