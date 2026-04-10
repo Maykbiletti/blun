@@ -58,6 +58,7 @@ const deployRoutes = require("./src/routes/deploy");
 const agentCommRoutes = require("./src/routes/agent-comm");
 const statsRoutes = require("./src/routes/stats-route");
 const healthDetailedRoutes = require("./src/routes/health-detailed");
+const usageTrackingRoutes = require("./src/routes/usage-tracking");
 const { router: companiesRoutes, companyContext } = require("./src/routes/companies");
 const { startAllBots, activeBots } = require("./src/channels/telegram");
 
@@ -191,6 +192,10 @@ app.use("/api", function (req, res, next) {
   });
 });
 
+var { tenantContext } = require("./src/middleware/tenant");
+app.use("/api", tenantContext);
+
+
 app.use("/auth", authRoutes);
 app.use("/billing", billingRoutes);
 app.use("/admin-panel", adminPanelRoutes);
@@ -277,6 +282,7 @@ app.use("/api/deploy", deployRoutes);
 app.use("/api/agent-comm", agentCommRoutes);
 app.use("/api/stats", statsRoutes);
 app.use("/api/health-detailed", healthDetailedRoutes);
+app.use("/api/usage-tracking", usageTrackingRoutes);
 
 // --- Page routes (authenticated) ---
 function authPage(path, file, adminOnly) {
