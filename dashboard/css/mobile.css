@@ -163,6 +163,158 @@
         background: #374151;
         color: white;
     }
+
+    /* Billing Page - Pricing Table Fixes */
+    .pricing-container {
+        max-width: 100%;
+        overflow-x: hidden;
+        padding: 0 10px;
+    }
+
+    .pricing-table {
+        display: none; /* Hide table on mobile */
+    }
+
+    /* Convert Table to Cards */
+    .pricing-cards {
+        display: block;
+        gap: 15px;
+    }
+
+    .pricing-card {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 20px 15px;
+        margin-bottom: 15px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .pricing-card h3 {
+        font-size: 18px;
+        font-weight: 600;
+        margin: 0 0 10px 0;
+        color: #111827;
+    }
+
+    .pricing-card .price {
+        font-size: 24px;
+        font-weight: 700;
+        color: #2563eb;
+        margin: 10px 0 15px 0;
+    }
+
+    .pricing-card .features {
+        list-style: none;
+        padding: 0;
+        margin: 15px 0;
+    }
+
+    .pricing-card .features li {
+        padding: 5px 0;
+        border-bottom: 1px solid #f3f4f6;
+        font-size: 14px;
+        line-height: 20px;
+    }
+
+    .pricing-card .features li:last-child {
+        border-bottom: none;
+    }
+
+    .pricing-card .cta-button {
+        width: 100%;
+        padding: 12px;
+        background: #2563eb;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 16px;
+        font-weight: 500;
+        cursor: pointer;
+        text-align: center;
+        text-decoration: none;
+        display: block;
+        margin-top: 15px;
+    }
+
+    .pricing-card .cta-button:hover {
+        background: #1d4ed8;
+    }
+
+    /* Billing Tables General */
+    .billing-table-wrapper {
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        border-radius: 8px;
+        margin: 15px 0;
+    }
+
+    .billing-table {
+        min-width: 100%;
+        font-size: 14px;
+    }
+
+    .billing-table th,
+    .billing-table td {
+        padding: 8px 10px;
+        white-space: nowrap;
+    }
+
+    /* Invoice Summary Cards */
+    .invoice-summary {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .invoice-summary-card {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 15px;
+    }
+
+    .invoice-summary-card .label {
+        font-size: 12px;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 5px;
+    }
+
+    .invoice-summary-card .value {
+        font-size: 18px;
+        font-weight: 600;
+        color: #1e293b;
+    }
+}
+
+/* Mobile Devices 376px - 768px */
+@media (min-width: 376px) and (max-width: 768px) {
+    .pricing-container {
+        max-width: 100%;
+        overflow-x: hidden;
+        padding: 0 15px;
+    }
+
+    .pricing-table {
+        font-size: 14px;
+        width: 100%;
+        table-layout: fixed;
+    }
+
+    .pricing-table th,
+    .pricing-table td {
+        padding: 8px 5px;
+        word-wrap: break-word;
+    }
+
+    .billing-table-wrapper {
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
 }
 
 /* JavaScript Toggle Functions */
