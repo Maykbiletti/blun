@@ -149,7 +149,8 @@
 /* Reduced motion preferences */
 @media (prefers-reduced-motion: reduce) {
   .notification-badge,
-  .status-spinner {
+  .status-spinner,
+  .pulse-badge {
     animation: none;
   }
 
@@ -162,8 +163,19 @@
   }
 
   .task-status,
-  .fade-transition {
-    transition: opacity 0.2s ease-in-out;
+  .fade-transition,
+  .fade-in,
+  .slide-up {
+    transition: none;
+  }
+
+  .fade-in.active {
+    opacity: 1;
+  }
+
+  .slide-up.active {
+    transform: translateY(0);
+    opacity: 1;
   }
 
   @keyframes badge-pulse {
@@ -175,12 +187,44 @@
 
   @keyframes status-fade-in,
   @keyframes status-fade-out,
-  @keyframes checkmark {
+  @keyframes checkmark,
+  @keyframes pulse {
     from, to {
       opacity: 1;
       transform: none;
     }
   }
+}
+
+/* Utility transition classes */
+.fade-in {
+  opacity: 0;
+  transition: opacity 250ms ease-in-out;
+}
+
+.fade-in.active {
+  opacity: 1;
+}
+
+.slide-up {
+  transform: translateY(20px);
+  opacity: 0;
+  transition: transform 280ms ease-out, opacity 280ms ease-out;
+}
+
+.slide-up.active {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.pulse-badge {
+  animation: pulse 200ms ease-in-out;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
 }
 
 /* High contrast mode support */
