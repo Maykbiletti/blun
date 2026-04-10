@@ -2,6 +2,8 @@
 // Extracted from agent-engine.js
 const { query, queryOne } = require("../db");
 const child_process = require("child_process");
+const crypto = require("crypto");
+const ENC_KEY = process.env.BLUN_ENCRYPTION_KEY || "blun-dev-encryption-key-32chars!";
 var modelsRouter = require("../routes/models");
 const LLAMA_URL = process.env.LLAMA_URL || "http://127.0.0.1:8090";
 const agentSessions = {};
@@ -318,7 +320,7 @@ async function callClaudeCLI(messages, apiKey, model, agentId) {
 }
 
 async function callLLM(model, messages, agentId) {
-  var isLocal = model.startsWith("local:") || model.includes("llama") || model.includes("tiny") || model.includes("mistral") || model.includes("phi") || model.includes("deepseek") || model.includes("gemma") || model.includes("qwen");
+  var _mlc = (model || "").toLowerCase(); var isLocal = _mlc.startsWith("local:") || _mlc.includes("llama") || _mlc.includes("tiny") || _mlc.includes("phi") || _mlc.includes("gemma") || _mlc.includes("qwen") || _mlc.includes(".gguf");
   if (model.startsWith("local:")) model = model.replace("local:", "");
 
   var url, headers, body;

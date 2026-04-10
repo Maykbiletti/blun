@@ -168,10 +168,85 @@ registerModel('gpt-4.1-mini', {
   capabilities: ['chat', 'code', 'reasoning', 'json', 'translation', 'fast', 'cheap'],
   qualityScore: 7, costScore: 2, latencyScore: 9, local: false, active: true
 });
+registerModel('claude-opus-4-6', {
+  provider: 'anthropic', modelId: 'claude-opus-4-6',
+  capabilities: ['chat', 'code', 'reasoning', 'vision', 'tool_calling', 'long_context', 'json', 'translation'],
+  qualityScore: 10, costScore: 8, latencyScore: 5, local: false, active: true
+});
+registerModel('gpt-4o', {
+  provider: 'openai', modelId: 'gpt-4o',
+  capabilities: ['chat', 'code', 'reasoning', 'vision', 'tool_calling', 'json', 'translation'],
+  qualityScore: 8, costScore: 5, latencyScore: 7, local: false, active: true
+});
+registerModel('gpt-4o-mini', {
+  provider: 'openai', modelId: 'gpt-4o-mini',
+  capabilities: ['chat', 'code', 'json', 'fast', 'cheap'],
+  qualityScore: 6, costScore: 2, latencyScore: 9, local: false, active: true
+});
+registerModel('o3', {
+  provider: 'openai', modelId: 'o3',
+  capabilities: ['chat', 'code', 'reasoning', 'json'],
+  qualityScore: 10, costScore: 8, latencyScore: 4, local: false, active: true
+});
+registerModel('o4-mini', {
+  provider: 'openai', modelId: 'o4-mini',
+  capabilities: ['chat', 'code', 'reasoning', 'json', 'fast'],
+  qualityScore: 8, costScore: 3, latencyScore: 8, local: false, active: true
+});
+registerModel('gpt-5.4', {
+  provider: 'openai', modelId: 'gpt-5.4',
+  capabilities: ['chat', 'code', 'reasoning', 'vision', 'tool_calling', 'long_context', 'json', 'translation'],
+  qualityScore: 10, costScore: 7, latencyScore: 6, local: false, active: true
+});
+registerModel('gpt-5.3-codex', {
+  provider: 'openai', modelId: 'gpt-5.3-codex',
+  capabilities: ['code', 'reasoning', 'tool_calling', 'json'],
+  qualityScore: 10, costScore: 6, latencyScore: 7, local: false, active: true
+});
+registerModel('mistral-large-latest', {
+  provider: 'mistral', modelId: 'mistral-large-latest',
+  capabilities: ['chat', 'code', 'reasoning', 'tool_calling', 'json', 'translation'],
+  qualityScore: 8, costScore: 5, latencyScore: 7, local: false, active: true
+});
+registerModel('mistral-medium-latest', {
+  provider: 'mistral', modelId: 'mistral-medium-latest',
+  capabilities: ['chat', 'code', 'json', 'fast'],
+  qualityScore: 7, costScore: 3, latencyScore: 8, local: false, active: true
+});
+registerModel('codestral-latest', {
+  provider: 'mistral', modelId: 'codestral-latest',
+  capabilities: ['code', 'json', 'fast'],
+  qualityScore: 7, costScore: 3, latencyScore: 8, local: false, active: true
+});
+registerModel('deepseek-chat', {
+  provider: 'deepseek', modelId: 'deepseek-chat',
+  capabilities: ['chat', 'code', 'json', 'cheap'],
+  qualityScore: 7, costScore: 2, latencyScore: 7, local: false, active: true
+});
+registerModel('deepseek-reasoner', {
+  provider: 'deepseek', modelId: 'deepseek-reasoner',
+  capabilities: ['chat', 'code', 'reasoning', 'json'],
+  qualityScore: 9, costScore: 3, latencyScore: 5, local: false, active: true
+});
+registerModel('gemini-3-pro', {
+  provider: 'gemini', modelId: 'gemini-3-pro-preview',
+  capabilities: ['chat', 'code', 'reasoning', 'vision', 'tool_calling', 'long_context', 'json'],
+  qualityScore: 10, costScore: 5, latencyScore: 6, local: false, active: true
+});
+registerModel('gemini-3-flash', {
+  provider: 'gemini', modelId: 'gemini-3-flash-preview',
+  capabilities: ['chat', 'code', 'reasoning', 'vision', 'tool_calling', 'json', 'fast'],
+  qualityScore: 8, costScore: 2, latencyScore: 9, local: false, active: true
+});
 registerModel('gemini-2.5-pro', {
-  provider: 'gemini', modelId: 'gemini-2.5-pro-preview-05-06',
+  provider: 'gemini', modelId: 'gemini-2.5-pro',
   capabilities: ['chat', 'code', 'reasoning', 'vision', 'tool_calling', 'long_context', 'json'],
   qualityScore: 9, costScore: 4, latencyScore: 6, local: false, active: true
+});
+registerModel('gemini-2.5-flash', {
+  provider: 'gemini', modelId: 'gemini-2.5-flash',
+  capabilities: ['chat', 'code', 'reasoning', 'json', 'fast'],
+  qualityScore: 7, costScore: 1, latencyScore: 9, local: false, active: true
 });
 registerModel('local-default', {
   provider: 'local', modelId: 'default',

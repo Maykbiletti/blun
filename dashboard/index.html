@@ -2171,11 +2171,24 @@ function createIssueWs(){
 }
 function loadWsChat(id) {
   var msgs=document.getElementById('wsChatMsgs');
-  msgs.innerHTML='<div class="spinner"></div>';
-  api('/api/organisator/agents/'+id+'/conversations').then(function(d){
-    msgs.innerHTML=d.map(function(m){var ts=m.created_at?new Date(m.created_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'';return '<div class="msg msg-'+(m.role==='user'?'user':'ai')+'">'+formatMsg(m.content)+(ts?'<div class="msg-ts">'+ts+'</div>':'')+'</div>';}).join('');
+  // Render cached local history first so user never sees an empty chat
+  var cacheKey='blun_chat_'+id;
+  var cached=[];
+  try{cached=JSON.parse(localStorage.getItem(cacheKey)||'[]');}catch(e){}
+  function renderMsgs(list){
+    msgs.innerHTML=list.map(function(m){var ts=m.created_at?new Date(m.created_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'';return '<div class="msg msg-'+(m.role==='user'?'user':'ai')+'">'+formatMsg(m.content||'')+(ts?'<div class="msg-ts">'+ts+'</div>':'')+'</div>';}).join('');
     msgs.scrollTop=msgs.scrollHeight;
-  }).catch(function(){msgs.innerHTML='';});
+  }
+  if(cached.length){renderMsgs(cached);}else{msgs.innerHTML='<div class="spinner"></div>';}
+  api('/api/organisator/agents/'+id+'/conversations').then(function(d){
+    if(!Array.isArray(d)){return;} // keep cached view on unexpected shape
+    // Merge: prefer DB, but keep any cached entries newer than the latest DB row
+    var latestDb=d.length?new Date(d[d.length-1].created_at||0).getTime():0;
+    var extras=cached.filter(function(m){return new Date(m.created_at||0).getTime()>latestDb;});
+    var merged=d.concat(extras);
+    renderMsgs(merged);
+    try{localStorage.setItem(cacheKey, JSON.stringify(merged.slice(-100)));}catch(e){}
+  }).catch(function(){/* keep cached view on error */});
 }
 function sendWsChat() {
   if(!currentAgent)return;
@@ -2184,6 +2197,11 @@ function sendWsChat() {
   input.value='';
   var msgs=document.getElementById('wsChatMsgs');
   var now=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  // Persist user msg to local cache immediately
+  var _cacheKey='blun_chat_'+currentAgent.id;
+  var _cache=[];try{_cache=JSON.parse(localStorage.getItem(_cacheKey)||'[]');}catch(e){}
+  _cache.push({role:'user',content:msg,created_at:new Date().toISOString()});
+  try{localStorage.setItem(_cacheKey, JSON.stringify(_cache.slice(-100)));}catch(e){}
   var userEl=document.createElement('div');userEl.className='msg msg-user';userEl.innerHTML=esc(msg)+'<span class="msg-ts">'+now+'</span>';msgs.appendChild(userEl);
   var thinkEl=document.createElement('div');thinkEl.className='msg msg-ai';thinkEl.innerHTML='<span class="thinking-dots"><span></span><span></span><span></span></span>';msgs.appendChild(thinkEl);
   msgs.scrollTop=msgs.scrollHeight;
@@ -2194,6 +2212,8 @@ function sendWsChat() {
     var replyEl=document.createElement('div');replyEl.className='msg msg-ai';replyEl.innerHTML=formatMsg(reply)+'<span class="msg-ts">'+nowAi+'</span>';
     if(thinkEl.parentNode){thinkEl.parentNode.replaceChild(replyEl,thinkEl);}else{msgs.appendChild(replyEl);}
     msgs.scrollTop=msgs.scrollHeight;
+    // Persist assistant reply to local cache
+    try{var __c=JSON.parse(localStorage.getItem(_cacheKey)||'[]');__c.push({role:'assistant',content:reply,created_at:new Date().toISOString()});localStorage.setItem(_cacheKey, JSON.stringify(__c.slice(-100)));}catch(e){}
   }).catch(function(e){
     var errEl=document.createElement('div');errEl.className='msg msg-ai';errEl.style.color='var(--red)';errEl.textContent='Fehler: '+e.message;
     if(thinkEl.parentNode){thinkEl.parentNode.replaceChild(errEl,thinkEl);}else{msgs.appendChild(errEl);}
@@ -2940,4 +2960,34 @@ function initBlunWS() {
 
 <script src="/dashboard/components/kanban.js"></script>
 <script src="/dashboard/components/file-tree.js"></script>
+
+<!-- Onboarding + Help injected 2026-04-10 -->
+<link rel="stylesheet" href="css/notification-bell.css">
+<script src="components/onboarding/onboarding-tour.js"></script>
+<script src="components/help/help-menu.js"></script>
+
+<script>
+// Bell click wrapper (injected 2026-04-10) — bridges legacy onclick to NotificationCenter instance
+window.toggleNotificationCenter = function() {
+  try {
+    if (window.notificationCenter && typeof window.notificationCenter.togglePanel === 'function') {
+      window.notificationCenter.togglePanel();
+      return;
+    }
+  } catch(e) {}
+  // Fallback: toggle a simple inline dropdown
+  var bell = document.getElementById('notificationBell');
+  if (!bell) return;
+  var dd = document.getElementById('__bellDropdown');
+  if (!dd) {
+    dd = document.createElement('div');
+    dd.id = '__bellDropdown';
+    dd.style.cssText = 'position:absolute;top:48px;right:16px;width:320px;max-height:400px;overflow:auto;background:#1f2937;border:1px solid #374151;border-radius:8px;padding:12px;color:#e5e7eb;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.5);display:none;font-size:13px';
+    dd.innerHTML = '<div style="font-weight:600;margin-bottom:8px">Benachrichtigungen</div><div id="__bellList">Keine neuen Benachrichtigungen.</div>';
+    document.body.appendChild(dd);
+  }
+  dd.style.display = dd.style.display === 'block' ? 'none' : 'block';
+};
+</script>
+
 </body></html><!-- test -->

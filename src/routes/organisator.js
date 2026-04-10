@@ -40,7 +40,7 @@ router.post("/companies", async function(req, res) {
   try {
     var { name, description } = req.body;
     if (!name) return res.status(400).json({ error: "name required" });
-    var c = await queryOne("INSERT INTO companies (name, config) VALUES ($1, $2) RETURNING *", [name, { description: description || "" }]);
+    var ownerId = req.user ? req.user.id : null; if (!ownerId) return res.status(401).json({ error: "auth required" }); var c = await queryOne("INSERT INTO companies (name, config, owner_id) VALUES ($1, $2, $3) RETURNING *", [name, { description: description || "" }, ownerId]);
     res.json(c);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -48,14 +48,14 @@ router.post("/companies", async function(req, res) {
 router.put("/companies/:id", async function(req, res) {
   try {
     var { name, description } = req.body;
-    var c = await queryOne("UPDATE companies SET name = COALESCE($1, name), config = jsonb_set(COALESCE(config,'{}'::jsonb), '{description}', to_jsonb($2::text)) WHERE id = $3 RETURNING *", [name, description || "", req.params.id]);
+    var uid = req.user ? req.user.id : null; var c = await queryOne("UPDATE companies SET name = COALESCE($1, name), config = jsonb_set(COALESCE(config,'{}'::jsonb), '{description}', to_jsonb($2::text)) WHERE id = $3 AND owner_id = $4 RETURNING *", [name, description || "", req.params.id, uid]); if (!c) return res.status(404).json({ error: "not found" });
     res.json(c);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 router.delete("/companies/:id", async function(req, res) {
   try {
-    await query("DELETE FROM companies WHERE id = $1", [req.params.id]);
+    var uid = req.user ? req.user.id : null; var r = await query("DELETE FROM companies WHERE id = $1 AND owner_id = $2 RETURNING id", [req.params.id, uid]); if (!r || !r.length) return res.status(404).json({ error: "not found" });
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -67,7 +67,25 @@ router.get("/agents", async function(req, res) {
     var agents = await pc.getAgents(cid);
     for (var i = 0; i < agents.length; i++) {
       var a = agents[i];
-      try { var pt = await queryOne("SELECT COUNT(*)::int as c FROM agent_tasks WHERE agent_id = $1 AND status = 'pending'", [a.id]); a.pending_tasks = pt ? pt.c : 0; } catch(e2) { a.pending_tasks = 0; }
+      try {
+        var qs = await queryOne("SELECT COUNT(*)::int as c FROM agent_tasks WHERE agent_id = $1 AND status = 'pending'", [a.id]);
+        a.queue_size = qs ? qs.c : 0;
+      } catch(e1) { a.queue_size = 0; }
+      try {
+        var running = await queryOne("SELECT id, task, created_at FROM agent_tasks WHERE agent_id = $1 AND status IN ('processing','in_progress') ORDER BY created_at DESC LIMIT 1", [a.id]);
+        if (running) {
+          a.running_task_id = running.id;
+          a.current_task = running.task;
+          a.running_since = running.created_at;
+          a.is_running = true;
+        } else {
+          a.running_task_id = null;
+          a.current_task = null;
+          a.running_since = null;
+          a.is_running = false;
+        }
+      } catch(e2) { a.is_running = false; a.current_task = null; a.running_since = null; a.running_task_id = null; }
+      a.pending_tasks = a.queue_size + (a.is_running ? 1 : 0);
       try { var skills = await query("SELECT s.name, s.repo_url FROM agent_skills as2 JOIN skills s ON s.id = as2.skill_id WHERE as2.agent_id = $1 AND as2.enabled = true", [a.id]); a.skills = skills.map(function(x){return x.name;}); a.skill_urls = {}; skills.forEach(function(x){if(x.repo_url)a.skill_urls[x.name]=x.repo_url;}); } catch(e3) { a.skills = []; a.skill_urls = {}; }
     }
     res.json(agents);
@@ -241,7 +259,7 @@ router.delete("/agents/:id/memory/:key", async function(req, res) {
 });
 
 router.get("/agents/:id/conversations", async function(req, res) {
-  try { res.json(await query("SELECT * FROM (SELECT role, content, created_at FROM agent_conversations WHERE agent_id = $1 ORDER BY created_at DESC LIMIT 100) sub ORDER BY created_at ASC", [req.params.id])); }
+  try { res.json(await query("SELECT * FROM (SELECT role, content, created_at FROM agent_conversations WHERE agent_id = $1 AND internal = false ORDER BY created_at DESC LIMIT 100) sub ORDER BY created_at ASC", [req.params.id])); }
   catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -254,14 +272,26 @@ router.post("/agents/:id/chat", async function(req, res) {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// Internal chat: used by dieter-daemon for task delegation; hidden from user UI
+router.post("/agents/:id/internal-chat", async function(req, res) {
+  try {
+    var { message } = req.body;
+    if (!message) return res.status(400).json({ error: "message required" });
+    var result = await engine.chatWithAgent(req.params.id, message, true);
+    res.json(result);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // === STATS ===
 router.get("/stats", async function(req, res) {
   try {
+    var uid = req.user ? req.user.id : null;
+    if (!uid) return res.status(401).json({ error: "auth required" });
     var [agents, tasks, costs, companies] = await Promise.all([
-      query("SELECT status, COUNT(*)::int as count FROM blun_agents GROUP BY status"),
-      queryOne("SELECT (SELECT COUNT(*)::int FROM tasks WHERE status = 'completed') + (SELECT COUNT(*)::int FROM agent_tasks WHERE status = 'completed') as total"),
-      queryOne("SELECT COALESCE(SUM(cost),0)::numeric as total FROM agent_heartbeats WHERE created_at > NOW() - INTERVAL '30 days'"),
-      queryOne("SELECT COUNT(*)::int as total FROM companies"),
+      query("SELECT a.status, COUNT(*)::int as count FROM blun_agents a JOIN companies c ON c.id = a.company_id WHERE c.owner_id = $1 GROUP BY a.status", [uid]),
+      queryOne("SELECT (SELECT COUNT(*)::int FROM agent_tasks at JOIN blun_agents a ON a.id = at.agent_id JOIN companies c ON c.id = a.company_id WHERE c.owner_id = $1 AND at.status = 'completed') as total", [uid]),
+      queryOne("SELECT COALESCE(SUM(h.cost),0)::numeric as total FROM agent_heartbeats h JOIN blun_agents a ON a.id = h.agent_id JOIN companies c ON c.id = a.company_id WHERE c.owner_id = $1 AND h.created_at > NOW() - INTERVAL '30 days'", [uid]),
+      queryOne("SELECT COUNT(*)::int as total FROM companies WHERE owner_id = $1", [uid]),
     ]);
     var total = 0, active = 0;
     agents.forEach(function(r) { total += r.count; if (r.status === "active" || r.status === "working") active += r.count; });

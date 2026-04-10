@@ -263,7 +263,7 @@ async function heartbeat(agentId) {
     
     // Log to conversations for UI visibility
     if (result.pass) {
-      await query("INSERT INTO agent_conversations (agent_id, role, content) VALUES ($1, 'assistant', $2)",
+      await query("INSERT INTO agent_conversations (agent_id, role, content, internal) VALUES ($1, 'assistant', $2, true)",
         [agentId, "Task erledigt: " + result.commits + " Commits, " + result.files + " Dateien geaendert."]);
     }
   } catch(taskErr) {
@@ -306,7 +306,7 @@ function getActiveAgents() {
   return Array.from(activeAgents.keys());
 }
 
-async function chatWithAgent(agentId, message) {
+async function chatWithAgent(agentId, message, isInternal) {
   var agent = await queryOne("SELECT * FROM blun_agents WHERE id = $1", [agentId]);
   if (!agent) throw new Error("Agent not found");
 
@@ -354,8 +354,8 @@ async function chatWithAgent(agentId, message) {
 
   var result = await callLLM(agent.model, messages, agentId);
 
-  await query("INSERT INTO agent_conversations (agent_id, role, content) VALUES ($1, $2, $3)", [agentId, "user", message]);
-  await query("INSERT INTO agent_conversations (agent_id, role, content) VALUES ($1, $2, $3)", [agentId, "assistant", result.content]);
+  await query("INSERT INTO agent_conversations (agent_id, role, content, internal) VALUES ($1, $2, $3, $4)", [agentId, "user", message, !!isInternal]);
+  await query("INSERT INTO agent_conversations (agent_id, role, content, internal) VALUES ($1, $2, $3, $4)", [agentId, "assistant", result.content, !!isInternal]);
   // Auto-memory: save last activity
   try {
     var today = new Date().toISOString().substring(0,10);
@@ -372,7 +372,7 @@ async function chatWithAgent(agentId, message) {
     if (toolResult) {
       var fuMessages = messages.concat([{role:"assistant",content:result.content},{role:"user",content:"Tool-Ergebnisse:\n"+toolResult+"\n\nAntworte auf Basis dieser Ergebnisse."}]);
       var fu = await callLLM(agent.model, fuMessages);
-      await query("INSERT INTO agent_conversations (agent_id, role, content) VALUES ($1, $2, $3)", [agentId, "assistant", fu.content]);
+      await query("INSERT INTO agent_conversations (agent_id, role, content, internal) VALUES ($1, $2, $3, $4)", [agentId, "assistant", fu.content, !!isInternal]);
       return { response: fu.content, tokens: result.tokens, cost: result.cost };
     }
   } catch(te) { console.error("[tools]", te.message); }
@@ -445,6 +445,11 @@ async function executeTools(agentId, message, aiResponse) {
     if ((m = lines[i].match(/\[TOOL:LIST_SKILLS\]/i))) cmds.push({ tool: 'list_skills' });
     if ((m = lines[i].match(/\[TOOL:ASSIGN_TASK:([^|]+)\|([^\]]+?)(?:\|PRIORITY:\d+)?\]/i))) cmds.push({ tool: 'assign_task', agent_ref: m[1].trim(), description: m[2].trim() });
     if ((m = lines[i].match(/\[TOOL:LIST_TASKS\]/i))) cmds.push({ tool: 'list_tasks' });
+    if ((m = lines[i].match(/\[TOOL:REBALANCE(?::(\d+))?\]/i))) cmds.push({ tool: 'rebalance', cap: m[1] ? parseInt(m[1]) : 12 });
+    if ((m = lines[i].match(/\[TOOL:DECOMPOSE:(\d+)\|([^\]]+)\]/i))) cmds.push({ tool: 'decompose', parentId: parseInt(m[1]), subtasks: m[2].split(';').map(function(x){return x.trim();}).filter(Boolean) });
+    if ((m = lines[i].match(/\[TOOL:REPRIORITIZE\]/i))) cmds.push({ tool: 'reprioritize' });
+    if ((m = lines[i].match(/\[TOOL:BLOCKER_SCAN\]/i))) cmds.push({ tool: 'blocker_scan' });
+    if ((m = lines[i].match(/\[TOOL:NEXT_WAVE:([^\]]+)\]/i))) cmds.push({ tool: 'next_wave', tasks: m[1].split(';').map(function(x){return x.trim();}).filter(Boolean) });
     if ((m = lines[i].match(/\[TOOL:BUILD_COMPANY:([^|]+)\|([^\]]+)\]/i))) cmds.push({ tool: 'build_company', name: m[1].trim(), description: m[2].trim() });
     if ((m = lines[i].match(/\[TOOL:GIT_COMMIT:([^\]]+)\]/i))) cmds.push({ tool: "git_commit", msg: m[1].trim() });
     if ((m = lines[i].match(/\[TOOL:GIT_PUSH:([^\]]+)\]/i))) cmds.push({ tool: "git_commit", msg: m[1].trim() });
@@ -491,7 +496,7 @@ async function executeTools(agentId, message, aiResponse) {
           status: 'active',
           company_id: agent.company_id || 1,
           system_prompt: (cmd.role && (cmd.role.toLowerCase().indexOf('operator') !== -1 || cmd.role.toLowerCase().indexOf('ceo') !== -1 || cmd.role.toLowerCase().indexOf('organisator') !== -1)) ?
-            'Du bist ' + cmd.name + ', Operator/CEO. KERNREGELN: 1) NUR Code-Tasks mit Dateipfad verteilen (dashboard/components/, src/routes/ etc). NIEMALS Analyse/Report/Konzept/Marketing. 2) Ergebnisse pruefen: git diff nach Task-Completion — keine Datei = nicht erfolgreich. 3) Skills aktiv nutzen. 4) Qualitaet vor Quantitaet. 5) VERBOTEN: agent-engine.js, code-tools.js, server.js, .env, package.json. 6) Systematisch arbeiten, kein Panik-Modus. 7) Syntax-Check vor Deploy. TASK-FORMAT: [TOOL:ASSIGN_TASK:id:VERB + WAS + Dateipfad]' :
+            'Du bist ' + cmd.name + ', Operator/CEO. KERNREGELN: 1) NUR Code-Tasks mit Dateipfad verteilen (dashboard/components/, src/routes/ etc). NIEMALS Analyse/Report/Konzept/Marketing. 2) Ergebnisse pruefen: git diff nach Task-Completion — keine Datei = nicht erfolgreich. 3) Skills aktiv nutzen. 4) Qualitaet vor Quantitaet. 5) VERBOTEN: agent-engine.js, code-tools.js, server.js, .env, package.json. 6) Systematisch arbeiten, kein Panik-Modus. 7) Syntax-Check vor Deploy. TASK-FORMAT: [TOOL:ASSIGN_TASK:id:VERB + WAS + Dateipfad]. REBALANCE: [TOOL:REBALANCE] oder [TOOL:REBALANCE:CAP] verteilt ueberlastete Agents um (Default CAP=12). TRIGGER: "verteil neu"=REBALANCE, "zerleg #id in X;Y;Z"=[TOOL:DECOMPOSE:id|sub1;sub2], "was ist wichtig"=[TOOL:REPRIORITIZE], "wo haengts"=[TOOL:BLOCKER_SCAN], "naechste welle: a;b;c"=[TOOL:NEXT_WAVE:a;b;c].' :
             'Du bist ' + cmd.name + ', ein ' + cmd.role + '. Du sprichst Deutsch, schreibst echten Code und hilfst proaktiv. Bei jeder Aufgabe MUSST du Dateien aendern (.js/.css/.html). Nutze alle zugewiesenen Skills aktiv.'
         });
         results.push('Agent erstellt: ' + (r.name || r.error || JSON.stringify(r)));
@@ -545,6 +550,86 @@ async function executeTools(agentId, message, aiResponse) {
         var tasks = Array.isArray(r) ? r : (r.rows || []);
         var summary = tasks.slice(0, 20).map(function(t) { return '#' + t.id + ' [' + t.status + '] ' + (t.description || '').substring(0, 60); }).join('\n');
         results.push('Aufgaben:\n' + (summary || 'keine'));
+      } else if (cmd.tool === 'rebalance') {
+        try {
+          var CAP = cmd.cap || 12;
+          var hot = await query("SELECT a.id, a.name, COUNT(t.id)::int AS open FROM blun_agents a LEFT JOIN agent_tasks t ON t.agent_id = a.id AND t.status IN ('pending','processing') WHERE a.id != 1 AND a.status = 'active' GROUP BY a.id, a.name HAVING COUNT(t.id) > " + CAP + " ORDER BY open DESC");
+          var cold = await query("SELECT a.id, a.name, COUNT(t.id)::int AS open FROM blun_agents a LEFT JOIN agent_tasks t ON t.agent_id = a.id AND t.status IN ('pending','processing') WHERE a.id != 1 AND a.status = 'active' GROUP BY a.id, a.name HAVING COUNT(t.id) < " + CAP + " ORDER BY open ASC");
+          var hotRows = Array.isArray(hot) ? hot : (hot.rows || []);
+          var coldRows = Array.isArray(cold) ? cold : (cold.rows || []);
+          var moved = 0; var moves = [];
+          for (var h = 0; h < hotRows.length; h++) {
+            var over = hotRows[h].open - CAP;
+            var movable = await query("SELECT id FROM agent_tasks WHERE agent_id = $1 AND status = 'pending' ORDER BY created_at DESC LIMIT $2", [hotRows[h].id, over]);
+            var movRows = Array.isArray(movable) ? movable : (movable.rows || []);
+            var ci = 0;
+            for (var mi = 0; mi < movRows.length; mi++) {
+              if (!coldRows.length) break;
+              var target = coldRows[ci % coldRows.length];
+              await query("UPDATE agent_tasks SET agent_id = $1 WHERE id = $2", [target.id, movRows[mi].id]);
+              target.open = (target.open || 0) + 1;
+              moves.push('#' + movRows[mi].id + ' ' + hotRows[h].name + '->' + target.name);
+              moved++; ci++;
+            }
+          }
+          results.push('Rebalance (CAP=' + CAP + '): ' + moved + ' Tasks verschoben. ' + (moves.slice(0,10).join(', ') || 'nichts zu tun'));
+        } catch(re) { results.push('Rebalance Fehler: ' + re.message); }
+      } else if (cmd.tool === 'decompose') {
+        try {
+          var parent = await query("SELECT id, task, agent_id, company_id FROM agent_tasks WHERE id = $1", [cmd.parentId]);
+          var pRows = Array.isArray(parent) ? parent : (parent.rows || []);
+          if (!pRows.length) { results.push('Decompose: parent #' + cmd.parentId + ' nicht gefunden'); continue; }
+          var pr = pRows[0];
+          var created = [];
+          for (var di = 0; di < cmd.subtasks.length; di++) {
+            var ins = await query("INSERT INTO agent_tasks (task, status, parent_task_id, company_id, agent_id, priority) VALUES ($1, 'pending', $2, $3, $4, $5) RETURNING id",
+              [cmd.subtasks[di], pr.id, pr.company_id, pr.agent_id, 0]);
+            var iRows = Array.isArray(ins) ? ins : (ins.rows || []);
+            if (iRows.length) created.push('#' + iRows[0].id);
+          }
+          await query("UPDATE agent_tasks SET status = 'decomposed' WHERE id = $1", [pr.id]);
+          results.push('Decompose #' + pr.id + ': ' + created.length + ' Subtasks erzeugt (' + created.join(', ') + ')');
+        } catch(de) { results.push('Decompose Fehler: ' + de.message); }
+      } else if (cmd.tool === 'reprioritize') {
+        try {
+          var HIGH_KW = ['bug','blocker','critical','urgent','broken','kaputt','crash','prod','fix','security','dringend','kritisch'];
+          var LOW_KW  = ['nice-to-have','optional','spaeter','cleanup','doku','readme','kommentar','refactor'];
+          var pend = await query("SELECT id, task FROM agent_tasks WHERE status = 'pending'");
+          var pRows = Array.isArray(pend) ? pend : (pend.rows || []);
+          var bumped = 0, lowered = 0;
+          for (var ri = 0; ri < pRows.length; ri++) {
+            var t = (pRows[ri].task || '').toLowerCase();
+            var isHigh = HIGH_KW.some(function(k){ return t.indexOf(k) !== -1; });
+            var isLow  = LOW_KW.some(function(k){ return t.indexOf(k) !== -1; });
+            var prio = isHigh ? 10 : (isLow ? -5 : 0);
+            await query("UPDATE agent_tasks SET priority = $1 WHERE id = $2", [prio, pRows[ri].id]);
+            if (prio > 0) bumped++; else if (prio < 0) lowered++;
+          }
+          results.push('Reprioritize: ' + pRows.length + ' Tasks geprueft, ' + bumped + ' hoch, ' + lowered + ' runter');
+        } catch(pe) { results.push('Reprioritize Fehler: ' + pe.message); }
+      } else if (cmd.tool === 'blocker_scan') {
+        try {
+          var stuck = await query("SELECT t.id, t.task, t.status, a.name, EXTRACT(EPOCH FROM (NOW() - t.created_at))/3600 AS age_h FROM agent_tasks t LEFT JOIN blun_agents a ON a.id = t.agent_id WHERE t.status IN ('processing','in_progress') AND t.created_at < NOW() - INTERVAL '1 hour' ORDER BY t.created_at ASC LIMIT 20");
+          var sRows = Array.isArray(stuck) ? stuck : (stuck.rows || []);
+          var failed = await query("SELECT t.id, t.task, a.name FROM agent_tasks t LEFT JOIN blun_agents a ON a.id = t.agent_id WHERE t.status = 'failed' OR t.result LIKE '%RETRY%' OR t.result LIKE '%no code output%' ORDER BY t.created_at DESC LIMIT 20");
+          var fRows = Array.isArray(failed) ? failed : (failed.rows || []);
+          var parts = [];
+          parts.push('Hanging (>1h processing): ' + sRows.length);
+          sRows.slice(0,5).forEach(function(r){ parts.push('  #' + r.id + ' ' + (r.name||'?') + ' ' + Math.round(r.age_h) + 'h: ' + (r.task||'').substring(0,50)); });
+          parts.push('Failed/Retry: ' + fRows.length);
+          fRows.slice(0,5).forEach(function(r){ parts.push('  #' + r.id + ' ' + (r.name||'?') + ': ' + (r.task||'').substring(0,50)); });
+          results.push(parts.join('\n'));
+        } catch(be) { results.push('Blocker-Scan Fehler: ' + be.message); }
+      } else if (cmd.tool === 'next_wave') {
+        try {
+          var created = [];
+          for (var wi = 0; wi < cmd.tasks.length; wi++) {
+            var ins = await query("INSERT INTO agent_tasks (task, status, agent_id, priority) VALUES ($1, 'pending', 2, 0) RETURNING id", [cmd.tasks[wi]]);
+            var iRows = Array.isArray(ins) ? ins : (ins.rows || []);
+            if (iRows.length) created.push('#' + iRows[0].id);
+          }
+          results.push('Next Wave: ' + created.length + ' Tasks erzeugt (' + created.join(', ') + '), Dieter Junior verteilt im naechsten Zyklus');
+        } catch(ne) { results.push('Next-Wave Fehler: ' + ne.message); }
       } else if (cmd.tool === 'build_company') {
         // Proactive company builder: creates company + suggests agents
         var company = await callLocalAPI('POST', '/api/organisator/companies', { name: cmd.name, description: cmd.description });
@@ -585,7 +670,7 @@ async function executeTools(agentId, message, aiResponse) {
           status: 'active',
           company_id: agent.company_id || 1,
           system_prompt: (cmd.role && (cmd.role.toLowerCase().indexOf('operator') !== -1 || cmd.role.toLowerCase().indexOf('ceo') !== -1 || cmd.role.toLowerCase().indexOf('organisator') !== -1)) ?
-            'Du bist ' + cmd.name + ', Operator/CEO. KERNREGELN: 1) NUR Code-Tasks mit Dateipfad verteilen (dashboard/components/, src/routes/ etc). NIEMALS Analyse/Report/Konzept/Marketing. 2) Ergebnisse pruefen: git diff nach Task-Completion — keine Datei = nicht erfolgreich. 3) Skills aktiv nutzen. 4) Qualitaet vor Quantitaet. 5) VERBOTEN: agent-engine.js, code-tools.js, server.js, .env, package.json. 6) Systematisch arbeiten, kein Panik-Modus. 7) Syntax-Check vor Deploy. TASK-FORMAT: [TOOL:ASSIGN_TASK:id:VERB + WAS + Dateipfad]' :
+            'Du bist ' + cmd.name + ', Operator/CEO. KERNREGELN: 1) NUR Code-Tasks mit Dateipfad verteilen (dashboard/components/, src/routes/ etc). NIEMALS Analyse/Report/Konzept/Marketing. 2) Ergebnisse pruefen: git diff nach Task-Completion — keine Datei = nicht erfolgreich. 3) Skills aktiv nutzen. 4) Qualitaet vor Quantitaet. 5) VERBOTEN: agent-engine.js, code-tools.js, server.js, .env, package.json. 6) Systematisch arbeiten, kein Panik-Modus. 7) Syntax-Check vor Deploy. TASK-FORMAT: [TOOL:ASSIGN_TASK:id:VERB + WAS + Dateipfad]. REBALANCE: [TOOL:REBALANCE] oder [TOOL:REBALANCE:CAP] verteilt ueberlastete Agents um (Default CAP=12). TRIGGER: "verteil neu"=REBALANCE, "zerleg #id in X;Y;Z"=[TOOL:DECOMPOSE:id|sub1;sub2], "was ist wichtig"=[TOOL:REPRIORITIZE], "wo haengts"=[TOOL:BLOCKER_SCAN], "naechste welle: a;b;c"=[TOOL:NEXT_WAVE:a;b;c].' :
             'Du bist ' + cmd.name + ', ein ' + cmd.role + '. Du sprichst Deutsch, schreibst echten Code und hilfst proaktiv. Bei jeder Aufgabe MUSST du Dateien aendern (.js/.css/.html). Nutze alle zugewiesenen Skills aktiv.'
         });
         results.push('Agent erstellt: ' + (r.name || r.error || JSON.stringify(r)));

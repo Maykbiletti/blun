@@ -501,4 +501,51 @@ router.get("/github/oauth/callback", async function(req, res) {
 });
 
 
+
+// === Plan Usage Summary ===
+router.get("/usage/summary", async function(req, res) {
+  try {
+    var uid = req.user && req.user.id;
+    if (!uid) return res.status(401).json({ error: "auth required" });
+    var q = "WITH cos AS (SELECT id FROM companies WHERE owner_id = $1) " +
+      "SELECT " +
+      " CASE " +
+      "  WHEN model ILIKE 'claude%' THEN 'anthropic' " +
+      "  WHEN model ILIKE 'gpt%' OR model ILIKE 'o1%' OR model ILIKE 'o3%' OR model ILIKE 'o4%' THEN 'openai' " +
+      "  WHEN model ILIKE 'gemini%' THEN 'google' " +
+      "  WHEN model ILIKE 'mistral%' THEN 'mistral' " +
+      "  WHEN model ILIKE 'deepseek%' THEN 'deepseek' " +
+      "  ELSE 'other' " +
+      " END AS provider, " +
+      " SUM(CASE WHEN created_at >= date_trunc('day', now()) THEN COALESCE(tokens_in,0)+COALESCE(tokens_out,0) ELSE 0 END)::bigint AS today_tokens, " +
+      " SUM(CASE WHEN created_at >= date_trunc('week', now()) THEN COALESCE(tokens_in,0)+COALESCE(tokens_out,0) ELSE 0 END)::bigint AS week_tokens, " +
+      " SUM(COALESCE(tokens_in,0)+COALESCE(tokens_out,0))::bigint AS total_tokens, " +
+      " COALESCE(SUM(CASE WHEN created_at >= date_trunc('week', now()) THEN cost_usd ELSE 0 END),0)::float AS week_cost " +
+      "FROM cost_events WHERE company_id IN (SELECT id FROM cos) GROUP BY 1";
+    var rows = { rows: [] };
+    try { rows = await pool.query(q, [uid]); } catch(e) { rows = { rows: [] }; }
+    // Provider-Budgets (soft limits, Woche) - konfigurierbar spaeter
+    var BUDGETS = { anthropic: 10000000, openai: 10000000, google: 5000000, mistral: 2000000, deepseek: 2000000 };
+    var out = {};
+    ["anthropic","openai","google","mistral","deepseek"].forEach(function(p){
+      out[p] = { today_tokens: 0, week_tokens: 0, total_tokens: 0, week_cost: 0, week_budget: BUDGETS[p] };
+    });
+    rows.rows.forEach(function(r){
+      if (!out[r.provider]) return;
+      out[r.provider].today_tokens = Number(r.today_tokens)||0;
+      out[r.provider].week_tokens = Number(r.week_tokens)||0;
+      out[r.provider].total_tokens = Number(r.total_tokens)||0;
+      out[r.provider].week_cost = Number(r.week_cost)||0;
+    });
+    // Week reset: naechster Montag 00:00 UTC
+    var now = new Date();
+    var day = now.getUTCDay() || 7;
+    var reset = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + (8 - day), 0, 0, 0));
+    res.json({ providers: out, week_reset: reset.toISOString() });
+  } catch(err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 module.exports = router;
