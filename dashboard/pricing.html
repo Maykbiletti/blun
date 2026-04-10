@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BLUN -- Pricing</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0a;color:#e5e5e5;font-family:'Inter',system-ui,-apple-system,sans-serif;min-height:100vh}
+a{color:#3b82f6;text-decoration:none}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:1rem 2rem;border-bottom:1px solid #1a1a1a}
+.topbar h1{font-size:1.25rem;font-weight:700;color:#fff}
+.topbar a{font-size:.875rem;color:#a3a3a3}.topbar a:hover{color:#fff}
+.hero{text-align:center;padding:4rem 2rem 2rem;max-width:800px;margin:0 auto}
+.hero h2{font-size:3rem;font-weight:700;color:#fff;margin-bottom:1rem;line-height:1.1}
+.hero p{font-size:1.25rem;color:#737373;margin-bottom:2rem;max-width:600px;margin-left:auto;margin-right:auto;line-height:1.6}
+.container{max-width:1200px;margin:0 auto;padding:2rem}
+.plans-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2rem;margin:2rem 0}
+@media(max-width:900px){.plans-grid{grid-template-columns:1fr;gap:1.5rem}}
+.plan-card{background:#1a1a1a;border:1px solid #27272a;border-radius:16px;padding:2rem;transition:all .3s ease;position:relative;overflow:hidden}
+.plan-card:hover{border-color:#404040;transform:translateY(-4px);box-shadow:0 20px 40px rgba(0,0,0,0.3)}
+.plan-card.featured{border-color:#3b82f6;box-shadow:0 0 30px rgba(59,130,246,0.2)}
+.plan-card.featured::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#3b82f6,#2563eb);border-radius:16px 16px 0 0}
+.recommended{position:absolute;top:1rem;right:1rem;font-size:.7rem;font-weight:600;color:#3b82f6;background:rgba(59,130,246,0.1);padding:.25rem .75rem;border-radius:12px;text-transform:uppercase;letter-spacing:.05em;border:1px solid rgba(59,130,246,0.3)}
+.plan-card h3{font-size:1.5rem;font-weight:700;color:#fff;margin-bottom:.5rem}
+.plan-card .description{font-size:.875rem;color:#737373;margin-bottom:1.5rem;line-height:1.5}
+.plan-card .price{font-size:3rem;font-weight:800;color:#fff;margin:1rem 0;line-height:1}
+.plan-card .price span{font-size:1rem;font-weight:400;color:#737373;vertical-align:top}
+.plan-card .price-note{font-size:.75rem;color:#525252;margin-bottom:2rem}
+.features{list-style:none;margin:1.5rem 0 2rem}
+.features li{font-size:.875rem;color:#e5e5e5;padding:.5rem 0;padding-left:1.5rem;position:relative;line-height:1.4}
+.features li::before{content:'✓';position:absolute;left:0;color:#22c55e;font-weight:700;font-size:1rem}
+.features .highlight{color:#3b82f6;font-weight:600}
+.features .unlimited{color:#22c55e}
+.btn{display:inline-block;padding:1rem 2rem;text-align:center;border-radius:12px;font-size:.875rem;font-weight:600;border:none;cursor:pointer;transition:all .2s;text-decoration:none;width:100%}
+.btn-primary{background:#3b82f6;color:#fff;box-shadow:0 4px 12px rgba(59,130,246,0.3)}
+.btn-primary:hover{background:#2563eb;transform:translateY(-1px);box-shadow:0 6px 20px rgba(59,130,246,0.4)}
+.btn-outline{background:transparent;border:2px solid #404040;color:#a3a3a3}
+.btn-outline:hover{border-color:#3b82f6;color:#3b82f6;background:rgba(59,130,246,0.05)}
+.btn-contact{background:linear-gradient(135deg,#1e3a5f,#1e40af);color:#fff;box-shadow:0 4px 12px rgba(59,130,246,0.2)}
+.btn-contact:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(59,130,246,0.3)}
+.comparison{margin:4rem 0;background:#111;border:1px solid #1a1a1a;border-radius:16px;overflow:hidden}
+.comparison-header{background:#1a1a1a;padding:2rem;text-align:center}
+.comparison h3{font-size:1.75rem;font-weight:700;color:#fff;margin-bottom:.5rem}
+.comparison p{color:#737373}
+.comparison-table{overflow-x:auto}
+.comparison table{width:100%;border-collapse:collapse}
+.comparison th{background:#1a1a1a;color:#a3a3a3;font-size:.75rem;font-weight:600;padding:1rem;text-align:left;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #27272a}
+.comparison th:first-child{text-align:left;color:#fff;font-size:.875rem}
+.comparison th:not(:first-child){text-align:center}
+.comparison td{padding:1rem;color:#e5e5e5;border-bottom:1px solid #1a1a1a;font-size:.875rem}
+.comparison td:first-child{font-weight:600;background:#111}
+.comparison td:not(:first-child){text-align:center;background:#0f0f0f}
+.comparison .check{color:#22c55e;font-weight:700;font-size:1.1rem}
+.comparison .cross{color:#525252;font-weight:700}
+.comparison .unlimited{color:#3b82f6;font-weight:600}
+.faq{margin:4rem 0;padding:2rem;background:#1a1a1a;border-radius:16px}
+.faq h3{font-size:1.75rem;font-weight:700;color:#fff;margin-bottom:2rem;text-align:center}
+.faq-item{margin-bottom:1.5rem;border-bottom:1px solid #27272a;padding-bottom:1.5rem}
+.faq-item:last-child{border:none}
+.faq-item h4{font-size:1.125rem;font-weight:600;color:#fff;margin-bottom:.75rem}
+.faq-item p{color:#a3a3a3;line-height:1.6}
+.cta{text-align:center;margin:4rem 0;padding:3rem 2rem;background:linear-gradient(135deg,rgba(59,130,246,0.1),rgba(37,99,235,0.05));border:1px solid rgba(59,130,246,0.2);border-radius:20px}
+.cta h3{font-size:2rem;font-weight:700;color:#fff;margin-bottom:1rem}
+.cta p{font-size:1.125rem;color:#a3a3a3;margin-bottom:2rem;max-width:500px;margin-left:auto;margin-right:auto}
+.cta .btn{max-width:300px;margin:0 auto}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <h1><span style="color:#fff">BL</span><span style="color:#3b82f6">UN</span></h1>
+  <div><a href="/dashboard">&larr; Dashboard</a></div>
+</div>
+
+<div class="hero">
+  <h2>Choose Your Plan</h2>
+  <p>Scale your AI workflow with flexible pricing designed for individuals and teams of all sizes.</p>
+</div>
+
+<div class="container">
+  <div class="plans-grid">
+
+    <!-- Free Plan -->
+    <div class="plan-card">
+      <h3>Free</h3>
+      <div class="description">Perfect for getting started with AI assistants</div>
+      <div class="price">$0<span>/month</span></div>
+      <div class="price-note">Forever free</div>
+      <ul class="features">
+        <li><span class="highlight">3 AI agents</span></li>
+        <li><span class="highlight">10,000 tokens/month</span></li>
+        <li>Basic models (Claude Haiku)</li>
+        <li>Community support</li>
+        <li>1 project workspace</li>
+        <li>Standard features</li>
+      </ul>
+      <a href="/billing" class="btn btn-outline">Get Started Free</a>
+    </div>
+
+    <!-- Pro Plan -->
+    <div class="plan-card featured">
+      <div class="recommended">Most Popular</div>
+      <h3>Pro</h3>
+      <div class="description">For professionals and growing teams</div>
+      <div class="price">$29<span>/month</span></div>
+      <div class="price-note">Billed monthly or $290/year (save 17%)</div>
+      <ul class="features">
+        <li><span class="highlight">25 AI agents</span></li>
+        <li><span class="highlight">500,000 tokens/month</span></li>
+        <li>Advanced models (Claude Sonnet, GPT-4)</li>
+        <li>Priority email support</li>
+        <li>10 project workspaces</li>
+        <li>Advanced integrations</li>
+        <li>Custom templates</li>
+        <li>API access</li>
+      </ul>
+      <a href="/billing" class="btn btn-primary">Start Pro Trial</a>
+    </div>
+
+    <!-- Business Plan -->
+    <div class="plan-card">
+      <h3>Business</h3>
+      <div class="description">For teams that need unlimited scale</div>
+      <div class="price">$99<span>/month</span></div>
+      <div class="price-note">Billed monthly or $990/year (save 17%)</div>
+      <ul class="features">
+        <li><span class="unlimited">Unlimited AI agents</span></li>
+        <li><span class="unlimited">Unlimited tokens</span></li>
+        <li>All AI models (Claude Opus, GPT-4 Turbo)</li>
+        <li><span class="highlight">24/7 priority support</span></li>
+        <li>Unlimited project workspaces</li>
+        <li>Team collaboration tools</li>
+        <li>Advanced analytics</li>
+        <li>Custom integrations</li>
+        <li>SSO & user management</li>
+        <li>SLA guarantee</li>
+      </ul>
+      <a href="/billing" class="btn btn-contact">Start Business Trial</a>
+    </div>
+
+  </div>
+
+  <!-- Feature Comparison -->
+  <div class="comparison">
+    <div class="comparison-header">
+      <h3>Compare All Features</h3>
+      <p>Detailed breakdown of what's included in each plan</p>
+    </div>
+    <div class="comparison-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th>Free</th>
+            <th>Pro</th>
+            <th>Business</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>AI Agents</td>
+            <td>3</td>
+            <td>25</td>
+            <td class="unlimited">Unlimited</td>
+          </tr>
+          <tr>
+            <td>Monthly Tokens</td>
+            <td>10,000</td>
+            <td>500,000</td>
+            <td class="unlimited">Unlimited</td>
+          </tr>
+          <tr>
+            <td>Project Workspaces</td>
+            <td>1</td>
+            <td>10</td>
+            <td class="unlimited">Unlimited</td>
+          </tr>
+          <tr>
+            <td>AI Models</td>
+            <td>Claude Haiku</td>
+            <td>Claude Sonnet, GPT-4</td>
+            <td>All Models (Opus, Turbo)</td>
+          </tr>
+          <tr>
+            <td>API Access</td>
+            <td class="cross">✗</td>
+            <td class="check">✓</td>
+            <td class="check">✓</td>
+          </tr>
+          <tr>
+            <td>Custom Templates</td>
+            <td class="cross">✗</td>
+            <td class="check">✓</td>
+            <td class="check">✓</td>
+          </tr>
+          <tr>
+            <td>Team Collaboration</td>
+            <td class="cross">✗</td>
+            <td class="cross">✗</td>
+            <td class="check">✓</td>
+          </tr>
+          <tr>
+            <td>Advanced Analytics</td>
+            <td class="cross">✗</td>
+            <td class="cross">✗</td>
+            <td class="check">✓</td>
+          </tr>
+          <tr>
+            <td>SSO Integration</td>
+            <td class="cross">✗</td>
+            <td class="cross">✗</td>
+            <td class="check">✓</td>
+          </tr>
+          <tr>
+            <td>Support Level</td>
+            <td>Community</td>
+            <td>Priority Email</td>
+            <td>24/7 Priority</td>
+          </tr>
+          <tr>
+            <td>SLA Guarantee</td>
+            <td class="cross">✗</td>
+            <td class="cross">✗</td>
+            <td class="check">99.9%</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- FAQ -->
+  <div class="faq">
+    <h3>Frequently Asked Questions</h3>
+
+    <div class="faq-item">
+      <h4>What are tokens?</h4>
+      <p>Tokens are units of AI computation. Roughly 1 token = 0.75 words. A typical conversation uses 100-500 tokens per message exchange.</p>
+    </div>
+
+    <div class="faq-item">
+      <h4>Can I change plans anytime?</h4>
+      <p>Yes! You can upgrade or downgrade your plan at any time. Changes take effect immediately, and we'll prorate any billing differences.</p>
+    </div>
+
+    <div class="faq-item">
+      <h4>What happens if I exceed my token limit?</h4>
+      <p>Free users will be prompted to upgrade. Pro and Business users can continue with overage billing at standard rates.</p>
+    </div>
+
+    <div class="faq-item">
+      <h4>Is there a free trial?</h4>
+      <p>Yes! Pro and Business plans include a 14-day free trial. No credit card required to start.</p>
+    </div>
+
+    <div class="faq-item">
+      <h4>Do you offer annual discounts?</h4>
+      <p>Yes! Save 17% when you pay annually. Switch to yearly billing in your account settings.</p>
+    </div>
+
+    <div class="faq-item">
+      <h4>What support do I get?</h4>
+      <p>Free users get community support via Discord. Pro users get priority email support. Business users get 24/7 priority support with dedicated assistance.</p>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <div class="cta">
+    <h3>Ready to get started?</h3>
+    <p>Join thousands of users building the future with AI. Start your free trial today.</p>
+    <a href="/billing" class="btn btn-primary">Start Free Trial</a>
+  </div>
+
+</div>
+
+<script>
+// Smooth scroll for anchor links
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+  anchor.addEventListener('click', function (e) {
+    e.preventDefault();
+    document.querySelector(this.getAttribute('href')).scrollIntoView({
+      behavior: 'smooth'
+    });
+  });
+});
+
+// Add loading state to CTA buttons
+document.querySelectorAll('.btn').forEach(btn => {
+  btn.addEventListener('click', function(e) {
+    if (this.href && this.href.includes('/billing')) {
+      this.textContent = 'Loading...';
+      this.style.pointerEvents = 'none';
+    }
+  });
+});
+</script>
+</body>
+</html>
