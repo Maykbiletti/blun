@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0a0a0a">
+<title>BLUN AI Configuration</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0a0a0a;--card:#141414;--card-border:#1e1e1e;--fg:#fafafa;--fg2:#a1a1aa;--fg3:#52525b;--blue:#3b82f6;--blue-bg:rgba(59,130,246,.08);--green:#22c55e;--red:#ef4444;--radius:8px;--radius-lg:12px;--font:'Inter',-apple-system,sans-serif}
+html,body{height:100%;background:var(--bg);color:var(--fg);font-family:var(--font);font-size:14px;-webkit-font-smoothing:antialiased}
+a{color:var(--blue);text-decoration:none}
+.topbar{height:52px;border-bottom:1px solid var(--card-border);display:flex;align-items:center;padding:0 24px;gap:16px}
+.topbar-title{font-size:15px;font-weight:600;flex:1}
+.topbar a{font-size:13px;color:var(--fg2)}
+.topbar a:hover{color:var(--fg)}
+.content{max-width:1200px;margin:0 auto;padding:24px}
+.tabs{display:flex;gap:4px;margin-bottom:24px;border-bottom:1px solid var(--card-border);padding-bottom:0}
+.tab{padding:10px 16px;cursor:pointer;color:var(--fg2);font-size:13px;font-weight:500;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab:hover{color:var(--fg)}
+.tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+.panel{display:none}
+.panel.active{display:block}
+.search-bar{display:flex;gap:8px;margin-bottom:16px}
+.search-bar input{flex:1;background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);padding:8px 12px;color:var(--fg);font-size:13px;outline:none}
+.search-bar input:focus{border-color:var(--blue)}
+.btn{padding:7px 14px;border-radius:var(--radius);border:none;cursor:pointer;font-size:12px;font-weight:500;font-family:var(--font)}
+.btn-blue{background:var(--blue);color:#000}
+.btn-red{background:var(--red);color:#fff}
+.btn-ghost{background:transparent;border:1px solid var(--card-border);color:var(--fg2)}
+.btn-ghost:hover{border-color:var(--fg3);color:var(--fg)}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:11px;color:var(--fg3);text-transform:uppercase;letter-spacing:.05em;padding:10px 12px;border-bottom:1px solid var(--card-border)}
+td{padding:10px 12px;border-bottom:1px solid var(--card-border);font-size:13px;color:var(--fg2)}
+tr:hover td{background:rgba(255,255,255,.02)}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
+.badge-enabled{background:rgba(34,197,94,.15);color:var(--green)}
+.badge-disabled{background:rgba(239,68,68,.15);color:var(--red)}
+.badge-available{background:rgba(34,197,94,.15);color:var(--green)}
+.badge-unavailable{background:rgba(239,68,68,.15);color:var(--red)}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;justify-content:center;align-items:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius-lg);width:560px;max-width:90vw;max-height:85vh;overflow-y:auto;padding:24px}
+.modal h3{font-size:16px;margin-bottom:16px}
+.modal-close{float:right;cursor:pointer;color:var(--fg3);font-size:18px}
+.modal-close:hover{color:var(--fg)}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:12px;color:var(--fg3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em}
+.form-group input,.form-group select,.form-group textarea{width:100%;background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);padding:8px 12px;color:var(--fg);font-size:12px;font-family:var(--font);outline:none}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--blue)}
+.form-actions{display:flex;gap:8px;margin-top:20px}
+.action-btns{display:flex;gap:6px}
+.error-msg{color:var(--red);font-size:12px;margin-top:8px}
+.success-msg{color:var(--green);font-size:12px;margin-top:8px}
+.loading{opacity:.6;pointer-events:none}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-title">BLUN <span style="color:var(--fg3);font-weight:400">AI Configuration</span></div>
+  <a href="/dashboard">Back to Dashboard</a>
+</div>
+<div class="content">
+  <div class="tabs">
+    <div class="tab active" data-tab="providers">Providers</div>
+    <div class="tab" data-tab="models">Models</div>
+    <div class="tab" data-tab="defaults">Defaults</div>
+    <div class="tab" data-tab="locks">Locks</div>
+  </div>
+
+  <!-- PROVIDERS TAB -->
+  <div class="panel active" id="panel-providers">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 style="font-size:16px">AI Providers</h3>
+      <button class="btn btn-blue" onclick="openProviderModal()">+ New Provider</button>
+    </div>
+    <table>
+      <thead><tr><th>Name</th><th>API Key</th><th>Models</th><th>Enabled</th><th>Actions</th></tr></thead>
+      <tbody id="providers-tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- MODELS TAB -->
+  <div class="panel" id="panel-models">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 style="font-size:16px">AI Models</h3>
+      <button class="btn btn-blue" onclick="openModelModal()">+ New Model</button>
+    </div>
+    <div class="search-bar">
+      <input type="text" id="model-search" placeholder="Search by name or provider...">
+      <button class="btn btn-ghost" onclick="filterModels()">Filter</button>
+    </div>
+    <table>
+      <thead><tr><th>Provider</th><th>Model Name</th><th>Capabilities</th><th>Available</th><th>Actions</th></tr></thead>
+      <tbody id="models-tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- DEFAULTS TAB -->
+  <div class="panel" id="panel-defaults">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 style="font-size:16px">Default Configurations</h3>
+      <button class="btn btn-blue" onclick="openDefaultModal()">+ New Config</button>
+    </div>
+    <table>
+      <thead><tr><th>Name</th><th>Default Provider</th><th>Default Model</th><th>Fallback Chain</th><th>Actions</th></tr></thead>
+      <tbody id="defaults-tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- LOCKS TAB -->
+  <div class="panel" id="panel-locks">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 style="font-size:16px">Model Locks</h3>
+      <button class="btn btn-blue" onclick="openLockModal()">+ New Lock</button>
+    </div>
+    <table>
+      <thead><tr><th>Model</th><th>Reason</th><th>Locked Until</th><th>Created By</th><th>Actions</th></tr></thead>
+      <tbody id="locks-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- PROVIDER MODAL -->
+<div class="modal-overlay" id="provider-modal">
+  <div class="modal">
+    <span class="modal-close" onclick="closeModal('provider')">&times;</span>
+    <h3 id="provider-modal-title">New Provider</h3>
+    <div class="form-group">
+      <label>Name</label>
+      <input type="text" id="provider-name" placeholder="e.g. OpenAI, Anthropic">
+    </div>
+    <div class="form-group">
+      <label>API Key Environment Variable</label>
+      <input type="text" id="provider-api-key" placeholder="e.g. OPENAI_API_KEY">
+    </div>
+    <div class="form-group">
+      <label>Models (comma-separated)</label>
+      <textarea id="provider-models" placeholder="e.g. gpt-4, gpt-3.5-turbo" style="height:100px"></textarea>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-blue" onclick="saveProvider()" id="provider-save-btn">Save Provider</button>
+      <button class="btn btn-ghost" onclick="closeModal('provider')">Cancel</button>
+    </div>
+    <div id="provider-msg"></div>
+  </div>
+</div>
+
+<!-- MODEL MODAL -->
+<div class="modal-overlay" id="model-modal">
+  <div class="modal">
+    <span class="modal-close" onclick="closeModal('model')">&times;</span>
+    <h3 id="model-modal-title">New Model</h3>
+    <div class="form-group">
+      <label>Provider</label>
+      <select id="model-provider" placeholder="Select provider"></select>
+    </div>
+    <div class="form-group">
+      <label>Model Name</label>
+      <input type="text" id="model-name" placeholder="e.g. gpt-4-turbo">
+    </div>
+    <div class="form-group">
+      <label>Capabilities (JSON)</label>
+      <textarea id="model-capabilities" placeholder='{"chat":true,"vision":false}' style="height:80px"></textarea>
+    </div>
+    <div class="form-group">
+      <label>Pricing (JSON)</label>
+      <textarea id="model-pricing" placeholder='{"input":0.03,"output":0.06}' style="height:80px"></textarea>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-blue" onclick="saveModel()" id="model-save-btn">Save Model</button>
+      <button class="btn btn-ghost" onclick="closeModal('model')">Cancel</button>
+    </div>
+    <div id="model-msg"></div>
+  </div>
+</div>
+
+<!-- DEFAULT MODAL -->
+<div class="modal-overlay" id="default-modal">
+  <div class="modal">
+    <span class="modal-close" onclick="closeModal('default')">&times;</span>
+    <h3 id="default-modal-title">New Default Config</h3>
+    <div class="form-group">
+      <label>Config Name</label>
+      <input type="text" id="default-name" placeholder="e.g. production, development">
+    </div>
+    <div class="form-group">
+      <label>Default Provider</label>
+      <select id="default-provider"></select>
+    </div>
+    <div class="form-group">
+      <label>Default Model</label>
+      <select id="default-model"></select>
+    </div>
+    <div class="form-group">
+      <label>Fallback Chain (JSON)</label>
+      <textarea id="default-fallback" placeholder='["gpt-4","gpt-3.5-turbo"]' style="height:80px"></textarea>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-blue" onclick="saveDefault()" id="default-save-btn">Save Config</button>
+      <button class="btn btn-ghost" onclick="closeModal('default')">Cancel</button>
+    </div>
+    <div id="default-msg"></div>
+  </div>
+</div>
+
+<!-- LOCK MODAL -->
+<div class="modal-overlay" id="lock-modal">
+  <div class="modal">
+    <span class="modal-close" onclick="closeModal('lock')">&times;</span>
+    <h3 id="lock-modal-title">New Model Lock</h3>
+    <div class="form-group">
+      <label>Model</label>
+      <select id="lock-model"></select>
+    </div>
+    <div class="form-group">
+      <label>Reason</label>
+      <input type="text" id="lock-reason" placeholder="e.g. maintenance, cost control">
+    </div>
+    <div class="form-group">
+      <label>Locked Until (ISO 8601)</label>
+      <input type="datetime-local" id="lock-until">
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-blue" onclick="saveLock()" id="lock-save-btn">Create Lock</button>
+      <button class="btn btn-ghost" onclick="closeModal('lock')">Cancel</button>
+    </div>
+    <div id="lock-msg"></div>
+  </div>
+</div>
+
+<script>
+const API_URL = '/ai-config';
+let currentEditingId = null;
+let currentEditingType = null;
+let providers = [];
+let models = [];
+let defaults = [];
+let locks = [];
+
+// TAB NAVIGATION
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', function() {
+    const tabName = this.dataset.tab;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    this.classList.add('active');
+    document.getElementById(`panel-${tabName}`).classList.add('active');
+    loadData(tabName);
+  });
+});
+
+// LOAD DATA
+async function loadData(type) {
+  try {
+    if (type === 'providers' || !type) {
+      const res = await fetch(`${API_URL}/providers`);
+      const data = await res.json();
+      providers = data.providers || [];
+      renderProviders();
+    }
+    if (type === 'models' || !type) {
+      const res = await fetch(`${API_URL}/models`);
+      const data = await res.json();
+      models = data.models || [];
+      renderModels();
+    }
+    if (type === 'defaults' || !type) {
+      const res = await fetch(`${API_URL}/defaults`);
+      const data = await res.json();
+      defaults = data.defaults || [];
+      renderDefaults();
+    }
+    if (type === 'locks' || !type) {
+      const res = await fetch(`${API_URL}/locks`);
+      const data = await res.json();
+      locks = data.locks || [];
+      renderLocks();
+    }
+  } catch (err) {
+    console.error('Load error:', err);
+  }
+}
+
+// RENDER PROVIDERS
+function renderProviders() {
+  const tbody = document.getElementById('providers-tbody');
+  tbody.innerHTML = providers.map(p => `
+    <tr>
+      <td><strong>${p.name}</strong></td>
+      <td><code style="font-size:11px;color:var(--fg3)">${p.api_key_name}</code></td>
+      <td>${p.models ? (typeof p.models === 'string' ? JSON.parse(p.models) : p.models).length : 0}</td>
+      <td><span class="badge ${p.is_enabled ? 'badge-enabled' : 'badge-disabled'}">${p.is_enabled ? 'Enabled' : 'Disabled'}</span></td>
+      <td>
+        <div class="action-btns" style="display:flex;gap:4px">
+          <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px" onclick="editProvider(${p.id})">Edit</button>
+          <button class="btn btn-red" style="padding:4px 8px;font-size:11px" onclick="deleteProvider(${p.id})">Delete</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+// RENDER MODELS
+function renderModels() {
+  const tbody = document.getElementById('models-tbody');
+  tbody.innerHTML = models.map(m => {
+    const prov = providers.find(p => p.id === m.provider_id);
+    return `
+    <tr>
+      <td>${prov ? prov.name : 'Unknown'}</td>
+      <td><strong>${m.name}</strong></td>
+      <td>${m.capabilities ? Object.keys(JSON.parse(typeof m.capabilities === 'string' ? m.capabilities : '{}')).join(', ') : '-'}</td>
+      <td><span class="badge ${m.is_available ? 'badge-available' : 'badge-unavailable'}">${m.is_available ? 'Available' : 'Unavailable'}</span></td>
+      <td>
+        <div class="action-btns" style="display:flex;gap:4px">
+          <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px" onclick="editModel(${m.id})">Edit</button>
+          <button class="btn btn-red" style="padding:4px 8px;font-size:11px" onclick="deleteModel(${m.id})">Delete</button>
+        </div>
+      </td>
+    </tr>
+  `}).join('');
+}
+
+// RENDER DEFAULTS
+function renderDefaults() {
+  const tbody = document.getElementById('defaults-tbody');
+  tbody.innerHTML = defaults.map(d => {
+    const chain = d.fallback_chain ? JSON.parse(typeof d.fallback_chain === 'string' ? d.fallback_chain : '[]') : [];
+    return `
+    <tr>
+      <td><strong>${d.name}</strong></td>
+      <td>${d.default_provider || '-'}</td>
+      <td>${d.default_model || '-'}</td>
+      <td>${chain.join(', ') || '-'}</td>
+      <td>
+        <div class="action-btns" style="display:flex;gap:4px">
+          <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px" onclick="editDefault(${d.id})">Edit</button>
+          <button class="btn btn-red" style="padding:4px 8px;font-size:11px" onclick="deleteDefault(${d.id})">Delete</button>
+        </div>
+      </td>
+    </tr>
+  `}).join('');
+}
+
+// RENDER LOCKS
+function renderLocks() {
+  const tbody = document.getElementById('locks-tbody');
+  tbody.innerHTML = locks.map(l => {
+    const model = models.find(m => m.id === l.model_id);
+    return `
+    <tr>
+      <td>${model ? model.name : 'Unknown'}</td>
+      <td>${l.reason || '-'}</td>
+      <td>${l.locked_until ? new Date(l.locked_until).toLocaleString() : 'Indefinite'}</td>
+      <td style="font-size:12px;color:var(--fg3)">${l.created_by || 'System'}</td>
+      <td>
+        <button class="btn btn-red" style="padding:4px 8px;font-size:11px" onclick="deleteLock(${l.id})">Remove</button>
+      </td>
+    </tr>
+  `}).join('');
+}
+
+// MODAL FUNCTIONS
+function openProviderModal() {
+  currentEditingId = null;
+  document.getElementById('provider-modal-title').textContent = 'New Provider';
+  document.getElementById('provider-name').value = '';
+  document.getElementById('provider-api-key').value = '';
+  document.getElementById('provider-models').value = '';
+  document.getElementById('provider-msg').innerHTML = '';
+  document.getElementById('provider-modal').classList.add('open');
+}
+
+function editProvider(id) {
+  const p = providers.find(x => x.id === id);
+  if (!p) return;
+  currentEditingId = id;
+  document.getElementById('provider-modal-title').textContent = 'Edit Provider';
+  document.getElementById('provider-name').value = p.name;
+  document.getElementById('provider-api-key').value = p.api_key_name;
+  document.getElementById('provider-models').value = p.models ? (typeof p.models === 'string' ? p.models : p.models.join(', ')) : '';
+  document.getElementById('provider-msg').innerHTML = '';
+  document.getElementById('provider-modal').classList.add('open');
+}
+
+function openModelModal() {
+  currentEditingId = null;
+  document.getElementById('model-modal-title').textContent = 'New Model';
+  document.getElementById('model-provider').innerHTML = providers.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+  document.getElementById('model-name').value = '';
+  document.getElementById('model-capabilities').value = '';
+  document.getElementById('model-pricing').value = '';
+  document.getElementById('model-msg').innerHTML = '';
+  document.getElementById('model-modal').classList.add('open');
+}
+
+function editModel(id) {
+  const m = models.find(x => x.id === id);
+  if (!m) return;
+  currentEditingId = id;
+  document.getElementById('model-modal-title').textContent = 'Edit Model';
+  document.getElementById('model-provider').innerHTML = providers.map(p => `<option value="${p.id}" ${p.id === m.provider_id ? 'selected' : ''}>${p.name}</option>`).join('');
+  document.getElementById('model-name').value = m.name;
+  document.getElementById('model-capabilities').value = m.capabilities || '';
+  document.getElementById('model-pricing').value = m.pricing || '';
+  document.getElementById('model-msg').innerHTML = '';
+  document.getElementById('model-modal').classList.add('open');
+}
+
+function openDefaultModal() {
+  currentEditingId = null;
+  document.getElementById('default-modal-title').textContent = 'New Default Config';
+  document.getElementById('default-provider').innerHTML = '<option value="">-- None --</option>' + providers.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
+  document.getElementById('default-model').innerHTML = '<option value="">-- None --</option>' + models.map(m => `<option value="${m.name}">${m.name}</option>`).join('');
+  document.getElementById('default-name').value = '';
+  document.getElementById('default-fallback').value = '';
+  document.getElementById('default-msg').innerHTML = '';
+  document.getElementById('default-modal').classList.add('open');
+}
+
+function editDefault(id) {
+  const d = defaults.find(x => x.id === id);
+  if (!d) return;
+  currentEditingId = id;
+  document.getElementById('default-modal-title').textContent = 'Edit Default Config';
+  document.getElementById('default-provider').innerHTML = '<option value="">-- None --</option>' + providers.map(p => `<option value="${p.name}" ${p.name === d.default_provider ? 'selected' : ''}>${p.name}</option>`).join('');
+  document.getElementById('default-model').innerHTML = '<option value="">-- None --</option>' + models.map(m => `<option value="${m.name}" ${m.name === d.default_model ? 'selected' : ''}>${m.name}</option>`).join('');
+  document.getElementById('default-name').value = d.name;
+  document.getElementById('default-fallback').value = d.fallback_chain || '';
+  document.getElementById('default-msg').innerHTML = '';
+  document.getElementById('default-modal').classList.add('open');
+}
+
+function openLockModal() {
+  currentEditingId = null;
+  document.getElementById('lock-modal-title').textContent = 'New Model Lock';
+  document.getElementById('lock-model').innerHTML = models.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+  document.getElementById('lock-reason').value = '';
+  document.getElementById('lock-until').value = '';
+  document.getElementById('lock-msg').innerHTML = '';
+  document.getElementById('lock-modal').classList.add('open');
+}
+
+function closeModal(type) {
+  document.getElementById(`${type}-modal`).classList.remove('open');
+}
+
+// SAVE FUNCTIONS
+async function saveProvider() {
+  const name = document.getElementById('provider-name').value.trim();
+  const apiKey = document.getElementById('provider-api-key').value.trim();
+  const models = document.getElementById('provider-models').value.trim().split(',').map(x => x.trim()).filter(x => x);
+
+  if (!name || !apiKey) {
+    document.getElementById('provider-msg').innerHTML = '<div class="error-msg">Name and API Key required</div>';
+    return;
+  }
+
+  try {
+    const btn = document.getElementById('provider-save-btn');
+    btn.classList.add('loading');
+    const method = currentEditingId ? 'PATCH' : 'POST';
+    const url = currentEditingId ? `${API_URL}/providers/${currentEditingId}` : `${API_URL}/providers`;
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, api_key_name: apiKey, models })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Save failed');
+    document.getElementById('provider-msg').innerHTML = '<div class="success-msg">Saved!</div>';
+    setTimeout(() => { closeModal('provider'); loadData('providers'); }, 500);
+    btn.classList.remove('loading');
+  } catch (err) {
+    document.getElementById('provider-msg').innerHTML = `<div class="error-msg">${err.message}</div>`;
+  }
+}
+
+async function saveModel() {
+  const providerId = document.getElementById('model-provider').value;
+  const name = document.getElementById('model-name').value.trim();
+  const capabilities = document.getElementById('model-capabilities').value.trim();
+  const pricing = document.getElementById('model-pricing').value.trim();
+
+  if (!providerId || !name) {
+    document.getElementById('model-msg').innerHTML = '<div class="error-msg">Provider and Name required</div>';
+    return;
+  }
+
+  try {
+    const btn = document.getElementById('model-save-btn');
+    btn.classList.add('loading');
+    const method = currentEditingId ? 'PATCH' : 'POST';
+    const url = currentEditingId ? `${API_URL}/models/${currentEditingId}` : `${API_URL}/models`;
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        provider_id: parseInt(providerId),
+        name,
+        capabilities: capabilities ? JSON.parse(capabilities) : null,
+        pricing: pricing ? JSON.parse(pricing) : null
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Save failed');
+    document.getElementById('model-msg').innerHTML = '<div class="success-msg">Saved!</div>';
+    setTimeout(() => { closeModal('model'); loadData('models'); }, 500);
+    btn.classList.remove('loading');
+  } catch (err) {
+    document.getElementById('model-msg').innerHTML = `<div class="error-msg">${err.message}</div>`;
+  }
+}
+
+async function saveDefault() {
+  const name = document.getElementById('default-name').value.trim();
+  const provider = document.getElementById('default-provider').value;
+  const model = document.getElementById('default-model').value;
+  const fallback = document.getElementById('default-fallback').value.trim();
+
+  if (!name) {
+    document.getElementById('default-msg').innerHTML = '<div class="error-msg">Config name required</div>';
+    return;
+  }
+
+  try {
+    const btn = document.getElementById('default-save-btn');
+    btn.classList.add('loading');
+    const method = currentEditingId ? 'PATCH' : 'POST';
+    const url = currentEditingId ? `${API_URL}/defaults/${currentEditingId}` : `${API_URL}/defaults`;
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name,
+        default_provider: provider || null,
+        default_model: model || null,
+        fallback_chain: fallback ? JSON.parse(fallback) : null
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Save failed');
+    document.getElementById('default-msg').innerHTML = '<div class="success-msg">Saved!</div>';
+    setTimeout(() => { closeModal('default'); loadData('defaults'); }, 500);
+    btn.classList.remove('loading');
+  } catch (err) {
+    document.getElementById('default-msg').innerHTML = `<div class="error-msg">${err.message}</div>`;
+  }
+}
+
+async function saveLock() {
+  const modelId = document.getElementById('lock-model').value;
+  const reason = document.getElementById('lock-reason').value.trim();
+  const until = document.getElementById('lock-until').value;
+
+  if (!modelId) {
+    document.getElementById('lock-msg').innerHTML = '<div class="error-msg">Model required</div>';
+    return;
+  }
+
+  try {
+    const btn = document.getElementById('lock-save-btn');
+    btn.classList.add('loading');
+    const res = await fetch(`${API_URL}/locks`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model_id: parseInt(modelId),
+        reason: reason || null,
+        locked_until: until || null
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Save failed');
+    document.getElementById('lock-msg').innerHTML = '<div class="success-msg">Locked!</div>';
+    setTimeout(() => { closeModal('lock'); loadData('locks'); }, 500);
+    btn.classList.remove('loading');
+  } catch (err) {
+    document.getElementById('lock-msg').innerHTML = `<div class="error-msg">${err.message}</div>`;
+  }
+}
+
+// DELETE FUNCTIONS
+async function deleteProvider(id) {
+  if (!confirm('Delete this provider?')) return;
+  try {
+    const res = await fetch(`${API_URL}/providers/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Delete failed');
+    loadData('providers');
+  } catch (err) {
+    alert('Error: ' + err.message);
+  }
+}
+
+async function deleteModel(id) {
+  if (!confirm('Delete this model?')) return;
+  try {
+    const res = await fetch(`${API_URL}/models/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Delete failed');
+    loadData('models');
+  } catch (err) {
+    alert('Error: ' + err.message);
+  }
+}
+
+async function deleteDefault(id) {
+  if (!confirm('Delete this default config?')) return;
+  try {
+    const res = await fetch(`${API_URL}/defaults/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Delete failed');
+    loadData('defaults');
+  } catch (err) {
+    alert('Error: ' + err.message);
+  }
+}
+
+async function deleteLock(id) {
+  if (!confirm('Remove this lock?')) return;
+  try {
+    const res = await fetch(`${API_URL}/locks/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Delete failed');
+    loadData('locks');
+  } catch (err) {
+    alert('Error: ' + err.message);
+  }
+}
+
+function filterModels() {
+  const search = document.getElementById('model-search').value.toLowerCase();
+  const filtered = models.filter(m => {
+    const prov = providers.find(p => p.id === m.provider_id);
+    return m.name.toLowerCase().includes(search) || (prov && prov.name.toLowerCase().includes(search));
+  });
+  const tbody = document.getElementById('models-tbody');
+  tbody.innerHTML = filtered.map(m => {
+    const prov = providers.find(p => p.id === m.provider_id);
+    return `
+    <tr>
+      <td>${prov ? prov.name : 'Unknown'}</td>
+      <td><strong>${m.name}</strong></td>
+      <td>${m.capabilities ? Object.keys(JSON.parse(typeof m.capabilities === 'string' ? m.capabilities : '{}')).join(', ') : '-'}</td>
+      <td><span class="badge ${m.is_available ? 'badge-available' : 'badge-unavailable'}">${m.is_available ? 'Available' : 'Unavailable'}</span></td>
+      <td>
+        <div class="action-btns" style="display:flex;gap:4px">
+          <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px" onclick="editModel(${m.id})">Edit</button>
+          <button class="btn btn-red" style="padding:4px 8px;font-size:11px" onclick="deleteModel(${m.id})">Delete</button>
+        </div>
+      </td>
+    </tr>
+  `}).join('');
+}
+
+// INIT
+loadData();
+</script>
+</body>
+</html>
