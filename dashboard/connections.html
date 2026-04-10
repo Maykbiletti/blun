@@ -133,20 +133,6 @@ h1{font-size:24px;font-weight:700;color:#fff;margin-bottom:6px}
     <div class="loading-state">Laden...</div>
   </div>
 
-  <h2 style="margin-top:32px;font-size:18px;font-weight:600">Git Repositories</h2>
-  <p class="subtitle">Git-Repos fuer Code-Deployments deiner Agents.</p>
-  <div id="gitList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px"></div>
-  <button class="btn-connect" style="width:auto;padding:8px 16px;font-size:13px" onclick="openInfraModal('git')">+ Repository hinzufuegen</button>
-
-  <h2 style="margin-top:32px;font-size:18px;font-weight:600">SSH Connections</h2>
-  <p class="subtitle">Server-Zugaenge fuer Deployments und Wartung.</p>
-  <div id="sshList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px"></div>
-  <button class="btn-connect" style="width:auto;padding:8px 16px;font-size:13px" onclick="openInfraModal('ssh')">+ SSH Verbindung hinzufuegen</button>
-
-  <h2 style="margin-top:32px;font-size:18px;font-weight:600">Tailscale VPN</h2>
-  <p class="subtitle">VPN-Nodes fuer sichere Server-Kommunikation.</p>
-  <div id="tailscaleList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px"></div>
-  <button class="btn-connect" style="width:auto;padding:8px 16px;font-size:13px" onclick="openInfraModal('tailscale')">+ Tailscale Node hinzufuegen</button>
 </div>
 
 <div class="overlay" id="infraOverlay" onclick="if(event.target===this)closeInfraModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;align-items:center;justify-content:center">
@@ -653,11 +639,7 @@ function startGithubOAuth() {
     .then(function(r){return r.json();})
     .then(function(d){
       if (!d.configured) {
-        alert("GitHub OAuth ist auf dem Server noch nicht eingerichtet.
-
-Server-Admin muss BLUN_GITHUB_CLIENT_ID und BLUN_GITHUB_CLIENT_SECRET setzen.
-
-Fuer jetzt: Personal Access Token unten eintragen.");
+        alert("GitHub OAuth ist auf dem Server noch nicht eingerichtet. Server-Admin muss BLUN_GITHUB_CLIENT_ID und BLUN_GITHUB_CLIENT_SECRET setzen. Fuer jetzt: Personal Access Token unten eintragen.");
         return;
       }
       window.open("/api/connections/github/oauth/start", "github-oauth", "width=720,height=720");
