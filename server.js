@@ -55,6 +55,7 @@ const projectsRoutes = require("./src/routes/projects");
 const dashboardStatsRoutes = require("./src/routes/dashboard-stats");
 const deployRoutes = require("./src/routes/deploy");
 const agentCommRoutes = require("./src/routes/agent-comm");
+const statsRoutes = require("./src/routes/stats-route");
 const { router: companiesRoutes, companyContext } = require("./src/routes/companies");
 const { startAllBots, activeBots } = require("./src/channels/telegram");
 
@@ -271,6 +272,7 @@ app.use("/federation", federationRoutes);
 app.use("/api/dashboard-stats", dashboardStatsRoutes);
 app.use("/api/deploy", deployRoutes);
 app.use("/api/agent-comm", agentCommRoutes);
+app.use("/api/stats", statsRoutes);
 
 // --- Page routes (authenticated) ---
 function authPage(path, file, adminOnly) {
