@@ -109,7 +109,7 @@ app.use(helmet({
   crossOriginOpenerPolicy: true,
   crossOriginResourcePolicy: { policy: "cross-origin" },
   dnsPrefetchControl: true,
-  frameguard: { action: 'deny' },
+  frameguard: { action: 'sameorigin' },
   hidePoweredBy: true,
   hsts: { maxAge: 31536000, includeSubDomains: true },
   ieNoOpen: true,
