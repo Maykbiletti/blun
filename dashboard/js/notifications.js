@@ -76,13 +76,20 @@ class NotificationManager {
     }
 
     flushEventQueue() {
-        if (this.eventQueue.length > 0) {
+        if (this.eventQueue.length > 0 && this.isConnected && this.ws.readyState === WebSocket.OPEN) {
             console.log(`Flushing ${this.eventQueue.length} queued events`);
 
-            while (this.eventQueue.length > 0) {
-                const event = this.eventQueue.shift();
-                this.send(event);
-            }
+            const eventsToFlush = [...this.eventQueue];
+            this.eventQueue = [];
+
+            eventsToFlush.forEach(event => {
+                if (this.isConnected && this.ws.readyState === WebSocket.OPEN) {
+                    this.ws.send(JSON.stringify(event));
+                } else {
+                    // Re-queue if connection lost during flush
+                    this.eventQueue.push(event);
+                }
+            });
         }
     }
 
