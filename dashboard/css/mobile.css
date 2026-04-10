@@ -43,18 +43,20 @@
     .sidebar {
         position: fixed;
         top: 0;
-        left: -280px;
+        left: 0;
         width: 280px;
         height: 100vh;
         background: #1f2937;
         z-index: 1000;
-        transition: left 0.3s ease;
+        transform: translateX(-100%);
+        transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
         overflow-y: auto;
         padding-top: 60px;
+        will-change: transform;
     }
 
     .sidebar.open {
-        left: 0;
+        transform: translateX(0);
     }
 
     /* Overlay */
@@ -68,7 +70,9 @@
         z-index: 999;
         opacity: 0;
         visibility: hidden;
-        transition: all 0.3s ease;
+        transition: opacity 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), visibility 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+        cursor: pointer;
+        backdrop-filter: blur(2px);
     }
 
     .sidebar-overlay.active {
