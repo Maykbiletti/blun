@@ -14,7 +14,10 @@ class MigrationRunner {
                 CREATE TABLE IF NOT EXISTS migrations (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     filename TEXT UNIQUE NOT NULL,
-                    applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    status TEXT DEFAULT 'pending',
+                    started_at DATETIME,
+                    completed_at DATETIME,
+                    error_message TEXT
                 )
             `, (err) => {
                 if (err) reject(err);
@@ -26,7 +29,7 @@ class MigrationRunner {
     async getMigrationStatus(filename) {
         return new Promise((resolve, reject) => {
             this.db.get(
-                'SELECT applied_at FROM migrations WHERE filename = ?',
+                'SELECT status, started_at, completed_at, error_message FROM migrations WHERE filename = ?',
                 [filename],
                 (err, row) => {
                     if (err) reject(err);
@@ -36,11 +39,37 @@ class MigrationRunner {
         });
     }
 
-    async markMigrationApplied(filename) {
+    async markMigrationStarted(filename) {
         return new Promise((resolve, reject) => {
             this.db.run(
-                'INSERT OR IGNORE INTO migrations (filename) VALUES (?)',
-                [filename],
+                'INSERT OR REPLACE INTO migrations (filename, status, started_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
+                [filename, 'pending'],
+                (err) => {
+                    if (err) reject(err);
+                    else resolve();
+                }
+            );
+        });
+    }
+
+    async markMigrationCompleted(filename) {
+        return new Promise((resolve, reject) => {
+            this.db.run(
+                'UPDATE migrations SET status = ?, completed_at = CURRENT_TIMESTAMP WHERE filename = ?',
+                ['done', filename],
+                (err) => {
+                    if (err) reject(err);
+                    else resolve();
+                }
+            );
+        });
+    }
+
+    async markMigrationFailed(filename, error) {
+        return new Promise((resolve, reject) => {
+            this.db.run(
+                'UPDATE migrations SET status = ?, completed_at = CURRENT_TIMESTAMP, error_message = ? WHERE filename = ?',
+                ['failed', error, filename],
                 (err) => {
                     if (err) reject(err);
                     else resolve();
@@ -52,12 +81,20 @@ class MigrationRunner {
     async runMigration(migrationPath) {
         const filename = path.basename(migrationPath);
 
-        // Check if already applied
+        // Check if already completed
         const status = await this.getMigrationStatus(filename);
-        if (status) {
-            console.log(`Migration ${filename} already applied at ${status.applied_at}`);
+        if (status?.status === 'done') {
+            console.log(`Migration ${filename} already completed at ${status.completed_at}`);
             return;
         }
+
+        if (status?.status === 'failed') {
+            console.log(`Migration ${filename} previously failed: ${status.error_message}`);
+            console.log('Retrying...');
+        }
+
+        // Mark as started
+        await this.markMigrationStarted(filename);
 
         try {
             // Read and execute migration
@@ -70,14 +107,28 @@ class MigrationRunner {
                 });
             });
 
-            // Mark as applied
-            await this.markMigrationApplied(filename);
-            console.log(`Migration ${filename} applied successfully`);
+            // Mark as completed
+            await this.markMigrationCompleted(filename);
+            console.log(`Migration ${filename} completed successfully`);
 
         } catch (error) {
-            console.error(`Failed to run migration ${filename}:`, error);
+            // Mark as failed
+            await this.markMigrationFailed(filename, error.message);
+            console.error(`Migration ${filename} failed:`, error);
             throw error;
         }
+    }
+
+    async getAllMigrationStatuses() {
+        return new Promise((resolve, reject) => {
+            this.db.all(
+                'SELECT filename, status, started_at, completed_at, error_message FROM migrations ORDER BY filename',
+                (err, rows) => {
+                    if (err) reject(err);
+                    else resolve(rows);
+                }
+            );
+        });
     }
 
     async runAllMigrations(migrationDir = './migrations') {
