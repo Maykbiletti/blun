@@ -19,14 +19,14 @@
 <link rel="stylesheet" href="css/kanban.css">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--b:#3b82f6;--bd:#2563eb;--bg:#0a0a0a;--bg2:#111;--bg3:#1a1a1a;--bg4:#222;--tx:#e5e5e5;--tx2:#888;--brd:#2a2a2a;--green:#22c55e;--red:#ef4444;--amber:#f59e0b;--purple:#a855f7}
+:root{--b:#3b82f6;--bd:#2563eb;--bg:#0a0a0a;--bg2:#111;--bg3:#1a1a1a;--bg4:#222;--tx:#e5e5e5;--tx2:#888;--brd:#2a2a2a;--green:#22c55e;--red:#ef4444;--amber:#f59e0b;--purple:#a855f7;--white:#ffffff;--black:#000000;--gray:var(--gray)555}
 html,body{height:100vh;height:100dvh;background:var(--bg);color:var(--tx);font-family:'Inter',system-ui,sans-serif;overflow:hidden;position:fixed;width:100%;overscroll-behavior:none}
 a{color:var(--b);text-decoration:none}
 button{font-family:inherit;cursor:pointer;border:none;outline:none}
 input,textarea,select{font-family:inherit;background:var(--bg3);border:1px solid var(--brd);color:var(--tx);padding:10px 14px;border-radius:8px;width:100%;font-size:16px;outline:none}
 input:focus,textarea:focus,select:focus{border-color:var(--b)}
 textarea{resize:vertical;min-height:80px}
-::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#333;border-radius:3px}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:3px}
 
 /* LAYOUT */
 .shell{display:flex;height:100vh}
@@ -41,10 +41,10 @@ textarea{resize:vertical;min-height:80px}
 .nav-item:hover{color:var(--tx);background:rgba(255,255,255,.03)}
 .nav-item.active{color:var(--b);background:rgba(59,130,246,.08);border-left-color:var(--b)}
 .nav-item svg{width:18px;height:18px;flex-shrink:0}
-.nav-item .badge-count{margin-left:auto;background:var(--b);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;min-width:18px;text-align:center}
+.nav-item .badge-count{margin-left:auto;background:var(--b);color:var(--white);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;min-width:18px;text-align:center}
 .sidebar-foot{padding:12px 16px;border-top:1px solid var(--brd)}
 .logout-btn{width:100%;padding:8px;background:transparent;color:var(--red);border:1px solid rgba(239,68,68,.3);border-radius:8px;font-size:13px;font-weight:500;transition:all .15s}
-.logout-btn:hover{background:var(--red);color:#fff}
+.logout-btn:hover{background:var(--red);color:var(--white)}
 
 .main{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden}
 .topbar{height:52px;background:var(--bg2);border-bottom:1px solid var(--brd);display:flex;align-items:center;padding:0 20px;flex-shrink:0;gap:12px}
@@ -62,10 +62,10 @@ textarea{resize:vertical;min-height:80px}
 .card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .card-title{font-size:14px;font-weight:700}
 .btn{padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;transition:all .15s}
-.btn-primary{background:var(--b);color:#fff}.btn-primary:hover{background:var(--bd)}
+.btn-primary{background:var(--b);color:var(--white)}.btn-primary:hover{background:var(--bd)}
 .btn-sm{padding:4px 10px;font-size:12px}
 .btn-outline{background:transparent;color:var(--b);border:1px solid rgba(59,130,246,.4)}.btn-outline:hover{background:rgba(59,130,246,.1)}
-.btn-danger{background:transparent;color:var(--red);border:1px solid rgba(239,68,68,.3)}.btn-danger:hover{background:var(--red);color:#fff}
+.btn-danger{background:transparent;color:var(--red);border:1px solid rgba(239,68,68,.3)}.btn-danger:hover{background:var(--red);color:var(--white)}
 .btn-icon{background:transparent;color:var(--tx2);padding:4px;border-radius:6px}.btn-icon:hover{color:var(--tx);background:var(--bg4)}
 .badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600}
 .badge-green{background:rgba(34,197,94,.12);color:var(--green)}
@@ -74,7 +74,7 @@ textarea{resize:vertical;min-height:80px}
 .badge-red{background:rgba(239,68,68,.12);color:var(--red)}
 .badge-purple{background:rgba(168,85,247,.12);color:var(--purple)}
 .status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
-.status-dot.on{background:var(--green)}.status-dot.off{background:#555}
+.status-dot.on{background:var(--green)}.status-dot.off{background:var(--gray)}
 .tag{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600;background:var(--bg4);color:var(--tx2);margin:1px}
 .empty{text-align:center;padding:60px 20px;color:var(--tx2)}
 .empty-icon{font-size:40px;margin-bottom:8px}
@@ -90,7 +90,7 @@ textarea{resize:vertical;min-height:80px}
 /* OPERATOR BANNER */
 .operator-banner{background:linear-gradient(135deg,rgba(59,130,246,.12),rgba(59,130,246,.04));border:1px solid rgba(59,130,246,.3);border-radius:12px;padding:16px;margin-bottom:16px;display:flex;align-items:center;gap:16px;cursor:pointer;transition:border-color .2s}
 .operator-banner:hover{border-color:var(--b)}
-.operator-av{width:52px;height:52px;border-radius:14px;background:var(--b);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#fff;flex-shrink:0}
+.operator-av{width:52px;height:52px;border-radius:14px;background:var(--b);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:var(--white);flex-shrink:0}
 .operator-info{flex:1;min-width:0}
 .operator-name{font-size:16px;font-weight:700}
 .operator-role{font-size:12px;color:var(--b);font-weight:600}
@@ -114,7 +114,7 @@ textarea{resize:vertical;min-height:80px}
 .agent-card{background:var(--bg3);border:1px solid var(--brd);border-radius:10px;padding:12px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:all .15s}
 .agent-card:hover{border-color:#444;background:var(--bg4)}
 .agent-card.operator{border-color:rgba(59,130,246,.4);background:rgba(59,130,246,.05)}
-.agent-av{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#fff;flex-shrink:0;position:relative}
+.agent-av{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:var(--white);flex-shrink:0;position:relative}
 .agent-av .online-dot{position:absolute;bottom:-1px;right:-1px;width:10px;height:10px;border-radius:50%;background:var(--green);border:2px solid var(--bg3)}
 .agent-info{flex:1;min-width:0}
 .agent-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -134,20 +134,20 @@ textarea{resize:vertical;min-height:80px}
 .chat-head select{width:auto;min-width:140px;padding:5px 8px;font-size:12px;border-radius:6px}
 .chat-msgs{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;display:flex;flex-direction:column;gap:6px}
 .msg{max-width:70%;padding:10px 14px;border-radius:14px;font-size:13px;line-height:1.5;word-break:break-word}
-.msg-user{background:var(--b);color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
+.msg-user{background:var(--b);color:var(--white);align-self:flex-end;border-bottom-right-radius:4px}
 .msg-ai{background:var(--bg4);color:#e5e5e5;align-self:flex-start;border-bottom-left-radius:4px}
 .msg-ai pre{background:#1a1a2e;color:#e2e8f0;padding:8px;border-radius:6px;overflow-x:auto;font-size:12px;margin:4px 0;border:1px solid #2d2d4e}
 .msg-ai code{font-size:12px;color:#e2e8f0;background:rgba(255,255,255,.08);padding:2px 5px;border-radius:4px}
 .chat-input-wrap{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--brd);flex-shrink:0;align-items:flex-end}
 .chat-input{flex:1;min-width:0;background:var(--bg4);border:1px solid var(--brd);border-radius:12px;padding:10px 14px;color:var(--tx);font-size:14px;outline:none;resize:none;max-height:120px;line-height:1.4}
-.chat-send{background:var(--b);color:#fff;border:none;border-radius:10px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.chat-send{background:var(--b);color:var(--white);border:none;border-radius:10px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .chat-send:hover{background:var(--bd)}
 .chat-send:disabled{opacity:.4;cursor:not-allowed}
 
 /* AGENT DETAIL PANEL */
 .detail-panel{padding:20px;overflow-y:auto;flex:1}
 .detail-header{flex-shrink:0;display:flex;align-items:center;gap:16px;margin-bottom:20px}
-.detail-av{width:56px;height:56px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:#fff;flex-shrink:0}
+.detail-av{width:56px;height:56px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:var(--white);flex-shrink:0}
 .detail-tabs{flex-shrink:0;display:flex;gap:4px;border-bottom:1px solid var(--brd);margin-bottom:16px;padding-bottom:0}
 .detail-tab{padding:8px 14px;font-size:13px;font-weight:600;color:var(--tx2);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s}
 .detail-tab:hover{color:var(--tx)}
@@ -193,7 +193,7 @@ textarea{resize:vertical;min-height:80px}
 .login-sub{color:var(--tx2);font-size:14px;margin-bottom:32px}
 .login-box input{margin-bottom:10px}
 .login-err{color:var(--red);font-size:13px;min-height:20px;margin-bottom:8px}
-.login-btn{width:100%;padding:12px;background:var(--b);color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer}
+.login-btn{width:100%;padding:12px;background:var(--b);color:var(--white);border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer}
 .login-btn:hover{background:var(--bd)}
 .login-link{margin-top:12px;font-size:13px;color:var(--tx2)}
 .login-link a{color:var(--b);cursor:pointer}
@@ -221,6 +221,49 @@ textarea{resize:vertical;min-height:80px}
   .dept-header{font-size:13px!important;margin:8px 0 4px!important}
   .main-content{overflow-y:auto!important;-webkit-overflow-scrolling:touch}
   .main{margin-left:0!important}
+}
+
+/* RESPONSIVE - EXTRA SMALL MOBILE (400px and below) */
+@media(max-width:400px){
+  .sidebar{width:100vw!important}
+  .stats-row{grid-template-columns:1fr!important;gap:4px!important}
+  .stat-card{padding:6px 8px!important;text-align:center}
+  .stat-val{font-size:16px!important}
+  .stat-label{font-size:8px!important}
+  .topbar{padding:0 12px!important}
+  .topbar-title{font-size:14px!important}
+  #menuBtn{width:36px!important;height:36px!important}
+  .operator-banner{padding:8px!important;margin-bottom:6px!important;flex-direction:column;text-align:center;gap:8px}
+  .operator-av{width:40px!important;height:40px!important;font-size:18px!important}
+  .operator-name{font-size:14px!important}
+  .operator-role{font-size:11px!important}
+  .agent-card{padding:6px!important;flex-direction:column;text-align:center;gap:6px}
+  .agent-av{width:32px!important;height:32px!important;font-size:13px!important}
+  .agent-name{font-size:12px!important}
+  .agent-role{font-size:10px!important}
+  .agent-info{text-align:center}
+  .agent-actions{justify-content:center;margin-top:4px}
+  #bulkModelBar{flex-direction:column;gap:6px!important;align-items:stretch!important}
+  #bulkModelBar > *{width:100%!important;max-width:none!important}
+  .page{padding:8px!important}
+  .card{padding:12px!important}
+  .btn-sm{padding:6px 8px!important;font-size:11px!important}
+  .modal{padding:16px!important;width:95%!important}
+  .confirm-box{padding:16px!important;width:95%!important}
+}
+
+/* RESPONSIVE - DESKTOP/TABLET (1024px and above) */
+@media(min-width:1024px){
+  .stats-row{grid-template-columns:repeat(4,1fr)!important}
+  .dept-agents{grid-template-columns:repeat(auto-fill,minmax(320px,1fr))!important}
+  .sidebar{width:260px!important}
+  .topbar-search{width:300px!important}
+  .split-left{width:320px!important}
+  .ws-sidebar{width:380px!important}.ws-sidebar.collapsed{width:0!important;border-right:none!important}
+  .agent-card{padding:16px!important}
+  .operator-banner{padding:20px!important}
+  .page{padding:24px!important}
+  .modal{max-width:600px!important}
 }
 
 /* MOBILE BOTTOM NAVIGATION */
@@ -303,7 +346,7 @@ textarea{resize:vertical;min-height:80px}
 .ws-resize-handle:hover{background:var(--b)}
 .ws-canvas.open{display:flex}
 .canvas-line{padding:4px 8px;font-size:11px;font-family:monospace;border-bottom:1px solid rgba(255,255,255,.04);color:var(--tx2)}
-.canvas-line.tool{color:#22c55e}
+.canvas-line.tool{color:var(--green)}
 .canvas-line.chat{color:var(--b)}
 .canvas-line.error{color:var(--red)}
 .msg-ts{font-size:10px;color:var(--tx2);margin-top:2px;display:block}
@@ -319,35 +362,35 @@ textarea{resize:vertical;min-height:80px}
 </head>
 <body>
 <!-- LOGIN -->
-<div id="loginView" style="display:none;position:fixed;inset:0;background:#0a0a0a;z-index:10000;align-items:center;justify-content:center">
+<div id="loginView" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:10000;align-items:center;justify-content:center">
 <div style="width:100%;max-width:400px;padding:1.5rem">
   <div style="text-align:center;margin-bottom:2rem">
-    <h1 style="font-size:2.2rem;font-weight:700;letter-spacing:-.03em"><span style="color:#fff">BL</span><span style="color:#3b82f6">UN</span></h1>
+    <h1 style="font-size:2.2rem;font-weight:700;letter-spacing:-.03em"><span style="color:var(--white)">BL</span><span style="color:#3b82f6">UN</span></h1>
     <p style="color:#737373;font-size:.85rem;margin-top:.25rem">AI Organisator</p>
   </div>
   <div style="background:#1a1a1a;border:1px solid #262626;border-radius:12px;padding:1.75rem">
     <div style="display:flex;margin-bottom:1.5rem;background:#0a0a0a;border-radius:8px;padding:3px">
-      <button id="tabLogin" onclick="switchAuthTab('login')" style="flex:1;padding:.6rem;text-align:center;font-size:.9rem;font-weight:500;color:#fff;border:none;background:#262626;cursor:pointer;border-radius:6px;transition:all .2s">Anmelden</button>
+      <button id="tabLogin" onclick="switchAuthTab('login')" style="flex:1;padding:.6rem;text-align:center;font-size:.9rem;font-weight:500;color:var(--white);border:none;background:#262626;cursor:pointer;border-radius:6px;transition:all .2s">Anmelden</button>
       <button id="tabRegister" onclick="switchAuthTab('register')" style="flex:1;padding:.6rem;text-align:center;font-size:.9rem;font-weight:500;color:#737373;border:none;background:none;cursor:pointer;border-radius:6px;transition:all .2s">Registrieren</button>
     </div>
     <div id="authError" style="background:#451a03;border:1px solid #92400e;color:#fbbf24;padding:.65rem .85rem;border-radius:8px;font-size:.8rem;margin-bottom:1rem;display:none"></div>
     <form id="authForm" onsubmit="handleAuthSubmit(event)">
       <div id="nameField" style="margin-bottom:1rem;display:none">
         <label style="display:block;font-size:.8rem;color:#a3a3a3;margin-bottom:.4rem;font-weight:500">Name</label>
-        <input type="text" id="authName" placeholder="Dein Name" autocomplete="name" style="width:100%;padding:.7rem .85rem;background:#0a0a0a;border:1px solid #262626;border-radius:8px;color:#fff;font-size:.9rem;outline:none">
+        <input type="text" id="authName" placeholder="Dein Name" autocomplete="name" style="width:100%;padding:.7rem .85rem;background:#0a0a0a;border:1px solid #262626;border-radius:8px;color:var(--white);font-size:.9rem;outline:none">
       </div>
       <div style="margin-bottom:1rem">
         <label style="display:block;font-size:.8rem;color:#a3a3a3;margin-bottom:.4rem;font-weight:500">E-Mail</label>
-        <input type="email" id="authEmail" placeholder="deine@email.com" required autocomplete="email" style="width:100%;padding:.7rem .85rem;background:#0a0a0a;border:1px solid #262626;border-radius:8px;color:#fff;font-size:.9rem;outline:none">
+        <input type="email" id="authEmail" placeholder="deine@email.com" required autocomplete="email" style="width:100%;padding:.7rem .85rem;background:#0a0a0a;border:1px solid #262626;border-radius:8px;color:var(--white);font-size:.9rem;outline:none">
       </div>
       <div style="margin-bottom:1rem">
         <label style="display:block;font-size:.8rem;color:#a3a3a3;margin-bottom:.4rem;font-weight:500">Passwort</label>
         <div style="position:relative">
-          <input type="password" id="authPassword" placeholder="Mindestens 8 Zeichen" required autocomplete="current-password" minlength="8" style="width:100%;padding:.7rem .85rem;background:#0a0a0a;border:1px solid #262626;border-radius:8px;color:#fff;font-size:.9rem;outline:none;padding-right:4.5rem">
+          <input type="password" id="authPassword" placeholder="Mindestens 8 Zeichen" required autocomplete="current-password" minlength="8" style="width:100%;padding:.7rem .85rem;background:#0a0a0a;border:1px solid #262626;border-radius:8px;color:var(--white);font-size:.9rem;outline:none;padding-right:4.5rem">
           <button type="button" onclick="toggleAuthPw()" style="position:absolute;right:.7rem;top:50%;transform:translateY(-50%);background:none;border:none;color:#525252;cursor:pointer;font-size:.8rem;padding:.2rem">Zeigen</button>
         </div>
       </div>
-      <button type="submit" id="authSubmitBtn" style="width:100%;padding:.8rem;background:#3b82f6;color:#fff;border:none;border-radius:8px;font-size:.9rem;font-weight:600;cursor:pointer;margin-top:.5rem;transition:background .2s">Anmelden</button>
+      <button type="submit" id="authSubmitBtn" style="width:100%;padding:.8rem;background:#3b82f6;color:var(--white);border:none;border-radius:8px;font-size:.9rem;font-weight:600;cursor:pointer;margin-top:.5rem;transition:background .2s">Anmelden</button>
     </form>
     <div id="forgotLink" style="text-align:center;margin-top:1rem"><a href="#" style="color:#737373;font-size:.8rem;text-decoration:none">Passwort vergessen?</a></div>
   </div>
@@ -440,6 +483,13 @@ Profil
 <div class="topbar-title" id="topbarTitle">Agents</div>
 <div class="topbar-right">
 <input class="topbar-search" id="searchInput" placeholder="Suchen..." oninput="onSearch(this.value)">
+<div class="notification-bell" id="notificationBell" onclick="toggleNotificationCenter()">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+<path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+</svg>
+<div class="notification-badge" id="notificationBadge" style="display: none;">0</div>
+</div>
 <div class="ws-dot" id="wsDot" title="Server-Verbindung"></div>
 </div>
 </div>
@@ -452,8 +502,8 @@ Profil
   <select id="bulkModelSelect" style="flex:1;max-width:250px"></select>
   <button class="btn btn-sm btn-primary" onclick="bulkChangeModel()">Alle umstellen</button>
   <span style="border-left:1px solid var(--bd);height:20px;margin:0 4px"></span>
-  <button class="btn btn-sm" style="background:#22c55e;color:#fff" onclick="bulkStartAgents()">Alle starten</button>
-  <button class="btn btn-sm" style="background:#ef4444;color:#fff" onclick="bulkStopAgents()">Alle stoppen</button>
+  <button class="btn btn-sm" style="background:#22c55e;color:var(--white)" onclick="bulkStartAgents()">Alle starten</button>
+  <button class="btn btn-sm" style="background:#ef4444;color:var(--white)" onclick="bulkStopAgents()">Alle stoppen</button>
   <button class="btn btn-sm btn-outline" onclick="resetAllTasks()">Tasks Reset</button>
 </div>
 <div id="operatorBanner"></div>
@@ -857,21 +907,21 @@ var logInterval = null;
 var DEPARTMENTS = ["Management","Marketing & SEO","Video & Medien","Design & Frontend","Backend & Coding","Infrastruktur & DevOps","KI & Modelle","QA & Testing","Qualitaetskontrolle","Business & Sales","Mobile & Desktop","Agent System","Sonstige"];
 var COLORS = ['#3b82f6','#22c55e','#ef4444','#f59e0b','#a855f7','#ec4899','#14b8a6','#f97316','#6366f1','#84cc16','#06b6d4','#e11d48'];
 function modelLogo(name) {
-  if(!name) return '<div style="width:28px;height:28px;border-radius:8px;background:#555;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff">AI</div>';
+  if(!name) return '<div style="width:28px;height:28px;border-radius:8px;background:var(--gray);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:var(--white)">AI</div>';
   var n=name.toLowerCase();
   if(n.indexOf('gemma')>=0||n.indexOf('gemini')>=0||n.indexOf('google')>=0) return '<div style="width:28px;height:28px;border-radius:8px;background:#4285F4;display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#fff"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#fff" opacity=".7"/></svg></div>';
-  if(n.indexOf('llama')>=0||n.indexOf('meta')>=0||n.indexOf('codellama')>=0||n.indexOf('tinyllama')>=0) return '<div style="width:28px;height:28px;border-radius:8px;background:#0668E1;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:800">∞</div>';
-  if(n.indexOf('claude')>=0||n.indexOf('anthropic')>=0) return '<div style="width:28px;height:28px;border-radius:8px;background:#D97706;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:800">A</div>';
+  if(n.indexOf('llama')>=0||n.indexOf('meta')>=0||n.indexOf('codellama')>=0||n.indexOf('tinyllama')>=0) return '<div style="width:28px;height:28px;border-radius:8px;background:#0668E1;display:flex;align-items:center;justify-content:center;color:var(--white);font-size:14px;font-weight:800">∞</div>';
+  if(n.indexOf('claude')>=0||n.indexOf('anthropic')>=0) return '<div style="width:28px;height:28px;border-radius:8px;background:#D97706;display:flex;align-items:center;justify-content:center;color:var(--white);font-size:13px;font-weight:800">A</div>';
   if(n.indexOf('gpt')>=0||n.indexOf('openai')>=0) return '<div style="width:28px;height:28px;border-radius:8px;background:#10A37F;display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M22.2 14.6c.4-1.4.2-3-.6-4.2a5.5 5.5 0 00-5.3-2.5A5.5 5.5 0 0012.2 6a5.5 5.5 0 00-5.2 3.3 5.5 5.5 0 00-3.7 2.7 5.5 5.5 0 00.7 6.4 5.5 5.5 0 005.3 2.5c1.4 1.4 3.4 2 5.3 1.5a5.5 5.5 0 004.2-2.5 5.5 5.5 0 003.4-5.3z"/></svg></div>';
   if(n.indexOf('phi')>=0||n.indexOf('microsoft')>=0) return '<div style="width:28px;height:28px;border-radius:8px;background:#00A4EF;display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24"><rect x="1" y="1" width="10" height="10" fill="#F25022"/><rect x="13" y="1" width="10" height="10" fill="#7FBA00"/><rect x="1" y="13" width="10" height="10" fill="#00A4EF"/><rect x="13" y="13" width="10" height="10" fill="#FFB900"/></svg></div>';
-  if(n.indexOf('mistral')>=0) return '<div style="width:28px;height:28px;border-radius:8px;background:#FF7000;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:800">M</div>';
-  if(n.indexOf('deepseek')>=0) return '<div style="width:28px;height:28px;border-radius:8px;background:#4F6BED;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:800">DS</div>';
-  if(n.indexOf('qwen')>=0) return '<div style="width:28px;height:28px;border-radius:8px;background:#6C3AED;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:800">Q</div>';
-  if(n.indexOf('yi')>=0) return '<div style="width:28px;height:28px;border-radius:8px;background:#FF9800;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:800">Yi</div>';
+  if(n.indexOf('mistral')>=0) return '<div style="width:28px;height:28px;border-radius:8px;background:#FF7000;display:flex;align-items:center;justify-content:center;color:var(--white);font-size:14px;font-weight:800">M</div>';
+  if(n.indexOf('deepseek')>=0) return '<div style="width:28px;height:28px;border-radius:8px;background:#4F6BED;display:flex;align-items:center;justify-content:center;color:var(--white);font-size:10px;font-weight:800">DS</div>';
+  if(n.indexOf('qwen')>=0) return '<div style="width:28px;height:28px;border-radius:8px;background:#6C3AED;display:flex;align-items:center;justify-content:center;color:var(--white);font-size:12px;font-weight:800">Q</div>';
+  if(n.indexOf('yi')>=0) return '<div style="width:28px;height:28px;border-radius:8px;background:#FF9800;display:flex;align-items:center;justify-content:center;color:var(--white);font-size:12px;font-weight:800">Yi</div>';
   if(n.indexOf('starcoder')>=0) return '<div style="width:28px;height:28px;border-radius:8px;background:#FFC107;display:flex;align-items:center;justify-content:center;font-size:16px">⭐</div>';
-  if(n.indexOf('falcon')>=0) return '<div style="width:28px;height:28px;border-radius:8px;background:#1E3A5F;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:800">F</div>';
-  if(n.indexOf('command')>=0||n.indexOf('cohere')>=0) return '<div style="width:28px;height:28px;border-radius:8px;background:#39594D;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:800">C</div>';
-  return '<div style="width:28px;height:28px;border-radius:8px;background:#555;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff">AI</div>';
+  if(n.indexOf('falcon')>=0) return '<div style="width:28px;height:28px;border-radius:8px;background:#1E3A5F;display:flex;align-items:center;justify-content:center;color:var(--white);font-size:12px;font-weight:800">F</div>';
+  if(n.indexOf('command')>=0||n.indexOf('cohere')>=0) return '<div style="width:28px;height:28px;border-radius:8px;background:#39594D;display:flex;align-items:center;justify-content:center;color:var(--white);font-size:12px;font-weight:800">C</div>';
+  return '<div style="width:28px;height:28px;border-radius:8px;background:var(--gray);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:var(--white)">AI</div>';
 }
 function modelLogoText(name) {
   // For <option> tags where HTML doesn't work, return emoji fallback
@@ -1021,21 +1071,58 @@ function loadAll() {
   api('/api/models').then(function(d){allModels=d.models||d||[];}).catch(function(){});
   api('/api/connections').then(function(d){var c=d.connections||d||[];activeProviders=c.filter(function(x){return x.status==='active';}).map(function(x){return x.provider;});}).catch(function(){});
 }
+
+var BLUN_MODELS = [
+  {value:'claude-opus-4-6', label:'Claude Opus 4.6'},
+  {value:'claude-sonnet-4-6', label:'Claude Sonnet 4.6'},
+  {value:'claude-haiku-4-5-20251001', label:'Claude Haiku 4.5'},
+  {value:'gpt-4o', label:'GPT-4o'},
+  {value:'gpt-4o-mini', label:'GPT-4o Mini'},
+  {value:'gpt-4.1', label:'GPT-4.1'},
+  {value:'o3', label:'o3'},
+  {value:'o4-mini', label:'o4-mini'},
+  {value:'gemini-3-pro', label:'Gemini 3 Pro'},
+  {value:'gemini-3-flash', label:'Gemini 3 Flash'},
+  {value:'gemini-2.5-pro', label:'Gemini 2.5 Pro'},
+  {value:'gemini-2.5-flash', label:'Gemini 2.5 Flash'},
+  {value:'mistral-large-latest', label:'Mistral Large'},
+  {value:'mistral-medium-latest', label:'Mistral Medium'},
+  {value:'codestral-latest', label:'Codestral'},
+  {value:'deepseek-chat', label:'DeepSeek V3'},
+  {value:'deepseek-reasoner', label:'DeepSeek R1'},
+  {value:'local-default', label:'Lokal (Ollama)'}
+];
+
+function _blunGroupModels(list, cur) {
+  var groups = { 'Claude': [], 'OpenAI': [], 'Google': [], 'Mistral': [], 'DeepSeek': [], 'Lokal': [], 'Sonstige': [] };
+  list.forEach(function(m){
+    var v = (m.value||'').toLowerCase();
+    var p = (m.provider||'').toLowerCase();
+    var g = 'Sonstige';
+    if (p === 'local' || m.local) g = 'Lokal';
+    else if (p === 'anthropic' || v.indexOf('claude') === 0) g = 'Claude';
+    else if (p === 'openai' || v.indexOf('gpt') === 0 || v.indexOf('o1') === 0 || v.indexOf('o3') === 0 || v.indexOf('o4') === 0) g = 'OpenAI';
+    else if (p === 'gemini' || p === 'google' || v.indexOf('gemini') === 0) g = 'Google';
+    else if (p === 'mistral' || v.indexOf('mistral') === 0 || v.indexOf('codestral') === 0) g = 'Mistral';
+    else if (p === 'deepseek' || v.indexOf('deepseek') === 0) g = 'DeepSeek';
+    else if (v.indexOf('local') === 0 || v.indexOf('ollama') === 0 || v.indexOf('llama') >= 0 || v.indexOf('gemma') >= 0 || v.indexOf('qwen') >= 0) g = 'Lokal';
+    groups[g].push(m);
+  });
+  var out = '';
+  ['Claude','OpenAI','Google','Mistral','DeepSeek','Lokal','Sonstige'].forEach(function(g){
+    if (!groups[g].length) return;
+    out += '<optgroup label="' + g + '">';
+    groups[g].forEach(function(m){
+      out += '<option value="' + m.value + '"' + (m.value === cur ? ' selected' : '') + '>' + m.label + '</option>';
+    });
+    out += '</optgroup>';
+  });
+  return out;
+}
+
 function modelOptions(cur) {
-  var models = [
-    {value:'codex:gpt-4o', label:'Codex gpt-4o (ChatGPT Pro)'},
-    {value:'codex:o4-mini', label:'Codex o4-mini'},
-    {value:'codex:gpt-4.1', label:'Codex gpt-4.1'},
-    {value:'claude-haiku-4-5-20251001', label:'Claude Haiku (Standard)'},
-    {value:'claude-sonnet-4-6', label:'Claude Sonnet'},
-    {value:'claude-opus-4-6', label:'Claude Opus'},
-    {value:'GPT-5.4', label:'GPT-5.4'},
-    {value:'GPT-5.4-Mini', label:'GPT-5.4-Mini'},
-    {value:'GPT-5.3-Codex', label:'GPT-5.3-Codex'},
-    {value:'gpt-4o', label:'GPT-4o (API)'},
-    {value:'o4-mini', label:'o4-mini (API)'}
-  ];
-  return models.map(function(m){return '<option value="'+m.value+'"'+(m.value===cur?' selected':'')+'>'+m.label+'</option>';}).join('');
+  var list = (typeof BLUN_MODELS !== 'undefined' && BLUN_MODELS && BLUN_MODELS.length) ? BLUN_MODELS : [];
+  return _blunGroupModels(list, cur);
 }
 
 // ===== STATS =====
@@ -1078,6 +1165,7 @@ function openSkillDetail(name) {
   var idx = skills.indexOf(name);
   alert('Skill: ' + name + '\nInstalliert auf: ' + (op?op.name:'?') + '\nKlicke auf Skill-Verwaltung um Repo-URL zu setzen.');
 }
+function _blunRelTime(ts){if(!ts)return "gerade eben";var d=new Date(ts).getTime();if(isNaN(d))return "gerade eben";var x=Math.floor((Date.now()-d)/1000);if(x<5)return "gerade eben";if(x<60)return x+"s";if(x<3600)return Math.floor(x/60)+"min";if(x<86400)return Math.floor(x/3600)+"h";return Math.floor(x/86400)+"d";}
 function renderAgents(filteredAgents) { var agentList = filteredAgents || agents;
   var op = getOperator();
   // Operator banner
@@ -1112,9 +1200,9 @@ function renderAgents(filteredAgents) { var agentList = filteredAgents || agents
     html += '<div class="dept-section"><div class="dept-head" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'grid\':\'none\'"><h3>'+esc(dept)+'</h3><span class="dept-count">'+list.length+'</span></div><div class="dept-agents">';
     list.forEach(function(a) {
       var isOn = a.status==='active'||a.status==='working'||a.runtime_active;
-      var isWorking = a.engine_running || (a.pending_tasks > 0 && isOn);
+      var isWorking = !!a.is_running && isOn;
       var modelTag = (a.model||'').indexOf('local')>=0||(a.model||'').indexOf('gemma')>=0||(a.model||'').indexOf('llama')>=0||(a.model||'').indexOf('deepseek')>=0 ? '<span class="tag" style="color:var(--green)">Lokal</span>' : '<span class="tag" style="color:var(--amber)">API</span>';
-      var taskLine = isWorking ? '<div class="working-task"><span class="working-dot"></span>'+(a.current_task||'Arbeitet...')+'</div>' : (!isOn ? '<div style="font-size:11px;color:var(--tx2);margin-top:2px">Offline</div>' : '<div style="font-size:11px;color:var(--tx2);margin-top:2px">Bereit</div>');
+      var taskLine = isWorking ? ('<div class="working-task" title="'+esc(a.current_task||'')+'"><span class="working-dot"></span>'+esc((a.current_task||'').substring(0,60))+'</div><div style="font-size:10px;color:var(--tx2);margin-top:1px">laeuft seit '+_blunRelTime(a.running_since)+(a.queue_size>0?' &middot; '+a.queue_size+' in Warteschlange':'')+'</div>') : (!isOn ? '<div style="font-size:11px;color:var(--tx2);margin-top:2px">Offline</div>' : (a.queue_size>0 ? '<div style="font-size:11px;color:var(--amber);margin-top:2px">'+a.queue_size+' in Warteschlange</div>' : '<div style="font-size:11px;color:var(--tx2);margin-top:2px">Idle</div>'));
       html += '<div class="agent-card'+(isWorking?' working':'')+'" onclick="openAgentDetail('+a.id+')">'+
         '<div class="agent-av" style="background:'+agentColor(a)+'">'+agentAvatar(a)+(isOn?'<div class="online-dot"></div>':'')+'</div>'+
         '<div class="agent-info"><div class="agent-name">'+esc(a.name)+'</div><div class="agent-role">'+esc(a.role||'')+'</div>'+
@@ -1223,7 +1311,7 @@ function opSearchSkills() {
   api('/api/organisator/skills/search?q=' + encodeURIComponent(q)).then(function(results) {
     if (!results.length) { container.innerHTML = '<div style="color:var(--tx2);font-size:12px">Keine Skills gefunden</div>'; return; }
     container.innerHTML = results.map(function(s) {
-      var badge = s.source==='github' ? '<span style="font-size:9px;background:#333;color:#fff;padding:1px 4px;border-radius:3px;margin-left:4px">GitHub</span>' : '<span style="font-size:9px;background:rgba(59,130,246,.2);color:var(--b);padding:1px 4px;border-radius:3px;margin-left:4px">Lokal</span>';
+      var badge = s.source==='github' ? '<span style="font-size:9px;background:var(--bg4);color:var(--white);padding:1px 4px;border-radius:3px;margin-left:4px">GitHub</span>' : '<span style="font-size:9px;background:rgba(59,130,246,.2);color:var(--b);padding:1px 4px;border-radius:3px;margin-left:4px">Lokal</span>';
       var btn = s.source==='github' ? '<button class="btn btn-sm btn-primary" onclick="opImportFromSearch(\'' + esc(s.raw_url||s.repo_url||'') + '\')">Importieren</button>' : (s.id ? '<button class="btn btn-sm btn-outline" onclick="opQuickAssignSkill('+s.id+')">Zuweisen</button>' : '');
       var link = s.repo_url ? '<a href="'+esc(s.repo_url)+'" target="_blank" style="color:var(--b);text-decoration:none;font-weight:600">'+esc(s.name)+'</a>' : '<span style="font-weight:600">'+esc(s.name)+'</span>';
       return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 8px;border:1px solid var(--brd);border-radius:6px;margin-bottom:4px;font-size:12px">' +
@@ -1888,6 +1976,49 @@ document.addEventListener('click', function(e){
     }).catch(function(){document.getElementById('wsDot').classList.remove('on');});
   },10000);
   renderDepartments();
+  // Auto-refresh agents every 5s while agents page is visible
+  setInterval(function(){
+    var page = document.getElementById('page-agents');
+    if (!page || page.style.display === 'none') return;
+    if (document.hidden) return;
+    api('/api/organisator/agents').then(function(d){
+      if (!Array.isArray(d)) return;
+      api('/api/organisator/agents/running').then(function(r){
+        var running = (r && r.running) || [];
+        agents = d;
+        agents.forEach(function(a){ a.engine_running = running.indexOf(a.id) >= 0; });
+        renderAgents();
+      }).catch(function(){
+        agents = d; renderAgents();
+      });
+    }).catch(function(){});
+  }, 3000);
+  // Dynamic model list from backend registry
+  fetch('/api/multi-ki/status').then(function(r){return r.ok?r.json():null;}).then(function(d){
+    if (!d || !Array.isArray(d.models) || d.models.length === 0) return;
+    BLUN_MODELS = d.models.filter(function(m){return m.active !== false;}).map(function(m){
+      var label = m.id;
+      if (m.provider === 'local' || m.local) {
+        // Short friendly name: "Meta-Llama-3.1-8B-Instruct-Q4_K_M" -> "Llama 3.1 8B"
+        label = m.id
+          .replace(/^Meta-/i, '')
+          .replace(/-Instruct.*$/i, '')
+          .replace(/-Chat.*$/i, '')
+          .replace(/-UD.*$/i, '')
+          .replace(/-it.*$/i, '')
+          .replace(/\.gguf$/i, '')
+          .replace(/-Q\d.*$/i, '')
+          .replace(/-/g, ' ')
+          .trim();
+        if (!label || label === m.id) label = m.id;
+      } else if (m.id.indexOf('claude') === 0) label = 'Claude ' + m.id.replace('claude-','').replace(/-/g,' ');
+      else if (m.id.indexOf('gpt') === 0) label = 'GPT ' + m.id.replace('gpt-','').replace(/-/g,' ');
+      else if (m.id.indexOf('gemini') === 0) label = 'Gemini ' + m.id.replace('gemini-','').replace(/-/g,' ');
+      else if (m.id.indexOf('mistral') === 0) label = 'Mistral ' + m.id.replace('mistral-','').replace(/-latest/,'').replace(/-/g,' ');
+      else if (m.id.indexOf('deepseek') === 0) label = 'DeepSeek ' + m.id.replace('deepseek-','').replace(/-/g,' ');
+      return { value: m.id, label: label.replace(/\b\w/g, function(c){return c.toUpperCase();}), provider: m.provider, local: m.local };
+    });
+  }).catch(function(){});
 })();
 
 // ===== AGENT WORKSPACE =====
@@ -2146,10 +2277,10 @@ function saveIdentityEdit() {
   }
 }
 
+
+
 function buildModelOptions(currentModel) {
-  return BLUN_MODELS.map(function(m){
-    return '<option value="'+m.value+'"'+(m.value===currentModel?' selected':'')+'>'+m.label+'</option>';
-  }).join('');
+  return _blunGroupModels(BLUN_MODELS || [], currentModel);
 }
 
 
@@ -2405,6 +2536,26 @@ function wsDelInfra(id) {
 }
 
 
+function startGithubOAuth() {
+  fetch('/api/connections/github/status', {headers:{'Authorization':'Bearer '+localStorage.getItem('token')}})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if (!d.configured) {
+        alert('GitHub OAuth ist nicht konfiguriert. Nutze den Personal Access Token unten.');
+        return;
+      }
+      var w = window.open('/api/connections/github/oauth/start', 'github-oauth', 'width=720,height=720');
+      window.addEventListener('message', function handler(ev) {
+        if (ev.data && ev.data.type === 'github-oauth-done') {
+          window.removeEventListener('message', handler);
+          closeInfraModal();
+          if (typeof loadWsConnections === 'function') loadWsConnections();
+        }
+      });
+    })
+    .catch(function(){ alert('GitHub-Status konnte nicht geladen werden.'); });
+}
+
 function openInfraModal(type) {
   var infraType = type;
   window._infraType = type;
@@ -2412,9 +2563,16 @@ function openInfraModal(type) {
   var inp = 'style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--tx);margin-top:4px"';
   var fields = '';
   if (type === 'git') {
-    fields = '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--tx2)">NAME</label><input id="inf_name" placeholder="z.B. blun" '+inp+'></div>' +
-      '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--tx2)">URL</label><input id="inf_url" placeholder="git@github.com:user/repo.git" '+inp+'></div>' +
-      '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--tx2)">SSH KEY PATH</label><input id="inf_sshkey" placeholder="/root/.ssh/id_ed25519" '+inp+'></div>';
+    fields = '<div style="margin-bottom:10px;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;display:flex;align-items:center;justify-content:space-between;gap:8px">' +
+        '<div><div style="font-size:13px;font-weight:600;color:var(--tx)">Mit GitHub anmelden</div><div style="font-size:11px;color:var(--tx2)">OAuth - empfohlen fuer private Repos</div></div>' +
+        '<button type="button" onclick="startGithubOAuth()" style="background:#1a1a1a;color:var(--white);border:1px solid var(--bg4);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600">GitHub Login</button>' +
+      '</div>' +
+      '<div style="text-align:center;color:var(--tx2);font-size:11px;margin:8px 0">- oder manuell -</div>' +
+      '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--tx2)">NAME</label><input id="inf_name" placeholder="z.B. blun" '+inp+'></div>' +
+      '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--tx2)">URL</label><input id="inf_url" placeholder="https://github.com/user/repo.git oder git@github.com:user/repo.git" '+inp+'></div>' +
+      '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--tx2)">GITHUB TOKEN <span style="color:var(--tx2);font-weight:400">(fuer private Repos via HTTPS)</span></label><input id="inf_token" type="password" placeholder="ghp_..." '+inp+'></div>' +
+      '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--tx2)">SSH KEY PATH <span style="color:var(--tx2);font-weight:400">(Alternative)</span></label><input id="inf_sshkey" placeholder="/root/.ssh/id_ed25519" '+inp+'></div>' +
+      '<div style="font-size:11px;color:var(--tx2);margin-top:4px">Token erstellen: <a href="https://github.com/settings/tokens/new?scopes=repo&description=BLUN" target="_blank" style="color:#3b82f6">github.com/settings/tokens</a> (Scope: repo)</div>';
   } else if (type === 'ssh') {
     fields = '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--tx2)">NAME</label><input id="inf_name" placeholder="z.B. 65er" '+inp+'></div>' +
       '<div style="margin-bottom:8px"><label style="font-size:12px;color:var(--tx2)">HOST/IP</label><input id="inf_host" placeholder="65.21.76.124" '+inp+'></div>' +
@@ -2437,7 +2595,7 @@ function openInfraModal(type) {
       '<h2 id="infraTitle2" style="margin-bottom:16px"></h2>' +
       '<div id="infraFields2"></div>' +
       '<div style="margin-top:12px"><label style="font-size:12px;color:var(--tx2)">FIRMA</label><select id="infraCompany2" style="width:100%;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--tx);margin-top:4px"><option value="">-- Keine --</option></select></div>' +
-      '<button class="btn btn-sm" style="margin-top:16px;width:100%;padding:10px;background:#3b82f6;color:#fff;border:none;border-radius:6px;cursor:pointer" onclick="saveInfraModal()">Speichern</button></div>';
+      '<button class="btn btn-sm" style="margin-top:16px;width:100%;padding:10px;background:#3b82f6;color:var(--white);border:none;border-radius:6px;cursor:pointer" onclick="saveInfraModal()">Speichern</button></div>';
     document.body.appendChild(ov);
   }
   document.getElementById('infraTitle2').textContent = titles[type] || 'Hinzufuegen';
@@ -2461,7 +2619,7 @@ function saveInfraModal() {
   var config = {};
   var type = window._infraType;
   if (type === 'git') {
-    config = {url: (document.getElementById('inf_url')||{}).value||'', ssh_key: (document.getElementById('inf_sshkey')||{}).value||''};
+    config = {url: (document.getElementById('inf_url')||{}).value||'', ssh_key: (document.getElementById('inf_sshkey')||{}).value||'', token: (document.getElementById('inf_token')||{}).value||''};
   } else if (type === 'ssh') {
     config = {host: (document.getElementById('inf_host')||{}).value||'', user: (document.getElementById('inf_user')||{}).value||'root', password: (document.getElementById('inf_pw')||{}).value||''};
   } else {

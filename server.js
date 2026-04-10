@@ -53,6 +53,7 @@ const teamsRoutes = require("./src/routes/teams");
 const connectionsRoutes = require("./src/routes/connections");
 const projectsRoutes = require("./src/routes/projects");
 const dashboardStatsRoutes = require("./src/routes/dashboard-stats");
+const deployRoutes = require("./src/routes/deploy");
 const { router: companiesRoutes, companyContext } = require("./src/routes/companies");
 const { startAllBots, activeBots } = require("./src/channels/telegram");
 
@@ -84,6 +85,7 @@ app.get("/apple-touch-icon.png", function(req, res) { res.sendFile(__dirname + "
 app.get("/icon-192.png", function(req, res) { res.sendFile(__dirname + "/dashboard/icon-192.png"); });
 app.get("/icon-512.png", function(req, res) { res.sendFile(__dirname + "/dashboard/icon-512.png"); });
 app.get("/datenschutz", (req, res) => { res.sendFile(__dirname + "/dashboard/datenschutz.html"); });
+app.get("/agb", (req, res) => { res.sendFile(__dirname + "/dashboard/agb.html"); });
 app.get("/contact", function(req, res) { res.sendFile(__dirname + "/dashboard/contact.html"); });
 app.get("/feature/websites", function(req, res) { res.sendFile(__dirname + "/dashboard/feature-websites.html"); });app.get("/feature/software", function(req, res) { res.sendFile(__dirname + "/dashboard/feature-software.html"); });app.get("/feature/assistants", function(req, res) { res.sendFile(__dirname + "/dashboard/feature-assistants.html"); });app.get("/feature/compare", function(req, res) { res.sendFile(__dirname + "/dashboard/feature-compare.html"); });app.get("/feature/local-ai", function(req, res) { res.sendFile(__dirname + "/dashboard/feature-local-ai.html"); });app.get("/feature/everything", function(req, res) { res.sendFile(__dirname + "/dashboard/feature-everything.html"); });
 
@@ -198,6 +200,24 @@ app.get("/api/multi-ki/status", async function(req, res) {
     var ai = require("./src/ai/ai-provider");
     var providers = Object.keys(ai.PROVIDERS);
     var models = Object.entries(ai.MODEL_REGISTRY).map(function(e) { return { id: e[0], provider: e[1].provider, active: e[1].active !== false, capabilities: e[1].capabilities, quality: e[1].qualityScore, cost: e[1].costScore, speed: e[1].latencyScore, local: e[1].local || false }; });
+    // Inject running local models (llama-server processes) — makes them selectable in dropdown
+    try {
+      var execSync = require("child_process").execSync;
+      var ps = "";
+      try { ps = execSync("ps aux | grep llama-server | grep -v grep", { encoding: "utf8" }); } catch(_) {}
+      var seen = {};
+      ps.split("\n").forEach(function(line) {
+        var m = line.match(/-m\s+(\S+\.gguf)/);
+        if (!m) return;
+        var file = m[1].split("/").pop().replace(/\.gguf$/, "");
+        if (seen[file]) return;
+        seen[file] = true;
+        if (!models.find(function(x){ return x.id === file; })) {
+          models.push({ id: file, provider: "local", active: true, capabilities: ["chat","code"], quality: 6, cost: 1, speed: 7, local: true, running: true });
+        }
+      });
+      if (!providers.includes("local")) providers.push("local");
+    } catch(_) {}
     res.json({ providers: providers, models: models });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -246,6 +266,7 @@ app.use("/telegram/api", telegramRoutes);
 // Federation (receive is public, rest requires auth)
 app.use("/federation", federationRoutes);
 app.use("/api/dashboard-stats", dashboardStatsRoutes);
+app.use("/api/deploy", deployRoutes);
 
 // --- Page routes (authenticated) ---
 function authPage(path, file, adminOnly) {
