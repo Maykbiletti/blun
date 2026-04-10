@@ -380,11 +380,11 @@ class HelpMenu {
                 <div class="help-content">
                     <div class="help-actions">
                         <button class="help-action-btn" onclick="helpMenu.startOnboarding()">
-                            <span>🎯</span>
+                            <span>TOUR</span>
                             Tour starten
                         </button>
                         <button class="help-action-btn" onclick="helpMenu.contactSupport()">
-                            <span>💬</span>
+                            <span>SUP</span>
                             Support kontaktieren
                         </button>
                     </div>
