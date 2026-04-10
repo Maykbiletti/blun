@@ -54,6 +54,7 @@ const connectionsRoutes = require("./src/routes/connections");
 const projectsRoutes = require("./src/routes/projects");
 const dashboardStatsRoutes = require("./src/routes/dashboard-stats");
 const deployRoutes = require("./src/routes/deploy");
+const agentCommRoutes = require("./src/routes/agent-comm");
 const { router: companiesRoutes, companyContext } = require("./src/routes/companies");
 const { startAllBots, activeBots } = require("./src/channels/telegram");
 
@@ -267,6 +268,7 @@ app.use("/telegram/api", telegramRoutes);
 app.use("/federation", federationRoutes);
 app.use("/api/dashboard-stats", dashboardStatsRoutes);
 app.use("/api/deploy", deployRoutes);
+app.use("/api/agent-comm", agentCommRoutes);
 
 // --- Page routes (authenticated) ---
 function authPage(path, file, adminOnly) {
