@@ -1,287 +1,200 @@
-var express = require("express");
-var db = require("../db");
+const { query } = require("../db");
 
-var SUCCESS_STATUSES = ["completed", "success"];
-var FAILURE_STATUSES = ["failed", "error", "timeout", "cancelled", "completed_no_code"];
-var OPEN_STATUSES = ["pending", "processing", "in_progress", "retry"];
-
-function toNumber(value, digits) {
-  var num = Number(value || 0);
-  if (!Number.isFinite(num)) return 0;
-  if (typeof digits === "number") return Number(num.toFixed(digits));
-  return num;
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
 }
 
-function toInt(value) {
-  var num = parseInt(value, 10);
-  return Number.isFinite(num) ? num : 0;
+function round(value, digits) {
+  const factor = Math.pow(10, digits || 2);
+  return Math.round((Number(value) || 0) * factor) / factor;
 }
 
-function clamp(n, min, max) {
-  if (n < min) return min;
-  if (n > max) return max;
-  return n;
+function safeDiv(numerator, denominator) {
+  if (!denominator) return 0;
+  return numerator / denominator;
 }
 
-function listToInPlaceholders(values, params) {
-  if (!Array.isArray(values) || values.length === 0) return "NULL";
-  var placeholders = [];
-  for (var i = 0; i < values.length; i++) {
-    params.push(values[i]);
-    placeholders.push("$" + params.length);
-  }
-  return placeholders.join(", ");
-}
-
-function parseLimit(raw, fallback) {
-  var n = toInt(raw || fallback);
-  if (!n) return fallback;
-  return clamp(n, 1, 200);
-}
-
-async function fetchAgentMetrics(options) {
-  options = options || {};
-
-  var params = [];
-  var taskJoinFilters = [];
-  var agentFilters = [];
-
-  var successIn = listToInPlaceholders(SUCCESS_STATUSES, params);
-  var failureIn = listToInPlaceholders(FAILURE_STATUSES, params);
-  var openIn = listToInPlaceholders(OPEN_STATUSES, params);
-
-  if (options.company_id) {
-    params.push(options.company_id);
-    agentFilters.push("a.company_id = $" + params.length);
-  }
-
-  if (options.agent_id) {
-    params.push(options.agent_id);
-    agentFilters.push("a.id = $" + params.length);
-  }
-
-  if (options.from) {
-    params.push(options.from);
-    taskJoinFilters.push("t.created_at >= $" + params.length);
-  }
-
-  if (options.to) {
-    params.push(options.to);
-    taskJoinFilters.push("t.created_at <= $" + params.length);
-  }
-
-  var onlyActive = String(options.only_active || "").toLowerCase();
-  if (onlyActive === "1" || onlyActive === "true") {
-    agentFilters.push("COALESCE(a.status, '') = 'active'");
-  }
-
-  var taskFilterSql = taskJoinFilters.length ? (" AND " + taskJoinFilters.join(" AND ")) : "";
-  var agentFilterSql = agentFilters.length ? ("WHERE " + agentFilters.join(" AND ")) : "";
-
-  params.push(parseLimit(options.limit, 100));
-  var limitParam = "$" + params.length;
-
-  var sql =
-    "SELECT " +
-    "a.id AS agent_id, " +
-    "a.name AS agent_name, " +
-    "a.department, " +
-    "a.status AS agent_status, " +
-    "COUNT(t.id)::int AS total_tasks, " +
-    "COUNT(t.id) FILTER (WHERE lower(COALESCE(t.status, '')) IN (" + successIn + "))::int AS completed_tasks, " +
-    "COUNT(t.id) FILTER (WHERE lower(COALESCE(t.status, '')) IN (" + failureIn + "))::int AS error_tasks, " +
-    "COUNT(t.id) FILTER (WHERE lower(COALESCE(t.status, '')) IN (" + openIn + "))::int AS open_tasks, " +
-    "COUNT(t.id) FILTER (WHERE t.completed_at IS NOT NULL)::int AS finished_tasks, " +
-    "MAX(t.created_at) AS latest_task_created_at, " +
-    "MAX(t.completed_at) AS latest_task_completed_at, " +
-    "COUNT(*) FILTER (WHERE t.completed_at IS NOT NULL AND t.created_at IS NOT NULL AND t.completed_at >= t.created_at)::int AS duration_samples, " +
-    "COALESCE(AVG(EXTRACT(EPOCH FROM (t.completed_at - t.created_at))) FILTER (WHERE t.completed_at IS NOT NULL AND t.created_at IS NOT NULL AND t.completed_at >= t.created_at), 0)::numeric AS avg_duration_seconds, " +
-    "COALESCE(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (t.completed_at - t.created_at))) FILTER (WHERE t.completed_at IS NOT NULL AND t.created_at IS NOT NULL AND t.completed_at >= t.created_at), 0)::numeric AS p50_duration_seconds, " +
-    "COALESCE(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (t.completed_at - t.created_at))) FILTER (WHERE t.completed_at IS NOT NULL AND t.created_at IS NOT NULL AND t.completed_at >= t.created_at), 0)::numeric AS p95_duration_seconds " +
-    "FROM blun_agents a " +
-    "LEFT JOIN agent_tasks t ON t.agent_id = a.id" + taskFilterSql + " " +
-    agentFilterSql + " " +
-    "GROUP BY a.id, a.name, a.department, a.status " +
-    "ORDER BY total_tasks DESC, a.name ASC " +
-    "LIMIT " + limitParam;
-
-  var rows = await db.query(sql, params);
-
-  var agents = [];
-  var totals = {
-    total_agents: 0,
-    active_agents: 0,
-    total_tasks: 0,
-    completed_tasks: 0,
-    error_tasks: 0,
-    open_tasks: 0,
-    finished_tasks: 0,
-    errors: 0,
-    task_completion_rate: 0,
-    error_rate: 0,
-    avg_duration: 0,
-    avg_duration_seconds: 0,
-    avg_duration_milliseconds: 0,
-    p50_duration_seconds: 0,
-    p95_duration_seconds: 0,
-    throughput_tasks_per_hour: 0
-  };
-
-  var weightedDurationSum = 0;
-  var weightedP50Sum = 0;
-  var weightedP95Sum = 0;
-  var weightedDurationSamples = 0;
-
-  var nowMs = Date.now();
-
-  for (var i = 0; i < rows.length; i++) {
-    var row = rows[i];
-    var totalTasks = toInt(row.total_tasks);
-    var completedTasks = toInt(row.completed_tasks);
-    var errorTasks = toInt(row.error_tasks);
-    var openTasks = toInt(row.open_tasks);
-    var finishedTasks = toInt(row.finished_tasks);
-    var durationSamples = toInt(row.duration_samples);
-
-    var avgDurationSeconds = toNumber(row.avg_duration_seconds, 2);
-    var p50DurationSeconds = toNumber(row.p50_duration_seconds, 2);
-    var p95DurationSeconds = toNumber(row.p95_duration_seconds, 2);
-
-    var completionRate = totalTasks > 0 ? toNumber(completedTasks / totalTasks, 4) : 0;
-    var errorRate = totalTasks > 0 ? toNumber(errorTasks / totalTasks, 4) : 0;
-
-    var latestCreatedAt = row.latest_task_created_at ? new Date(row.latest_task_created_at).toISOString() : null;
-    var latestCompletedAt = row.latest_task_completed_at ? new Date(row.latest_task_completed_at).toISOString() : null;
-
-    var sinceLatestMinutes = null;
-    if (row.latest_task_created_at) {
-      var latestMs = new Date(row.latest_task_created_at).getTime();
-      if (Number.isFinite(latestMs)) sinceLatestMinutes = toNumber((nowMs - latestMs) / 60000, 1);
-    }
-
-    var throughputPerHour = 0;
-    if (options.from && options.to) {
-      var fromMs = new Date(options.from).getTime();
-      var toMs = new Date(options.to).getTime();
-      var hours = (toMs - fromMs) / 3600000;
-      if (Number.isFinite(hours) && hours > 0) throughputPerHour = toNumber(completedTasks / hours, 3);
-    }
-
-    if (durationSamples > 0) {
-      weightedDurationSum += avgDurationSeconds * durationSamples;
-      weightedP50Sum += p50DurationSeconds * durationSamples;
-      weightedP95Sum += p95DurationSeconds * durationSamples;
-      weightedDurationSamples += durationSamples;
-    }
-
-    totals.total_tasks += totalTasks;
-    totals.completed_tasks += completedTasks;
-    totals.error_tasks += errorTasks;
-    totals.open_tasks += openTasks;
-    totals.finished_tasks += finishedTasks;
-    totals.errors += errorTasks;
-    totals.total_agents += 1;
-    if (String(row.agent_status || "") === "active") totals.active_agents += 1;
-
-    agents.push({
-      agent_id: toInt(row.agent_id),
-      agent_name: row.agent_name,
-      department: row.department,
-      agent_status: row.agent_status,
-      task_completion_rate: completionRate,
-      error_rate: errorRate,
-      avg_duration: avgDurationSeconds,
-      avg_duration_seconds: avgDurationSeconds,
-      avg_duration_milliseconds: toNumber(avgDurationSeconds * 1000, 0),
-      p50_duration_seconds: p50DurationSeconds,
-      p95_duration_seconds: p95DurationSeconds,
-      throughput_tasks_per_hour: throughputPerHour,
-      errors: errorTasks,
-      last_activity: {
-        latest_task_created_at: latestCreatedAt,
-        latest_task_completed_at: latestCompletedAt,
-        minutes_since_latest_task: sinceLatestMinutes
-      },
-      totals: {
-        tasks: totalTasks,
-        completed: completedTasks,
-        errors: errorTasks,
-        open: openTasks,
-        finished: finishedTasks
-      }
-    });
-  }
-
-  totals.task_completion_rate =
-    totals.total_tasks > 0 ? toNumber(totals.completed_tasks / totals.total_tasks, 4) : 0;
-  totals.error_rate = totals.total_tasks > 0 ? toNumber(totals.error_tasks / totals.total_tasks, 4) : 0;
-
-  totals.avg_duration_seconds =
-    weightedDurationSamples > 0 ? toNumber(weightedDurationSum / weightedDurationSamples, 2) : 0;
-  totals.avg_duration = totals.avg_duration_seconds;
-  totals.avg_duration_milliseconds = toNumber(totals.avg_duration_seconds * 1000, 0);
-  totals.p50_duration_seconds =
-    weightedDurationSamples > 0 ? toNumber(weightedP50Sum / weightedDurationSamples, 2) : 0;
-  totals.p95_duration_seconds =
-    weightedDurationSamples > 0 ? toNumber(weightedP95Sum / weightedDurationSamples, 2) : 0;
-
-  if (options.from && options.to) {
-    var fromMsGlobal = new Date(options.from).getTime();
-    var toMsGlobal = new Date(options.to).getTime();
-    var globalHours = (toMsGlobal - fromMsGlobal) / 3600000;
-    if (Number.isFinite(globalHours) && globalHours > 0) {
-      totals.throughput_tasks_per_hour = toNumber(totals.completed_tasks / globalHours, 3);
-    }
+function buildWhereClause(companyId) {
+  if (!companyId) {
+    return {
+      taskScope: "",
+      heartbeatScope: "",
+      params: []
+    };
   }
 
   return {
-    generated_at: new Date().toISOString(),
-    metric_keys: [
-      "task_completion_rate",
-      "error_rate",
-      "avg_duration_seconds",
-      "p50_duration_seconds",
-      "p95_duration_seconds",
-      "throughput_tasks_per_hour",
-      "errors"
-    ],
-    filters: {
-      company_id: options.company_id || null,
-      agent_id: options.agent_id || null,
-      from: options.from || null,
-      to: options.to || null,
-      only_active: onlyActive === "1" || onlyActive === "true",
-      limit: parseLimit(options.limit, 100)
-    },
-    totals: totals,
-    agents: agents,
-    result_len: agents.length
+    taskScope: " AND a.company_id = $2 ",
+    heartbeatScope: " AND a.company_id = $2 ",
+    params: [companyId]
   };
 }
 
-async function getAgentMetricsHandler(req, res) {
-  try {
-    var payload = await fetchAgentMetrics({
-      company_id: req.query.company_id || null,
-      agent_id: req.query.agent_id || null,
-      from: req.query.from || null,
-      to: req.query.to || null,
-      only_active: req.query.only_active || null,
-      limit: req.query.limit || null
-    });
+function calculateScores(row) {
+  const totalTasks = Number(row.total_tasks) || 0;
+  const completed = Number(row.completed_tasks) || 0;
+  const failed = Number(row.failed_tasks) || 0;
+  const noCode = Number(row.no_code_tasks) || 0;
 
-    res.json(payload);
-  } catch (err) {
-    console.error("[dieter-metrics] GET /metrics/agents failed:", err.message);
-    res.status(500).json({ error: "Failed to load agent metrics" });
-  }
+  const successRate = safeDiv(completed, totalTasks);
+  const failureRate = safeDiv(failed, totalTasks);
+  const noCodeRate = safeDiv(noCode, totalTasks);
+
+  const avgScore = Number(row.avg_score) || 0;
+  const completionSeconds = Number(row.avg_completion_seconds) || 0;
+  const resultLen = Number(row.avg_result_len) || 0;
+  const errorHeartbeats = Number(row.error_heartbeats) || 0;
+  const totalHeartbeats = Number(row.total_heartbeats) || 0;
+
+  const qualityIndex = clamp((avgScore / 10) * 100, 0, 100);
+  const reliabilityPenalty = failureRate * 45 + noCodeRate * 40 + safeDiv(errorHeartbeats, Math.max(totalHeartbeats, 1)) * 15;
+  const reliabilityIndex = clamp(100 - reliabilityPenalty * 100, 0, 100);
+
+  const completionBonus = completionSeconds > 0 ? clamp(100 - (completionSeconds / 3600) * 10, 20, 100) : 35;
+  const outputBonus = clamp((resultLen / 1200) * 100, 10, 100);
+  const throughputIndex = clamp(successRate * 60 + completionBonus * 0.2 + outputBonus * 0.2, 0, 100);
+
+  const compositeScore = clamp(
+    qualityIndex * 0.45 + reliabilityIndex * 0.35 + throughputIndex * 0.2,
+    0,
+    100
+  );
+
+  return {
+    success_rate: round(successRate * 100, 2),
+    failure_rate: round(failureRate * 100, 2),
+    no_code_rate: round(noCodeRate * 100, 2),
+    quality_index: round(qualityIndex, 2),
+    reliability_index: round(reliabilityIndex, 2),
+    throughput_index: round(throughputIndex, 2),
+    composite_score: round(compositeScore, 2)
+  };
 }
 
-var router = express.Router();
-router.get("/metrics/agents", getAgentMetricsHandler);
+async function fetchAgentPerformanceMetrics(options) {
+  const opts = options || {};
+  const windowHours = Number(opts.windowHours) > 0 ? Number(opts.windowHours) : 168;
+  const companyId = opts.companyId || null;
+  const minTasks = Number(opts.minTasks) > 0 ? Number(opts.minTasks) : 0;
+
+  const scope = buildWhereClause(companyId);
+  const params = [windowHours].concat(scope.params);
+
+  const sql = `
+    SELECT
+      a.id AS agent_id,
+      a.name AS agent_name,
+      a.department,
+      COUNT(t.id)::int AS total_tasks,
+      COUNT(*) FILTER (WHERE t.status = 'completed')::int AS completed_tasks,
+      COUNT(*) FILTER (WHERE t.status IN ('failed', 'error'))::int AS failed_tasks,
+      COUNT(*) FILTER (WHERE t.status = 'completed_no_code')::int AS no_code_tasks,
+      COALESCE(AVG(t.score) FILTER (WHERE t.score IS NOT NULL), 0)::float AS avg_score,
+      COALESCE(AVG(EXTRACT(EPOCH FROM (t.completed_at - t.created_at))) FILTER (WHERE t.completed_at IS NOT NULL), 0)::float AS avg_completion_seconds,
+      COALESCE(AVG(LENGTH(COALESCE(t.result, ''))), 0)::float AS avg_result_len,
+      COALESCE(MAX(t.completed_at), MAX(t.created_at)) AS last_task_at,
+      COALESCE(h.total_heartbeats, 0)::int AS total_heartbeats,
+      COALESCE(h.error_heartbeats, 0)::int AS error_heartbeats
+    FROM blun_agents a
+    LEFT JOIN agent_tasks t
+      ON t.agent_id = a.id
+      AND t.created_at >= NOW() - ($1::int || ' hours')::interval
+    LEFT JOIN (
+      SELECT
+        hb.agent_id,
+        COUNT(*)::int AS total_heartbeats,
+        COUNT(*) FILTER (WHERE hb.status = 'error')::int AS error_heartbeats
+      FROM agent_heartbeats hb
+      JOIN blun_agents a ON a.id = hb.agent_id
+      WHERE hb.created_at >= NOW() - ($1::int || ' hours')::interval
+      ${scope.heartbeatScope}
+      GROUP BY hb.agent_id
+    ) h ON h.agent_id = a.id
+    WHERE a.id != 1
+    ${scope.taskScope}
+    GROUP BY a.id, a.name, a.department, h.total_heartbeats, h.error_heartbeats
+    ORDER BY a.name ASC
+  `;
+
+  const rows = await query(sql, params);
+  const filteredRows = rows.filter(function (row) {
+    return (Number(row.total_tasks) || 0) >= minTasks;
+  });
+
+  const metrics = filteredRows.map(function (row) {
+    const scores = calculateScores(row);
+    return {
+      agent_id: row.agent_id,
+      agent_name: row.agent_name,
+      department: row.department,
+      total_tasks: Number(row.total_tasks) || 0,
+      completed_tasks: Number(row.completed_tasks) || 0,
+      failed_tasks: Number(row.failed_tasks) || 0,
+      no_code_tasks: Number(row.no_code_tasks) || 0,
+      avg_score: round(row.avg_score, 2),
+      avg_completion_seconds: round(row.avg_completion_seconds, 2),
+      avg_result_len: round(row.avg_result_len, 2),
+      total_heartbeats: Number(row.total_heartbeats) || 0,
+      error_heartbeats: Number(row.error_heartbeats) || 0,
+      last_task_at: row.last_task_at,
+      success_rate: scores.success_rate,
+      failure_rate: scores.failure_rate,
+      no_code_rate: scores.no_code_rate,
+      quality_index: scores.quality_index,
+      reliability_index: scores.reliability_index,
+      throughput_index: scores.throughput_index,
+      composite_score: scores.composite_score
+    };
+  });
+
+  metrics.sort(function (a, b) {
+    if (b.composite_score !== a.composite_score) {
+      return b.composite_score - a.composite_score;
+    }
+    if (b.success_rate !== a.success_rate) {
+      return b.success_rate - a.success_rate;
+    }
+    return b.total_tasks - a.total_tasks;
+  });
+
+  for (let i = 0; i < metrics.length; i++) {
+    metrics[i].rank = i + 1;
+  }
+
+  return metrics;
+}
+
+async function buildPerformanceSummary(options) {
+  const metrics = await fetchAgentPerformanceMetrics(options);
+  const summary = {
+    generated_at: new Date().toISOString(),
+    agent_count: metrics.length,
+    avg_composite_score: 0,
+    avg_success_rate: 0,
+    top_agent: null,
+    weakest_agent: null,
+    metrics: metrics
+  };
+
+  if (!metrics.length) return summary;
+
+  const totalComposite = metrics.reduce(function (sum, item) {
+    return sum + item.composite_score;
+  }, 0);
+
+  const totalSuccessRate = metrics.reduce(function (sum, item) {
+    return sum + item.success_rate;
+  }, 0);
+
+  summary.avg_composite_score = round(totalComposite / metrics.length, 2);
+  summary.avg_success_rate = round(totalSuccessRate / metrics.length, 2);
+  summary.top_agent = metrics[0];
+  summary.weakest_agent = metrics[metrics.length - 1];
+
+  return summary;
+}
 
 module.exports = {
-  router: router,
-  fetchAgentMetrics: fetchAgentMetrics,
-  getAgentMetricsHandler: getAgentMetricsHandler
+  fetchAgentPerformanceMetrics,
+  buildPerformanceSummary
 };
