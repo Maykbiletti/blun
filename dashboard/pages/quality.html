@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0f1117">
+  <title>BLUN Code Quality</title>
+  <style>
+    :root {
+      --b: #3b82f6;
+      --bd: #2563eb;
+      --bg: #0a0a0a;
+      --bg2: #111317;
+      --bg3: #1a1f2b;
+      --bg4: #242b3a;
+      --tx: #e5e7eb;
+      --tx2: #9ca3af;
+      --brd: #2f3646;
+      --green: #22c55e;
+      --red: #ef4444;
+      --amber: #f59e0b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: radial-gradient(circle at 20% -20%, rgba(59, 130, 246, 0.14) 0, rgba(59, 130, 246, 0) 45%), var(--bg);
+      color: var(--tx);
+      min-height: 100vh;
+      padding: 28px 18px;
+    }
+
+    .wrap {
+      width: min(1080px, 100%);
+      margin: 0 auto;
+    }
+
+    .head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .title {
+      font-size: clamp(1.25rem, 2.7vw, 1.8rem);
+      font-weight: 800;
+      letter-spacing: 0.01em;
+    }
+
+    .sub {
+      margin-top: 4px;
+      color: var(--tx2);
+      font-size: 0.92rem;
+    }
+
+    .btn {
+      border: 1px solid rgba(59, 130, 246, 0.4);
+      background: rgba(59, 130, 246, 0.14);
+      color: #dbeafe;
+      border-radius: 10px;
+      padding: 8px 14px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.9rem;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .btn:hover {
+      background: rgba(59, 130, 246, 0.24);
+      border-color: var(--b);
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .card {
+      border: 1px solid var(--brd);
+      border-radius: 12px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01)), var(--bg2);
+      padding: 14px;
+      min-height: 84px;
+    }
+
+    .label {
+      color: var(--tx2);
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .value {
+      font-size: clamp(1.2rem, 3vw, 1.85rem);
+      margin-top: 8px;
+      font-weight: 800;
+    }
+
+    .panel {
+      border: 1px solid var(--brd);
+      border-radius: 14px;
+      background: var(--bg2);
+      padding: 16px;
+    }
+
+    .panel h2 {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 14px;
+    }
+
+    .bars {
+      list-style: none;
+      display: grid;
+      gap: 10px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: minmax(140px, 38%) 1fr auto;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .name {
+      font-size: 0.85rem;
+      color: #d1d5db;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .track {
+      position: relative;
+      height: 20px;
+      border: 1px solid #2b3447;
+      background: #151a24;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .fill {
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 0;
+      background: linear-gradient(90deg, #1d4ed8, #3b82f6 50%, #60a5fa);
+      border-radius: 999px;
+      transition: width 0.5s ease;
+    }
+
+    .num {
+      color: #93c5fd;
+      font-weight: 700;
+      font-size: 0.8rem;
+      min-width: 52px;
+      text-align: right;
+    }
+
+    .state {
+      margin-top: 12px;
+      font-size: 0.85rem;
+      color: var(--tx2);
+      min-height: 1.2em;
+    }
+
+    .err {
+      color: var(--red);
+    }
+
+    @media (max-width: 860px) {
+      .cards {
+        grid-template-columns: 1fr;
+      }
+
+      .row {
+        grid-template-columns: 1fr;
+        gap: 6px;
+      }
+
+      .num {
+        text-align: left;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header class="head">
+      <div>
+        <h1 class="title">Code Quality</h1>
+        <p class="sub">Live aus <code>/api/code-quality</code></p>
+      </div>
+      <button class="btn" id="reloadBtn" type="button">Neu laden</button>
+    </header>
+
+    <section class="cards">
+      <article class="card">
+        <div class="label">Files</div>
+        <div class="value" id="filesVal">-</div>
+      </article>
+      <article class="card">
+        <div class="label">Lines</div>
+        <div class="value" id="linesVal">-</div>
+      </article>
+      <article class="card">
+        <div class="label">Avg</div>
+        <div class="value" id="avgVal">-</div>
+      </article>
+    </section>
+
+    <section class="panel">
+      <h2>Top 10 groesste Dateien</h2>
+      <ul class="bars" id="bars"></ul>
+      <p class="state" id="state"></p>
+    </section>
+  </main>
+
+  <script>
+    var filesVal = document.getElementById("filesVal");
+    var linesVal = document.getElementById("linesVal");
+    var avgVal = document.getElementById("avgVal");
+    var bars = document.getElementById("bars");
+    var state = document.getElementById("state");
+    var reloadBtn = document.getElementById("reloadBtn");
+
+    function asNumber(value) {
+      var n = Number(value);
+      return Number.isFinite(n) ? n : null;
+    }
+
+    function compactInt(value) {
+      var n = asNumber(value);
+      if (n === null) return "-";
+      return Math.round(n).toLocaleString("de-DE");
+    }
+
+    function normalizePayload(payload) {
+      var p = payload || {};
+      var summary = p.stats || p.summary || p.metrics || p;
+
+      var topRaw =
+        p.topFiles ||
+        p.largestFiles ||
+        p.fileStats ||
+        p.files ||
+        p.byFile ||
+        [];
+
+      if (!Array.isArray(topRaw) && topRaw && typeof topRaw === "object") {
+        topRaw = Object.keys(topRaw).map(function(key) {
+          return {
+            file: key,
+            lines: topRaw[key]
+          };
+        });
+      }
+
+      var list = (Array.isArray(topRaw) ? topRaw : [])
+        .map(function(item, index) {
+          var path = (item && (item.path || item.file || item.name || item.filename || item.id)) || ("file-" + index);
+          var lines = asNumber(item && (item.lines || item.loc || item.lineCount || item.count || item.size)) || 0;
+          return { path: String(path), lines: lines };
+        })
+        .sort(function(a, b) { return b.lines - a.lines; })
+        .slice(0, 10);
+
+      var files = asNumber(summary.files || summary.totalFiles || summary.fileCount);
+      var lines = asNumber(summary.lines || summary.totalLines || summary.loc || summary.lineCount);
+      var avg = asNumber(summary.avg || summary.average || summary.avgLines || summary.averageLinesPerFile);
+
+      if (files === null) files = asNumber(p.totalFiles);
+      if (lines === null) lines = asNumber(p.totalLines || p.loc);
+
+      if (avg === null && files && lines !== null && files > 0) {
+        avg = lines / files;
+      }
+
+      if ((files === null || lines === null) && list.length > 0) {
+        if (files === null) files = list.length;
+        if (lines === null) {
+          lines = list.reduce(function(acc, item) { return acc + item.lines; }, 0);
+        }
+      }
+
+      return {
+        files: files,
+        lines: lines,
+        avg: avg,
+        top: list
+      };
+    }
+
+    function renderStats(data) {
+      filesVal.textContent = compactInt(data.files);
+      linesVal.textContent = compactInt(data.lines);
+      avgVal.textContent = data.avg === null ? "-" : data.avg.toFixed(1);
+    }
+
+    function renderBars(topFiles) {
+      bars.innerHTML = "";
+
+      if (!topFiles.length) {
+        var empty = document.createElement("li");
+        empty.className = "state";
+        empty.textContent = "Keine Dateidaten vorhanden.";
+        bars.appendChild(empty);
+        return;
+      }
+
+      var max = topFiles.reduce(function(acc, item) {
+        return item.lines > acc ? item.lines : acc;
+      }, 0) || 1;
+
+      topFiles.forEach(function(item) {
+        var row = document.createElement("li");
+        row.className = "row";
+
+        var name = document.createElement("div");
+        name.className = "name";
+        name.textContent = item.path;
+        name.title = item.path;
+
+        var track = document.createElement("div");
+        track.className = "track";
+
+        var fill = document.createElement("div");
+        fill.className = "fill";
+        var ratio = Math.max(4, Math.round((item.lines / max) * 100));
+        fill.style.width = ratio + "%";
+
+        track.appendChild(fill);
+
+        var num = document.createElement("div");
+        num.className = "num";
+        num.textContent = compactInt(item.lines);
+
+        row.appendChild(name);
+        row.appendChild(track);
+        row.appendChild(num);
+        bars.appendChild(row);
+      });
+    }
+
+    async function loadQuality() {
+      state.classList.remove("err");
+      state.textContent = "Lade Daten...";
+
+      try {
+        var res = await fetch("/api/code-quality", {
+          method: "GET",
+          headers: { "Accept": "application/json" },
+          cache: "no-store"
+        });
+
+        if (!res.ok) {
+          throw new Error("HTTP " + res.status);
+        }
+
+        var payload = await res.json();
+        var normalized = normalizePayload(payload);
+
+        renderStats(normalized);
+        renderBars(normalized.top);
+
+        state.textContent = "Aktualisiert: " + new Date().toLocaleString("de-DE");
+      } catch (err) {
+        filesVal.textContent = "-";
+        linesVal.textContent = "-";
+        avgVal.textContent = "-";
+        bars.innerHTML = "";
+
+        state.classList.add("err");
+        state.textContent = "Fehler beim Laden: " + (err && err.message ? err.message : "unbekannt");
+      }
+    }
+
+    reloadBtn.addEventListener("click", loadQuality);
+    loadQuality();
+  </script>
+</body>
+</html>
