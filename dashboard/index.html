@@ -2996,18 +2996,18 @@ function toggleCanvas() {
     cp.style.maxWidth = '';
     if(rh) rh.style.display = 'none';
     if(_canvasInterval){clearInterval(_canvasInterval);_canvasInterval=null;}
-    if(btn) btn.textContent = 'Canvas';
+    if(btn) btn.textContent = 'Tasks';
     localStorage.setItem('blun_canvas_open', '0');
   } else {
     canvas.classList.add('open');
     var savedW = parseInt(localStorage.getItem('blun_canvas_w')||'320'); canvas.style.width=savedW+'px';
     cp.style.maxWidth = 'calc(100% - '+(savedW+5)+'px)';
     if(rh) rh.style.display = '';
-    if(btn) btn.textContent = 'Canvas schliessen';
+    if(btn) btn.textContent = 'Tasks schliessen';
     localStorage.setItem('blun_canvas_open', '1');
-    document.getElementById('wsCanvasLog').innerHTML = '';
-    loadCanvasLog();
-    _canvasInterval = setInterval(loadCanvasLog, 5000);
+    if(document.getElementById('wsTaskFeed')) document.getElementById('wsTaskFeed').innerHTML='';
+    if(window.currentAgent) loadAgentCanvas(window.currentAgent.id);
+    _canvasInterval = setInterval(function(){if(window.currentAgent) loadAgentCanvas(window.currentAgent.id);}, 15000);
     if(!_blunWS || _blunWS.readyState > 1) initBlunWS();
   }
 }
