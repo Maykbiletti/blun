@@ -668,14 +668,19 @@ router.get("/dashboard-pages", async function(req, res) {
   try {
     var fs = require("fs"); var path = require("path");
     var dir = path.join(__dirname, "..", "..", "dashboard", "pages");
+    var meta = {};
+    try { meta = JSON.parse(fs.readFileSync(path.join(dir, "_meta.json"),"utf8")); } catch(e) {}
     var files = fs.readdirSync(dir).filter(function(f) { return f.endsWith(".html"); });
     var pages = files.map(function(f) {
-      var name = f.replace(".html","");
-      var pretty = name.replace(/-/g," ").replace(/\w/g, function(c){return c.toUpperCase();});
-      return { file: f, slug: name, label: pretty, url: "/dashboard/pages/" + f };
+      var slug = f.replace(".html","");
+      var m = meta[slug] || {};
+      var label = m.label || slug.split("-").map(function(w){ return w.charAt(0).toUpperCase()+w.slice(1); }).join(" ");
+      return { slug: slug, label: label, url: "/dashboard/pages/" + f, category: m.category || "Mehr", icon: m.icon || "doc", order: m.order || 99 };
     });
-    pages.sort(function(a,b){ return a.label.localeCompare(b.label); });
-    res.json({ pages: pages });
+    pages.sort(function(a,b){ if (a.category !== b.category) return a.category.localeCompare(b.category); return (a.order||99)-(b.order||99); });
+    var grouped = {};
+    pages.forEach(function(p){ (grouped[p.category] = grouped[p.category] || []).push(p); });
+    res.json({ pages: pages, grouped: grouped });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 

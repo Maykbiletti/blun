@@ -1,0 +1,11 @@
+{
+  "agent-profile":  { "label": "Agent Profil",   "category": "Steuerung", "icon": "user",     "order": 11 },
+  "team-stats":     { "label": "Team Stats",     "category": "Steuerung", "icon": "bar",      "order": 12 },
+  "insights":       { "label": "Insights",       "category": "Steuerung", "icon": "chart",    "order": 13 },
+  "quality":        { "label": "Code Qualitaet", "category": "Tools",     "icon": "shield",   "order": 21 },
+  "test-runner":    { "label": "Test Runner",    "category": "Tools",     "icon": "play",     "order": 22 },
+  "changelog":      { "label": "Changelog",      "category": "Tools",     "icon": "history",  "order": 23 },
+  "status":         { "label": "System Status",  "category": "System",    "icon": "pulse",    "order": 31 },
+  "help-center":    { "label": "Hilfecenter",    "category": "Hilfe",     "icon": "help",     "order": 41 },
+  "faq":            { "label": "FAQ",            "category": "Hilfe",     "icon": "question", "order": 42 }
+}
