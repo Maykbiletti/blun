@@ -1,267 +1,440 @@
-<div class="page-frag" data-page-slug="insights">
-  <!-- Header -->
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-    <div style="font-size:20px;font-weight:700;color:var(--tx)">Insights Dashboard</div>
-    <div style="display:flex;align-items:center;gap:10px">
-      <span id="ins-pulse" style="width:8px;height:8px;border-radius:50%;background:var(--tx2);display:inline-block"></span>
-      <span id="ins-update-time" style="font-size:11px;color:var(--tx2);font-family:'Courier New',monospace"></span>
-    </div>
-  </div>
-
-  <!-- KPI Tiles -->
-  <div class="stats-row" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px">
-    <div class="stat-card" id="kpi-tasks-heute">
-      <div class="stat-label">Tasks Heute</div>
-      <div class="stat-val" id="ins-tasks-today" style="font-size:28px;color:var(--b)">--</div>
-      <div id="ins-tasks-trend" style="font-size:11px;color:var(--tx2);margin-top:4px">abgeschlossene Aufgaben</div>
-    </div>
-    <div class="stat-card" id="kpi-avg-dauer">
-      <div class="stat-label">Avg Dauer</div>
-      <div class="stat-val" id="ins-avg-duration" style="font-size:28px;color:var(--green)">--</div>
-      <div style="font-size:11px;color:var(--tx2);margin-top:4px">Minuten pro Task</div>
-    </div>
-    <div class="stat-card" id="kpi-erfolgsrate">
-      <div class="stat-label">Erfolgsrate</div>
-      <div class="stat-val" id="ins-success-rate" style="font-size:28px;color:var(--purple)">--</div>
-      <div id="ins-success-bar-wrap" style="margin-top:6px;height:4px;background:var(--bg2);border-radius:2px;overflow:hidden">
-        <div id="ins-success-bar" style="height:100%;width:0%;background:var(--purple);border-radius:2px;transition:width .4s ease"></div>
-      </div>
-    </div>
-    <div class="stat-card" id="kpi-aktive-agents">
-      <div class="stat-label">Aktive Agents</div>
-      <div class="stat-val" id="ins-active-agents" style="font-size:28px;color:var(--amber)">--</div>
-      <div style="font-size:11px;color:var(--tx2);margin-top:4px">online verbunden</div>
-    </div>
-  </div>
-
-  <!-- Zusatz-Metriken -->
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px">
-    <div class="card">
-      <div class="card-head"><div class="card-title">Detaillierte Metriken</div></div>
-      <div id="ins-metrics-container" style="margin-top:12px;color:var(--tx2);font-size:13px">Lädt Daten...</div>
-    </div>
-    <div class="card">
-      <div class="card-head"><div class="card-title">Verteilung</div></div>
-      <div id="ins-distribution" style="margin-top:12px;color:var(--tx2);font-size:13px">Lädt Daten...</div>
-    </div>
-  </div>
-
-  <!-- Letzte 10 Tasks -->
-  <div class="card">
-    <div class="card-head">
-      <div class="card-title">Letzte 10 Tasks</div>
-      <span id="ins-task-count" class="badge badge-blue" style="font-size:11px">0</span>
-    </div>
-    <div id="ins-recent-tasks" style="margin-top:12px;color:var(--tx2);font-size:13px">Lädt Tasks...</div>
-  </div>
-</div>
-
-<style>
-  .ins-task-row {
-    display: grid;
-    grid-template-columns: 40px 1fr 100px 90px 80px;
-    gap: 8px;
-    align-items: center;
-    padding: 10px 0;
-    border-bottom: 1px solid var(--brd);
-    font-size: 13px;
-  }
-  .ins-task-row:last-child { border-bottom: none; }
-  .ins-task-id { color: var(--tx2); font-family: 'Courier New', monospace; font-size: 11px; }
-  .ins-task-title { color: var(--tx); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .ins-task-agent { color: var(--tx2); font-size: 12px; }
-  .ins-task-duration { color: var(--tx2); font-family: 'Courier New', monospace; font-size: 12px; text-align: right; }
-  .ins-task-status {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-size: 11px;
-    font-weight: 600;
-    text-align: center;
-  }
-  .ins-status-done { background: rgba(34,197,94,.15); color: var(--green); }
-  .ins-status-failed { background: rgba(239,68,68,.15); color: var(--red); }
-  .ins-status-running { background: rgba(59,130,246,.15); color: var(--b); }
-  .ins-status-pending { background: rgba(245,158,11,.15); color: var(--amber); }
-  .ins-task-header {
-    display: grid;
-    grid-template-columns: 40px 1fr 100px 90px 80px;
-    gap: 8px;
-    padding: 0 0 8px 0;
-    border-bottom: 2px solid var(--brd);
-    font-size: 11px;
-    color: var(--tx2);
-    text-transform: uppercase;
-    letter-spacing: .5px;
-  }
-</style>
-
-<script>
-(function(){
-  var REFRESH_MS = 15000;
-
-  function $(id){ return document.getElementById(id); }
-
-  function set(id, val){ var e=$(id); if(e) e.textContent = val; }
-
-  function statusClass(s){
-    if(!s) return 'ins-status-pending';
-    var l = s.toLowerCase();
-    if(l==='done'||l==='completed'||l==='success') return 'ins-status-done';
-    if(l==='failed'||l==='error') return 'ins-status-failed';
-    if(l==='running'||l==='in_progress') return 'ins-status-running';
-    return 'ins-status-pending';
-  }
-
-  function statusLabel(s){
-    if(!s) return 'pending';
-    var l = s.toLowerCase();
-    if(l==='done'||l==='completed'||l==='success') return 'done';
-    if(l==='failed'||l==='error') return 'failed';
-    if(l==='running'||l==='in_progress') return 'running';
-    return s;
-  }
-
-  function fmtDuration(mins){
-    if(mins==null||isNaN(mins)) return '–';
-    if(mins < 1) return Math.round(mins*60)+'s';
-    if(mins >= 60) return Math.floor(mins/60)+'h '+Math.round(mins%60)+'m';
-    return Number(mins).toFixed(1)+'m';
-  }
-
-  function fmtTime(ts){
-    if(!ts) return '–';
-    var d = new Date(ts);
-    return d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
-  }
-
-  function renderMetrics(data){
-    var rows = [
-      ['Gesamt Tasks (Heute)',    data.tasksToday||data.tasks_today||0],
-      ['Queue Länge',             data.queuePending||data.queue_pending||0],
-      ['Completed Gestern',       data.completedYesterday||data.completed_yesterday||0],
-      ['Fehler Heute',            data.failedToday||data.failed_today||0],
-      ['Uptime',                  data.uptime||'–']
-    ];
-    var c = $('ins-metrics-container');
-    if(!c) return;
-    c.innerHTML = rows.map(function(r,i){
-      return '<div style="display:flex;justify-content:space-between;padding:8px 0;'
-        +(i<rows.length-1?'border-bottom:1px solid var(--brd)':'')
-        +'"><span>'+r[0]+'</span>'
-        +'<span style="color:var(--tx);font-family:\'Courier New\',monospace;font-weight:500">'+r[1]+'</span></div>';
-    }).join('');
-  }
-
-  function renderDistribution(data){
-    var total = (data.tasksToday||data.tasks_today||0);
-    var failed = (data.failedToday||data.failed_today||0);
-    var success = total - failed;
-    var successPct = total > 0 ? Math.round((success/total)*100) : 0;
-    var failPct = total > 0 ? 100 - successPct : 0;
-
-    var c = $('ins-distribution');
-    if(!c) return;
-    c.innerHTML =
-      '<div style="margin-bottom:12px">'
-        +'<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>Erfolgreich</span><span style="color:var(--green)">'+success+' ('+successPct+'%)</span></div>'
-        +'<div style="height:6px;background:var(--bg2);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+successPct+'%;background:var(--green);border-radius:3px;transition:width .4s ease"></div></div>'
-      +'</div>'
-      +'<div>'
-        +'<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>Fehlgeschlagen</span><span style="color:var(--red)">'+failed+' ('+failPct+'%)</span></div>'
-        +'<div style="height:6px;background:var(--bg2);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+failPct+'%;background:var(--red);border-radius:3px;transition:width .4s ease"></div></div>'
-      +'</div>';
-  }
-
-  function renderTasks(tasks){
-    var c = $('ins-recent-tasks');
-    if(!c) return;
-    if(!tasks||!tasks.length){
-      c.innerHTML = '<div style="color:var(--tx2);padding:16px 0;text-align:center">Keine Tasks vorhanden</div>';
-      set('ins-task-count','0');
-      return;
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BLUN Insights</title>
+  <style>
+    :root {
+      --bg: #060b14;
+      --bg-soft: #0d1424;
+      --card: #111c30;
+      --border: #233555;
+      --text: #e8f0ff;
+      --muted: #91a6c9;
+      --cyan: #37b8ff;
+      --green: #35d48f;
+      --amber: #ffb95d;
+      --rose: #ff6f7d;
+      --shadow: 0 12px 34px rgba(0, 0, 0, 0.35);
     }
-    set('ins-task-count', tasks.length);
-    var html = '<div class="ins-task-header"><span>#</span><span>Task</span><span>Agent</span><span>Dauer</span><span>Status</span></div>';
-    html += tasks.slice(0,10).map(function(t){
-      var id = t.id||t.task_id||'–';
-      var title = t.title||t.description||t.prompt||'Unbenannt';
-      var agent = t.agent||t.assigned_to||'–';
-      var dur = fmtDuration(t.duration||t.duration_min);
-      var st = t.status||'pending';
-      return '<div class="ins-task-row">'
-        +'<span class="ins-task-id">#'+id+'</span>'
-        +'<span class="ins-task-title" title="'+title.replace(/"/g,'&quot;')+'">'+title+'</span>'
-        +'<span class="ins-task-agent">'+agent+'</span>'
-        +'<span class="ins-task-duration">'+dur+'</span>'
-        +'<span class="ins-task-status '+statusClass(st)+'">'+statusLabel(st)+'</span>'
-        +'</div>';
-    }).join('');
-    c.innerHTML = html;
-  }
 
-  function load(){
-    var req = typeof api==='function'
-      ? api('/api/organisator/stats')
-      : fetch('/api/organisator/stats').then(function(r){ return r.json(); });
+    * { box-sizing: border-box; }
 
-    req.then(function(data){
-      if(!data) return;
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Inter", "Segoe UI", Arial, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 12% -8%, rgba(55, 184, 255, 0.18), transparent 38%),
+        radial-gradient(circle at 92% 110%, rgba(53, 212, 143, 0.15), transparent 34%),
+        var(--bg);
+    }
 
-      // KPI Tiles
-      set('ins-tasks-today', data.tasksToday||data.tasks_today||0);
-      set('ins-avg-duration', fmtDuration(data.avgDuration||data.avg_duration));
-      var rate = Math.round(data.successRate||data.success_rate||0);
-      set('ins-success-rate', rate+'%');
-      var bar = $('ins-success-bar');
-      if(bar) bar.style.width = rate+'%';
-      set('ins-active-agents', data.activeAgents||data.active_agents||0);
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 26px 18px 34px;
+    }
 
-      // Trend
-      var yesterday = data.completedYesterday||data.completed_yesterday||0;
-      var today = data.tasksToday||data.tasks_today||0;
-      var trendEl = $('ins-tasks-trend');
-      if(trendEl && yesterday > 0){
-        var diff = today - yesterday;
-        var pct = Math.round((diff/yesterday)*100);
-        var arrow = diff >= 0 ? '↑' : '↓';
-        var col = diff >= 0 ? 'var(--green)' : 'var(--red)';
-        trendEl.innerHTML = '<span style="color:'+col+'">'+arrow+' '+Math.abs(pct)+'%</span> vs gestern';
+    .header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.35rem, 2.8vw, 2rem);
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+
+    .meta {
+      font-size: 0.86rem;
+      color: var(--muted);
+      text-align: right;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .tile {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: linear-gradient(160deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0)), var(--card);
+      padding: 14px;
+      box-shadow: var(--shadow);
+    }
+
+    .label {
+      margin: 0;
+      font-size: 0.84rem;
+      color: var(--muted);
+    }
+
+    .value {
+      margin: 8px 0 4px;
+      font-size: clamp(1.4rem, 2.8vw, 1.9rem);
+      font-weight: 700;
+      line-height: 1.1;
+    }
+
+    .hint {
+      margin: 0;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .v-cyan { color: var(--cyan); }
+    .v-green { color: var(--green); }
+    .v-amber { color: var(--amber); }
+    .v-rose { color: var(--rose); }
+
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.015), rgba(255, 255, 255, 0)), var(--bg-soft);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .panel-title {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 650;
+    }
+
+    .panel-sub {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .task-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .task-item {
+      display: grid;
+      grid-template-columns: minmax(180px, 2fr) minmax(110px, 1fr) minmax(95px, 120px) minmax(95px, 125px) 120px;
+      gap: 10px;
+      align-items: center;
+      padding: 11px 16px;
+      border-bottom: 1px solid rgba(145, 166, 201, 0.16);
+      font-size: 0.9rem;
+    }
+
+    .task-item:last-child { border-bottom: 0; }
+
+    .task-head {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      background: rgba(145, 166, 201, 0.08);
+      font-weight: 600;
+    }
+
+    .task-title {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-weight: 520;
+    }
+
+    .mono {
+      font-family: "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .status {
+      justify-self: start;
+      border-radius: 999px;
+      padding: 3px 10px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      border: 1px solid transparent;
+      text-transform: uppercase;
+    }
+
+    .status-completed { color: #1fcd85; border-color: rgba(53, 212, 143, 0.4); background: rgba(53, 212, 143, 0.14); }
+    .status-failed { color: #ff7885; border-color: rgba(255, 111, 125, 0.38); background: rgba(255, 111, 125, 0.12); }
+    .status-running { color: #56beff; border-color: rgba(55, 184, 255, 0.4); background: rgba(55, 184, 255, 0.14); }
+    .status-default { color: #b6c8e6; border-color: rgba(145, 166, 201, 0.38); background: rgba(145, 166, 201, 0.12); }
+
+    .state {
+      margin: 14px 4px 0;
+      min-height: 1.3rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .state.error { color: #ff7f8a; }
+
+    .empty {
+      margin: 0;
+      padding: 18px 16px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 1040px) {
+      .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .task-item { grid-template-columns: minmax(160px, 2fr) minmax(100px, 1fr) 90px 95px 95px; }
+    }
+
+    @media (max-width: 760px) {
+      .container { padding: 20px 12px 26px; }
+      .header { align-items: flex-start; flex-direction: column; }
+      .meta { text-align: left; }
+      .grid { grid-template-columns: 1fr; }
+      .task-item {
+        grid-template-columns: 1fr;
+        gap: 6px;
+      }
+      .task-head { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <header class="header">
+      <h1>Insights Dashboard</h1>
+      <div class="meta">
+        <div id="updated-at">Letztes Update: -</div>
+        <div>Quelle: <code>/api/organisator/stats</code></div>
+      </div>
+    </header>
+
+    <section class="grid" aria-label="KPIs">
+      <article class="tile">
+        <p class="label">Tasks Heute</p>
+        <p class="value v-cyan" id="kpi-tasks-today">-</p>
+        <p class="hint">abgeschlossen in den letzten 24h</p>
+      </article>
+      <article class="tile">
+        <p class="label">Avg Dauer</p>
+        <p class="value v-green" id="kpi-avg-duration">-</p>
+        <p class="hint">durchschnittliche Task-Laufzeit</p>
+      </article>
+      <article class="tile">
+        <p class="label">Erfolgsrate</p>
+        <p class="value v-amber" id="kpi-success-rate">-</p>
+        <p class="hint">completed vs. failed</p>
+      </article>
+      <article class="tile">
+        <p class="label">Aktive Agents</p>
+        <p class="value v-rose" id="kpi-active-agents">-</p>
+        <p class="hint">aktuell online</p>
+      </article>
+    </section>
+
+    <section class="panel" aria-label="Letzte zehn Tasks">
+      <header class="panel-head">
+        <h2 class="panel-title">Letzte 10 Tasks</h2>
+        <p class="panel-sub" id="tasks-count">0 Einträge</p>
+      </header>
+      <ul class="task-list" id="task-list">
+        <li class="task-item task-head">
+          <span>Titel</span>
+          <span>Agent</span>
+          <span>Status</span>
+          <span>Dauer</span>
+          <span>Abgeschlossen</span>
+        </li>
+      </ul>
+    </section>
+
+    <p class="state" id="state"></p>
+  </main>
+
+  <script>
+    function num(value, fallback) {
+      if (typeof value === "number" && Number.isFinite(value)) return value;
+      if (typeof value === "string" && value.trim() !== "" && Number.isFinite(Number(value))) return Number(value);
+      return fallback;
+    }
+
+    function txt(id, value) {
+      document.getElementById(id).textContent = value;
+    }
+
+    function durationText(raw) {
+      var seconds = num(raw, null);
+      if (seconds === null) return "-";
+      if (seconds < 60) return Math.round(seconds) + "s";
+      var mins = seconds / 60;
+      if (mins < 60) return mins.toFixed(1) + "m";
+      return (mins / 60).toFixed(1) + "h";
+    }
+
+    function percentText(raw) {
+      var n = num(raw, null);
+      if (n === null) return "-";
+      if (n <= 1) n = n * 100;
+      return n.toFixed(1) + "%";
+    }
+
+    function dateText(raw) {
+      if (!raw) return "-";
+      var d = new Date(raw);
+      if (Number.isNaN(d.getTime())) return "-";
+      return d.toLocaleString("de-DE", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    }
+
+    function htmlSafe(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function statusClass(status) {
+      var s = String(status || "").toLowerCase();
+      if (s === "completed" || s === "success") return "status-completed";
+      if (s === "failed" || s === "error") return "status-failed";
+      if (s === "running" || s === "active") return "status-running";
+      return "status-default";
+    }
+
+    function extractTasks(stats) {
+      var pools = [
+        stats.latest_tasks,
+        stats.recent_tasks,
+        stats.last_tasks,
+        stats.tasks,
+        stats.completed_tasks,
+        stats.latest_completed_tasks
+      ];
+
+      var list = [];
+      for (var i = 0; i < pools.length; i++) {
+        if (Array.isArray(pools[i]) && pools[i].length) {
+          list = pools[i];
+          break;
+        }
       }
 
-      // Pulse
-      var pulse = $('ins-pulse');
-      if(pulse) pulse.style.background = 'var(--green)';
+      if (!Array.isArray(list)) return [];
 
-      // Timestamp
-      set('ins-update-time', new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit',second:'2-digit'}));
+      return list.map(function(task, index) {
+        var duration = task.duration_seconds
+          ?? task.duration_sec
+          ?? task.duration
+          ?? task.execution_time_seconds
+          ?? null;
 
-      // Detail panels
-      renderMetrics(data);
-      renderDistribution(data);
-
-      // Recent tasks
-      var tasks = data.recentTasks||data.recent_tasks||data.tasks||[];
-      renderTasks(tasks);
-
-    }).catch(function(err){
-      var c = $('ins-metrics-container');
-      if(c) c.innerHTML = '<div style="color:var(--red)">Fehler beim Laden: '+(err.message||'Unbekannt')+'</div>';
-      var pulse = $('ins-pulse');
-      if(pulse) pulse.style.background = 'var(--red)';
-    });
-  }
-
-  load();
-  var _interval = setInterval(load, REFRESH_MS);
-
-  // Cleanup wenn Seite wegnavigiert wird
-  var obs = new MutationObserver(function(){
-    if(!document.querySelector('.page-frag[data-page-slug="insights"]')){
-      clearInterval(_interval);
-      obs.disconnect();
+        return {
+          title: task.title || task.task || task.name || ("Task #" + (index + 1)),
+          agent: task.agent_name || task.agent || task.assigned_to || "-",
+          status: task.status || "unknown",
+          duration: duration,
+          completedAt: task.completed_at || task.finished_at || task.updated_at || task.created_at || null
+        };
+      }).slice(0, 10);
     }
-  });
-  obs.observe(document.body, {childList:true, subtree:true});
-})();
-</script>
+
+    function renderTaskRows(tasks) {
+      var list = document.getElementById("task-list");
+      var count = document.getElementById("tasks-count");
+      var header = list.querySelector(".task-head");
+
+      list.innerHTML = "";
+      list.appendChild(header);
+
+      if (!tasks.length) {
+        count.textContent = "0 Einträge";
+        list.insertAdjacentHTML("beforeend", '<li><p class="empty">Keine Task-Daten in der API-Antwort gefunden.</p></li>');
+        return;
+      }
+
+      count.textContent = tasks.length + " Einträge";
+
+      tasks.forEach(function(task) {
+        list.insertAdjacentHTML("beforeend", "" +
+          '<li class="task-item">' +
+            '<span class="task-title" title="' + htmlSafe(task.title) + '">' + htmlSafe(task.title) + '</span>' +
+            '<span class="mono">' + htmlSafe(task.agent) + '</span>' +
+            '<span class="status ' + statusClass(task.status) + '">' + htmlSafe(task.status) + '</span>' +
+            '<span class="mono">' + htmlSafe(durationText(task.duration)) + '</span>' +
+            '<span class="mono">' + htmlSafe(dateText(task.completedAt)) + '</span>' +
+          '</li>'
+        );
+      });
+    }
+
+    function renderStats(stats) {
+      var tasksToday = num(stats.tasks_today ?? stats.tasksToday ?? stats.tasks_completed_today, null);
+      var avgDuration = stats.avg_duration_seconds ?? stats.avg_duration_sec ?? stats.avg_duration ?? stats.average_duration;
+
+      var successRate = stats.success_rate ?? stats.successRate ?? stats.task_success_rate ?? null;
+      if (successRate === null) {
+        var completed = num(stats.tasks_completed, null);
+        var failed = num(stats.tasks_failed, 0);
+        if (completed !== null && (completed + failed) > 0) {
+          successRate = completed / (completed + failed);
+        }
+      }
+
+      var activeAgents = num(stats.active_agents ?? stats.activeAgents ?? stats.agents_active, null);
+
+      txt("kpi-tasks-today", tasksToday === null ? "-" : String(tasksToday));
+      txt("kpi-avg-duration", durationText(avgDuration));
+      txt("kpi-success-rate", percentText(successRate));
+      txt("kpi-active-agents", activeAgents === null ? "-" : String(activeAgents));
+
+      renderTaskRows(extractTasks(stats));
+      txt("updated-at", "Letztes Update: " + new Date().toLocaleString("de-DE"));
+    }
+
+    async function load() {
+      var state = document.getElementById("state");
+      state.classList.remove("error");
+      state.textContent = "Lade Daten...";
+
+      try {
+        var response = await fetch("/api/organisator/stats", { headers: { Accept: "application/json" } });
+        if (!response.ok) throw new Error("HTTP " + response.status);
+        var data = await response.json();
+        renderStats(data || {});
+        state.textContent = "";
+      } catch (error) {
+        renderStats({});
+        state.classList.add("error");
+        state.textContent = "Fehler beim Laden von /api/organisator/stats: " + (error && error.message ? error.message : "unbekannt");
+      }
+    }
+
+    load();
+  </script>
+</body>
+</html>
