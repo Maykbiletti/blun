@@ -5,12 +5,15 @@
 
 const { Router } = require('express');
 const { query, queryOne } = require('../db');
+const activityFeedRoutes = require('./activity-feed');
 const { startAgent, stopAgent, restartAgent, getProcessStatus } = require('../agent/runtime');
 const { sendToAgent } = require('../ws');
 const { v4: uuid } = require('uuid');
 const { requireAuth } = require('../middleware/auth');
 
 const router = Router();
+
+router.use(activityFeedRoutes);
 
 
 router.get("/health", async function (req, res) {
