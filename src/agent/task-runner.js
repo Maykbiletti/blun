@@ -379,7 +379,7 @@ async function autoCommitChanges(agentDir, agentName, taskId) {
   return new Promise(function (resolve) {
     var msg = "auto: task #" + taskId + " (" + agentName + ")";
     cp.exec(
-      "cd " + agentDir + " && git add -A && BLUN_DEPLOYER=dieter GIT_SSH_COMMAND='ssh -i ~/.ssh/id_ed25519_github -o StrictHostKeyChecking=no' git -c user.email='" + agentName.toLowerCase() + "@blun.ai' -c user.name='" + agentName + "' commit -m '" + msg.replace(/'/g, "") + "' 2>&1 && git rev-parse --short HEAD",
+      "cd " + agentDir + " && git add -A && " + (agent.id === 1 ? "BLUN_DEPLOYER=dieter " : "") + "GIT_SSH_COMMAND='ssh -i ~/.ssh/id_ed25519_github -o StrictHostKeyChecking=no' git -c user.email='" + agentName.toLowerCase() + "@blun.ai' -c user.name='" + agentName + "' commit -m '" + msg.replace(/'/g, "") + "' 2>&1 && git rev-parse --short HEAD",
       { timeout: 15000 },
       function (err, stdout, stderr) {
         if (err) {
