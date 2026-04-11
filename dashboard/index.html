@@ -1806,6 +1806,7 @@ function slashHelp(){
   return [
     '<b>Slash-Befehle:</b>',
     '<code>/task &lt;Beschreibung&gt;</code> — legt sofort einen Task fuer diesen Agent an',
+    '<code>/direct &lt;Aufgabe&gt;</code> — Dieter fuehrt die Aufgabe <b>selbst</b> aus (kein Delegieren)',
     '<code>/issues</code> — zeigt offene Tasks dieses Agenten',
     '<code>/help</code> — diese Liste'
   ].join('<br>');
@@ -1843,7 +1844,16 @@ function handleSlashCommand(msg, msgs, agent){
     }).catch(function(e){ p.style.color='var(--red)'; p.textContent='Fehler: '+e.message; });
     return true;
   }
-  appendChatMsg(msgs,'Unbekannter Befehl: <code>'+esc(msg)+'</code> — <code>/help</code> fuer Liste','var(--text-muted)');
+  if(cmd==='direct'||cmd==='d'){
+    if(!rest){ appendChatMsg(msgs,'Nutzung: <code>/direct &lt;Aufgabe&gt;</code> — Dieter fuehrt selbst aus','var(--text-muted)'); return true; }
+    var dp=appendChatMsg(msgs,'<span class="thinking-dots"><span></span><span></span><span></span></span> Dieter fuehrt aus...');
+    api('/api/organisator/direct-exec',{method:'POST',body:JSON.stringify({task:rest})}).then(function(t){
+      dp.innerHTML='<span style="color:var(--green)">&#9889;</span> Dieter Task #'+t.id+' gestartet: '+esc(rest)+'<br><span style="color:var(--tx2);font-size:12px">Laeuft im Hintergrund. Ergebnis in Agent-Detail sichtbar.</span>';
+      if(typeof loadAll==='function') loadAll();
+    }).catch(function(e){ dp.style.color='var(--red)'; dp.textContent='Fehler: '+e.message; });
+    return true;
+  }
+    appendChatMsg(msgs,'Unbekannter Befehl: <code>'+esc(msg)+'</code> — <code>/help</code> fuer Liste','var(--text-muted)');
   return true;
 }
 function sendChat() {

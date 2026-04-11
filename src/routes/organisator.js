@@ -396,6 +396,37 @@ router.get("/marketplace", async function(req, res) {
   catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+
+// === DIETER DIRECT EXECUTION ===
+// Dieter executes a task himself via Claude CLI (no delegation to other agents)
+router.post("/direct-exec", async function(req, res) {
+  try {
+    var { task } = req.body;
+    if (!task) return res.status(400).json({ error: "task required" });
+    var taskRunner = require("../agent/task-runner");
+    var dieter = await queryOne("SELECT * FROM blun_agents WHERE id = 1");
+    if (!dieter) return res.status(404).json({ error: "Dieter agent not found" });
+    // Create task record
+    var row = await queryOne(
+      "INSERT INTO agent_tasks (agent_id, task, status, priority) VALUES (1, $1, 'processing', 10) RETURNING *",
+      [task]
+    );
+    // Respond immediately with task ID, execute async
+    res.json({ id: row.id, status: "processing", message: "Dieter fuehrt aus..." });
+    // Execute in background
+    (async function() {
+      try {
+        var result = await taskRunner.executeTask(dieter, row, query);
+        await query("UPDATE agent_tasks SET status='completed', result=$1, completed_at=NOW() WHERE id=$2",
+          [JSON.stringify(result), row.id]);
+      } catch(e) {
+        await query("UPDATE agent_tasks SET status='failed', result=$1, completed_at=NOW() WHERE id=$2",
+          [JSON.stringify({ error: e.message }), row.id]);
+      }
+    })();
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 require("./upload-route")(router, query);
 require("./skills-route")(router, query, queryOne);
 
