@@ -7,5 +7,6 @@
   "changelog":      { "label": "Changelog",      "category": "Tools",     "icon": "history",  "order": 23 },
   "status":         { "label": "System Status",  "category": "System",    "icon": "pulse",    "order": 31 },
   "help-center":    { "label": "Hilfecenter",    "category": "Hilfe",     "icon": "help",     "order": 41 },
-  "faq":            { "label": "FAQ",            "category": "Hilfe",     "icon": "question", "order": 42 }
+  "faq":            { "label": "FAQ",            "category": "Hilfe",     "icon": "question", "order": 42 },
+  "pixeloffice":    { "label": "Pixel Office",  "category": "Steuerung", "icon": "grid",     "order": 14 }
 }

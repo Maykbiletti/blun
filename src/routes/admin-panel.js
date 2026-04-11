@@ -121,6 +121,127 @@ router.get("/stats", async function (req, res) {
   }
 });
 
+// GET /admin-panel/tenants — paginated company list with owner + member count
+router.get("/tenants", async function (req, res) {
+  try {
+    var page = Math.max(1, parseInt(req.query.page) || 1);
+    var limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 25));
+    var offset = (page - 1) * limit;
+    var search = req.query.search || "";
+    var where = "";
+    var params = [];
+    if (search) {
+      where = " WHERE c.name ILIKE $1 OR c.email ILIKE $1 OR u.email ILIKE $1";
+      params.push("%" + search + "%");
+    }
+    var countRes = await pool.query(
+      "SELECT COUNT(*) FROM companies c LEFT JOIN users u ON u.id = c.owner_user_id" + where, params
+    );
+    var total = parseInt(countRes.rows[0].count);
+    var sql = "SELECT c.id, c.name, c.email, c.schema_name, c.created_at, c.config," +
+      " u.id AS owner_id, u.email AS owner_email, u.name AS owner_name," +
+      " (SELECT COUNT(*) FROM company_members cm WHERE cm.company_id = c.id) AS member_count" +
+      " FROM companies c LEFT JOIN users u ON u.id = c.owner_user_id" + where +
+      " ORDER BY c.created_at DESC LIMIT $" + (params.length + 1) + " OFFSET $" + (params.length + 2);
+    params.push(limit, offset);
+    var result = await pool.query(sql, params);
+    res.json({ tenants: result.rows, total: total, page: page, pages: Math.ceil(total / limit) });
+  } catch (err) {
+    console.error("[admin-panel] tenants error:", err.message);
+    res.status(500).json({ error: "Failed to fetch tenants" });
+  }
+});
+
+// GET /admin-panel/tenants/:id — tenant detail with members and agents
+router.get("/tenants/:id", async function (req, res) {
+  try {
+    var company = await pool.query(
+      "SELECT c.*, u.id AS owner_id, u.email AS owner_email, u.name AS owner_name" +
+      " FROM companies c LEFT JOIN users u ON u.id = c.owner_user_id WHERE c.id = $1",
+      [req.params.id]
+    );
+    if (company.rows.length === 0) return res.status(404).json({ error: "Tenant not found" });
+    var members = await pool.query(
+      "SELECT cm.user_id, cm.role, cm.created_at, u.email, u.name, u.plan FROM company_members cm" +
+      " JOIN users u ON u.id = cm.user_id WHERE cm.company_id = $1 ORDER BY cm.created_at",
+      [req.params.id]
+    );
+    var agents = [];
+    var schema = company.rows[0].schema_name;
+    if (schema && /^[a-zA-Z0-9_]+$/.test(schema)) {
+      try {
+        var agRes = await pool.query(
+          'SELECT id, name, model, status, created_at FROM "' + schema + '".agents ORDER BY created_at DESC LIMIT 50'
+        );
+        agents = agRes.rows;
+      } catch (e) {
+        // schema may not exist yet
+      }
+    }
+    res.json({ tenant: company.rows[0], members: members.rows, agents: agents });
+  } catch (err) {
+    console.error("[admin-panel] tenant detail error:", err.message);
+    res.status(500).json({ error: "Failed to fetch tenant" });
+  }
+});
+
+// PATCH /admin-panel/tenants/:id — update tenant (name, email, description, plan/status via config)
+router.patch("/tenants/:id", async function (req, res) {
+  try {
+    var check = await pool.query("SELECT id, config FROM companies WHERE id = $1", [req.params.id]);
+    if (check.rows.length === 0) return res.status(404).json({ error: "Tenant not found" });
+    var sets = []; var params = []; var idx = 1;
+    var allowed = ["name", "email", "description"];
+    for (var key of allowed) {
+      if (req.body[key] !== undefined) { sets.push(key + " = $" + idx); params.push(req.body[key]); idx++; }
+    }
+    var cfg = check.rows[0].config || {};
+    var cfgChanged = false;
+    if (req.body.status !== undefined) { cfg.status = req.body.status; cfgChanged = true; }
+    if (req.body.plan !== undefined) { cfg.plan = req.body.plan; cfgChanged = true; }
+    if (cfgChanged) { sets.push("config = $" + idx); params.push(JSON.stringify(cfg)); idx++; }
+    if (sets.length === 0) return res.status(400).json({ error: "No valid fields to update" });
+    params.push(req.params.id);
+    var result = await pool.query(
+      "UPDATE companies SET " + sets.join(", ") + " WHERE id = $" + idx + " RETURNING id, name, email, description, schema_name, config, created_at",
+      params
+    );
+    var ip = req.headers["x-forwarded-for"] || req.connection.remoteAddress;
+    logActivity(req.user.id, "admin_update_tenant", { target: req.params.id, changes: req.body }, ip);
+    res.json({ tenant: result.rows[0] });
+  } catch (err) {
+    console.error("[admin-panel] update tenant error:", err.message);
+    res.status(500).json({ error: "Failed to update tenant" });
+  }
+});
+
+// DELETE /admin-panel/tenants/:id — delete tenant, drop schema, cascade members
+router.delete("/tenants/:id", async function (req, res) {
+  var client = await pool.connect();
+  try {
+    var check = await client.query("SELECT id, name, schema_name FROM companies WHERE id = $1", [req.params.id]);
+    if (check.rows.length === 0) { client.release(); return res.status(404).json({ error: "Tenant not found" }); }
+    var schema = check.rows[0].schema_name;
+    await client.query("BEGIN");
+    if (schema) {
+      await client.query("DROP SCHEMA IF EXISTS " + JSON.stringify(schema) + " CASCADE");
+    }
+    await client.query("DELETE FROM company_members WHERE company_id = $1", [req.params.id]);
+    await client.query("DELETE FROM sessions WHERE active_company_id = $1", [req.params.id]);
+    await client.query("DELETE FROM companies WHERE id = $1", [req.params.id]);
+    await client.query("COMMIT");
+    var ip = req.headers["x-forwarded-for"] || req.connection.remoteAddress;
+    logActivity(req.user.id, "admin_delete_tenant", { tenant_name: check.rows[0].name, schema: schema }, ip);
+    res.json({ ok: true, deleted: check.rows[0].name });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("[admin-panel] delete tenant error:", err.message);
+    res.status(500).json({ error: "Failed to delete tenant" });
+  } finally {
+    client.release();
+  }
+});
+
 // GET /admin-panel/activity — recent activity log
 router.get("/activity", async function (req, res) {
   try {
