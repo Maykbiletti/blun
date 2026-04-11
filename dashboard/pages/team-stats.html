@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BLUN Team Stats</title>
+  <style>
+    :root {
+      --bg: #0a0f1a;
+      --panel: #121a2a;
+      --panel-2: #1a2338;
+      --line: #2a3857;
+      --text: #e6eefc;
+      --muted: #9aabcf;
+      --primary: #2ed3a6;
+      --warn: #f4b740;
+      --danger: #ff5c73;
+      --ok: #5cf2b2;
+      --shadow: rgba(0, 0, 0, 0.45);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      background: radial-gradient(circle at 10% 0%, #14213c 0%, var(--bg) 45%, #080c15 100%);
+      color: var(--text);
+      font-family: "Segoe UI", "SF Pro Text", "Helvetica Neue", sans-serif;
+    }
+
+    .page {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 42px;
+    }
+
+    .header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .title-wrap h1 {
+      margin: 0;
+      font-size: 28px;
+      letter-spacing: 0.2px;
+    }
+
+    .title-wrap p {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .meta {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(17, 25, 40, 0.75);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--primary);
+      box-shadow: 0 0 10px rgba(46, 211, 166, 0.8);
+    }
+
+    .panel {
+      background: linear-gradient(180deg, rgba(24, 34, 56, 0.85), rgba(17, 24, 40, 0.92));
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: 0 14px 36px var(--shadow);
+      overflow: hidden;
+    }
+
+    .table-wrap {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      min-width: 760px;
+      border-collapse: collapse;
+    }
+
+    thead {
+      background: rgba(14, 22, 35, 0.95);
+    }
+
+    th,
+    td {
+      padding: 15px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      font-size: 14px;
+    }
+
+    th {
+      color: var(--muted);
+      font-weight: 600;
+      letter-spacing: 0.2px;
+      white-space: nowrap;
+    }
+
+    tbody tr:hover {
+      background: rgba(38, 53, 84, 0.35);
+    }
+
+    .agent {
+      font-weight: 600;
+      color: #f2f6ff;
+      letter-spacing: 0.2px;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 95px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .status-online {
+      background: rgba(92, 242, 178, 0.14);
+      color: var(--ok);
+      border-color: rgba(92, 242, 178, 0.45);
+    }
+
+    .status-busy {
+      background: rgba(244, 183, 64, 0.15);
+      color: var(--warn);
+      border-color: rgba(244, 183, 64, 0.45);
+    }
+
+    .status-offline {
+      background: rgba(255, 92, 115, 0.16);
+      color: var(--danger);
+      border-color: rgba(255, 92, 115, 0.5);
+    }
+
+    .status-unknown {
+      background: rgba(154, 171, 207, 0.15);
+      color: #c3cfe9;
+      border-color: rgba(154, 171, 207, 0.45);
+    }
+
+    .empty,
+    .error {
+      padding: 24px;
+      color: var(--muted);
+      font-size: 14px;
+      border-top: 1px solid var(--line);
+    }
+
+    .error {
+      color: var(--danger);
+    }
+
+    @media (max-width: 700px) {
+      .title-wrap h1 {
+        font-size: 24px;
+      }
+
+      .page {
+        padding: 22px 14px 32px;
+      }
+
+      th,
+      td {
+        padding: 12px 11px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="header">
+      <div class="title-wrap">
+        <h1>Team-Leistungs-Dashboard</h1>
+        <p>Live-Daten der BLUN Agents aus dem Organisator-Service</p>
+      </div>
+      <div class="meta">
+        <span class="chip"><span class="dot"></span>Auto-Refresh: 30s</span>
+        <span class="chip" id="last-update">Letztes Update: -</span>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Agent</th>
+              <th>Tasks Heute</th>
+              <th>Erfolgsrate</th>
+              <th>Avg Dauer</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="stats-body">
+            <tr>
+              <td colspan="5" class="empty">Lade Team-Statistiken...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div id="message"></div>
+    </section>
+  </main>
+
+  <script>
+    const API_URL = '/api/organisator/stats';
+    const REFRESH_MS = 30000;
+
+    const statsBody = document.getElementById('stats-body');
+    const messageBox = document.getElementById('message');
+    const lastUpdateEl = document.getElementById('last-update');
+
+    function asArray(data) {
+      if (Array.isArray(data)) return data;
+      if (Array.isArray(data?.stats)) return data.stats;
+      if (Array.isArray(data?.agents)) return data.agents;
+      if (Array.isArray(data?.data)) return data.data;
+      return [];
+    }
+
+    function formatSuccessRate(value) {
+      if (value === null || value === undefined || value === '') return '-';
+      const num = Number(value);
+      if (Number.isNaN(num)) return String(value);
+      return `${num.toFixed(1)}%`;
+    }
+
+    function formatAvgDuration(value) {
+      if (value === null || value === undefined || value === '') return '-';
+      const num = Number(value);
+      if (Number.isNaN(num)) return String(value);
+      if (num < 1) return `${Math.round(num * 1000)} ms`;
+      return `${num.toFixed(2)} s`;
+    }
+
+    function normalizeStatus(value) {
+      const raw = String(value || 'unknown').toLowerCase();
+      if (['online', 'active', 'running', 'ok', 'healthy'].includes(raw)) return 'online';
+      if (['busy', 'working', 'queued'].includes(raw)) return 'busy';
+      if (['offline', 'down', 'error', 'failed'].includes(raw)) return 'offline';
+      return 'unknown';
+    }
+
+    function renderRows(items) {
+      if (!items.length) {
+        statsBody.innerHTML = '<tr><td colspan="5" class="empty">Keine Team-Daten vorhanden.</td></tr>';
+        return;
+      }
+
+      const rows = items.map((item) => {
+        const agent = item.agent || item.name || item.id || 'Unbekannt';
+        const tasksToday = item.tasksToday ?? item.tasks_today ?? item.todayTasks ?? '-';
+        const successRate = formatSuccessRate(item.successRate ?? item.success_rate ?? item.rate);
+        const avgDuration = formatAvgDuration(item.avgDuration ?? item.avg_duration ?? item.averageDuration);
+        const statusKey = normalizeStatus(item.status);
+        const statusLabel = statusKey === 'unknown' ? (item.status || 'unknown') : statusKey;
+
+        return `
+          <tr>
+            <td class="agent">${escapeHtml(agent)}</td>
+            <td>${escapeHtml(String(tasksToday))}</td>
+            <td>${escapeHtml(successRate)}</td>
+            <td>${escapeHtml(avgDuration)}</td>
+            <td><span class="status status-${statusKey}">${escapeHtml(statusLabel)}</span></td>
+          </tr>
+        `;
+      }).join('');
+
+      statsBody.innerHTML = rows;
+    }
+
+    function escapeHtml(text) {
+      return text
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
+    function setMessage(type, text) {
+      if (!text) {
+        messageBox.innerHTML = '';
+        return;
+      }
+      const cls = type === 'error' ? 'error' : 'empty';
+      messageBox.innerHTML = `<div class="${cls}">${escapeHtml(text)}</div>`;
+    }
+
+    function setLastUpdate() {
+      const now = new Date();
+      lastUpdateEl.textContent = `Letztes Update: ${now.toLocaleTimeString('de-DE')}`;
+    }
+
+    async function loadStats() {
+      try {
+        const response = await fetch(API_URL, { cache: 'no-store' });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const payload = await response.json();
+        const items = asArray(payload);
+        renderRows(items);
+        setMessage('', '');
+        setLastUpdate();
+      } catch (error) {
+        setMessage('error', `Daten konnten nicht geladen werden (${error.message}).`);
+      }
+    }
+
+    loadStats();
+    window.setInterval(loadStats, REFRESH_MS);
+  </script>
+</body>
+</html>
