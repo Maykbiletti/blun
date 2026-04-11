@@ -1,21 +1,237 @@
-<div class="page-frag" data-page-slug="insights">
-  <div style="font-size:20px;font-weight:700;color:var(--tx);margin-bottom:16px">Insights</div>
-  <div class="card" style="margin-bottom:12px">
-    <div class="card-head"><div class="card-title">Zusammenfassung</div></div>
-    <div style="color:var(--tx2);font-size:13px;line-height:1.6">Hier siehst du Trends und Auffaelligkeiten aus dem letzten Zeitraum. Daten werden live aus den Agent-Tasks aggregiert.</div>
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BLUN Insights</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #0a0a0f;
+      color: #e0e0e8;
+      min-height: 100vh;
+      padding: 24px;
+    }
+    h1 {
+      font-size: 1.6rem;
+      font-weight: 600;
+      margin-bottom: 24px;
+      color: #f0f0f8;
+      letter-spacing: -0.02em;
+    }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .kpi-tile {
+      background: #14141f;
+      border: 1px solid #1e1e2e;
+      border-radius: 10px;
+      padding: 20px 22px;
+      transition: border-color 0.2s;
+    }
+    .kpi-tile:hover { border-color: #3a3a5c; }
+    .kpi-label {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #7a7a9a;
+      margin-bottom: 8px;
+    }
+    .kpi-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #ffffff;
+      line-height: 1.1;
+    }
+    .kpi-tile[data-type="tasks"] .kpi-value { color: #6ec1ff; }
+    .kpi-tile[data-type="duration"] .kpi-value { color: #ffd166; }
+    .kpi-tile[data-type="success"] .kpi-value { color: #06d6a0; }
+    .kpi-tile[data-type="agents"] .kpi-value { color: #c084fc; }
+    .kpi-sub {
+      font-size: 0.75rem;
+      color: #5a5a7a;
+      margin-top: 4px;
+    }
+    .section-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 14px;
+      color: #c0c0d0;
+    }
+    .task-list {
+      background: #14141f;
+      border: 1px solid #1e1e2e;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .task-row {
+      display: flex;
+      align-items: center;
+      padding: 12px 20px;
+      border-bottom: 1px solid #1a1a2a;
+      font-size: 0.88rem;
+      gap: 16px;
+    }
+    .task-row:last-child { border-bottom: none; }
+    .task-row:hover { background: #1a1a28; }
+    .task-id {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      color: #6ec1ff;
+      min-width: 70px;
+      font-size: 0.82rem;
+    }
+    .task-agent {
+      color: #c084fc;
+      min-width: 100px;
+      font-weight: 500;
+    }
+    .task-desc {
+      flex: 1;
+      color: #b0b0c8;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .task-duration {
+      color: #ffd166;
+      min-width: 60px;
+      text-align: right;
+      font-family: monospace;
+      font-size: 0.82rem;
+    }
+    .task-status {
+      min-width: 80px;
+      text-align: center;
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      background: #0d3320;
+      color: #06d6a0;
+    }
+    .loading-msg {
+      text-align: center;
+      padding: 40px;
+      color: #5a5a7a;
+      font-size: 0.9rem;
+    }
+    .error-msg {
+      text-align: center;
+      padding: 20px;
+      color: #ff6b6b;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>Insights</h1>
+
+  <div class="kpi-grid">
+    <div class="kpi-tile" data-type="tasks">
+      <div class="kpi-label">Tasks Heute</div>
+      <div class="kpi-value" id="kpi-tasks">--</div>
+      <div class="kpi-sub">abgeschlossene Tasks</div>
+    </div>
+    <div class="kpi-tile" data-type="duration">
+      <div class="kpi-label">Avg Dauer</div>
+      <div class="kpi-value" id="kpi-duration">--</div>
+      <div class="kpi-sub">Minuten pro Task</div>
+    </div>
+    <div class="kpi-tile" data-type="success">
+      <div class="kpi-label">Erfolgsrate</div>
+      <div class="kpi-value" id="kpi-success">--</div>
+      <div class="kpi-sub">completed / total</div>
+    </div>
+    <div class="kpi-tile" data-type="agents">
+      <div class="kpi-label">Aktive Agents</div>
+      <div class="kpi-value" id="kpi-agents">--</div>
+      <div class="kpi-sub">aktuell arbeitend</div>
+    </div>
   </div>
-  <div class="stats-row" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
-    <div class="stat-card"><div class="stat-label">Avg. Task Dauer</div><div class="stat-val" id="inAvg">–</div></div>
-    <div class="stat-card"><div class="stat-label">Erfolgsrate</div><div class="stat-val" id="inRate">–</div></div>
-    <div class="stat-card"><div class="stat-label">Aktivste Stunde</div><div class="stat-val" id="inHour">–</div></div>
+
+  <h2 class="section-title">Letzte 10 abgeschlossene Tasks</h2>
+  <div class="task-list" id="task-list">
+    <div class="loading-msg">Lade Tasks...</div>
   </div>
-</div>
-<script>
-(function(){
-  if(typeof api!=='function') return;
-  api('/api/organisator/insights').then(function(d){
-    var set=function(id,v){var e=document.getElementById(id); if(e) e.textContent=v;};
-    if(d){ set('inAvg',(d.avg_duration||'–')+' min'); set('inRate',((d.success_rate||0)*100).toFixed(0)+'%'); set('inHour',d.peak_hour||'–'); }
-  }).catch(function(){});
-})();
-</script>
+
+  <script>
+    const API_STATS = '/api/organisator/stats';
+    const API_TASKS = '/api/tasks?status=completed&limit=10&sort=desc';
+
+    function escapeHtml(str) {
+      const d = document.createElement('div');
+      d.textContent = str;
+      return d.innerHTML;
+    }
+
+    async function fetchStats() {
+      try {
+        const res = await fetch(API_STATS);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const s = await res.json();
+
+        const tasksToday = s.tasks_today ?? s.tasksToday ?? 0;
+        const avgDur = s.avg_duration ?? s.avgDuration ?? 0;
+        const rate = s.success_rate ?? s.successRate ?? 0;
+        const agents = s.active_agents ?? s.activeAgents ?? 0;
+
+        document.getElementById('kpi-tasks').textContent = tasksToday;
+        document.getElementById('kpi-duration').textContent =
+          typeof avgDur === 'number' ? avgDur.toFixed(1) + 'm' : avgDur;
+        document.getElementById('kpi-success').textContent =
+          typeof rate === 'number' ? Math.round(rate) + '%' : rate;
+        document.getElementById('kpi-agents').textContent = agents;
+      } catch (err) {
+        console.error('Stats fetch error:', err);
+        document.getElementById('kpi-tasks').textContent = '0';
+        document.getElementById('kpi-duration').textContent = '0m';
+        document.getElementById('kpi-success').textContent = '0%';
+        document.getElementById('kpi-agents').textContent = '0';
+      }
+    }
+
+    async function fetchRecentTasks() {
+      const container = document.getElementById('task-list');
+      try {
+        const res = await fetch(API_TASKS);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const body = await res.json();
+        const list = Array.isArray(body) ? body : (body.tasks ?? body.data ?? []);
+
+        if (list.length === 0) {
+          container.innerHTML = '<div class="loading-msg">Keine abgeschlossenen Tasks.</div>';
+          return;
+        }
+
+        container.innerHTML = list.map(function(t) {
+          var id = t.id ?? t.task_id ?? '?';
+          var agent = t.agent ?? t.assigned_to ?? '-';
+          var desc = t.description ?? t.title ?? t.prompt ?? '-';
+          var dur = t.duration ?? t.elapsed ?? '-';
+          var durStr = typeof dur === 'number' ? dur.toFixed(1) + 'm' : String(dur);
+          return '<div class="task-row">' +
+            '<span class="task-id">#' + escapeHtml(String(id)) + '</span>' +
+            '<span class="task-agent">' + escapeHtml(String(agent)) + '</span>' +
+            '<span class="task-desc" title="' + escapeHtml(String(desc)) + '">' + escapeHtml(String(desc)) + '</span>' +
+            '<span class="task-duration">' + escapeHtml(durStr) + '</span>' +
+            '<span class="task-status">done</span>' +
+          '</div>';
+        }).join('');
+      } catch (err) {
+        console.error('Tasks fetch error:', err);
+        container.innerHTML = '<div class="error-msg">Tasks konnten nicht geladen werden.</div>';
+      }
+    }
+
+    fetchStats();
+    fetchRecentTasks();
+    setInterval(fetchStats, 30000);
+    setInterval(fetchRecentTasks, 30000);
+  </script>
+</body>
+</html>
