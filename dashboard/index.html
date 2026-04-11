@@ -42,8 +42,14 @@ textarea{resize:vertical;min-height:80px}
 
 /* LAYOUT */
 .shell{display:flex;height:100vh}
-.sidebar{width:240px;background:var(--bg2);border-right:1px solid var(--brd);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}
+.sidebar{width:240px;background:var(--bg2);border-right:1px solid var(--brd);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;transition:width .2s ease}
+.sidebar.collapsed{width:56px}
 .sidebar-head{padding:20px;border-bottom:1px solid var(--brd)}
+.sidebar-head-top{display:flex;align-items:center;gap:10px}
+.sidebar-collapse-btn{width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:transparent;color:var(--tx2);border:1px solid transparent;border-radius:6px;flex-shrink:0;transition:all .2s}
+.sidebar-collapse-btn:hover{color:var(--tx);background:var(--bg3);border-color:var(--brd)}
+.sidebar-collapse-btn svg{width:16px;height:16px;transition:transform .2s ease}
+.sidebar.collapsed .sidebar-collapse-btn svg{transform:rotate(180deg)}
 .sidebar-logo{font-size:22px;font-weight:800;letter-spacing:1px}
 .sidebar-logo span{color:var(--b)}
 .sidebar-user{margin-top:8px;font-size:12px;color:var(--tx2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -55,6 +61,14 @@ textarea{resize:vertical;min-height:80px}
 .nav-item svg{width:18px;height:18px;flex-shrink:0}
 .nav-item .badge-count{margin-left:auto;background:var(--b);color:var(--white);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;min-width:18px;text-align:center}
 .sidebar-foot{padding:12px 16px;border-top:1px solid var(--brd)}
+.sidebar.collapsed .sidebar-head{padding:12px 8px}
+.sidebar.collapsed .sidebar-head-top{justify-content:center}
+.sidebar.collapsed .sidebar-logo,.sidebar.collapsed .sidebar-user,.sidebar.collapsed .nav-section,.sidebar.collapsed .nav-item .badge-count,.sidebar.collapsed .logout-btn{display:none}
+.sidebar.collapsed .sidebar-foot{padding:12px 8px}
+.sidebar.collapsed .nav-item{justify-content:center;gap:0;padding:10px 0;font-size:0;border-left:0;border-right:3px solid transparent}
+.sidebar.collapsed .nav-item.active{border-right-color:var(--b);border-left-color:transparent}
+.sidebar.collapsed .nav-item svg{width:20px;height:20px}
+.sidebar.collapsed .nav-item .nav-label{display:none}
 .logout-btn{width:100%;padding:8px;background:transparent;color:var(--red);border:1px solid rgba(239,68,68,.3);border-radius:8px;font-size:13px;font-weight:500;transition:all .15s}
 .logout-btn:hover{background:var(--red);color:var(--white)}
 
@@ -213,6 +227,7 @@ textarea{resize:vertical;min-height:80px}
 /* RESPONSIVE */
 @media(max-width:768px){
   .sidebar{position:fixed;z-index:100;transform:translateX(-100%);transition:transform .25s ease;width:280px;top:0;bottom:0;left:0;background:var(--bg2);box-shadow:4px 0 20px rgba(0,0,0,.5)}
+  .sidebar.collapsed{width:280px}
   .sidebar.open{transform:translateX(0)}
   #menuBtn{display:flex!important;align-items:center;justify-content:center;width:40px;height:40px;background:var(--bg3);border:1px solid var(--brd);border-radius:8px}
   #menuBtn:hover{background:var(--bg4);color:var(--tx)}
@@ -416,7 +431,12 @@ textarea{resize:vertical;min-height:80px}
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeMobileSidebar()"></div>
 <nav class="sidebar" id="sidebar" role="navigation" aria-label="Haupt-Navigation">
 <div class="sidebar-head">
+<div class="sidebar-head-top">
+<button class="sidebar-collapse-btn" id="sidebarCollapseBtn" type="button" onclick="toggleSidebarCollapse()" aria-label="Sidebar einklappen" title="Sidebar einklappen" aria-expanded="true">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+</button>
 <div class="sidebar-logo">BL<span>UN</span></div>
+</div>
 <div class="sidebar-user" id="sidebarUser">-</div>
 </div>
 <div class="sidebar-nav">
@@ -916,6 +936,7 @@ var agents = [], companies = [], allModels = [], activeProviders = [];
 var currentAgent = null; // for detail modal
 var chatAgent = null; // for chat pane
 var logInterval = null;
+var SIDEBAR_COLLAPSE_KEY = 'blun_sidebar_collapsed';
 var DEPARTMENTS = ["Management","Marketing & SEO","Video & Medien","Design & Frontend","Backend & Coding","Infrastruktur & DevOps","KI & Modelle","QA & Testing","Qualitaetskontrolle","Business & Sales","Mobile & Desktop","Agent System","Sonstige"];
 var COLORS = ['#3b82f6','#22c55e','#ef4444','#f59e0b','#a855f7','#ec4899','#14b8a6','#f97316','#6366f1','#84cc16','#06b6d4','#e11d48'];
 function modelLogo(name) {
@@ -1020,6 +1041,7 @@ function showLogin() { document.getElementById('loginView').style.display='flex'
 function showApp() {
   document.getElementById('loginView').style.display='none'; document.getElementById('appShell').style.display='flex';
   document.getElementById('sidebarUser').textContent = USER ? USER.name || USER.email : '';
+  applySidebarCollapseState(localStorage.getItem(SIDEBAR_COLLAPSE_KEY) === '1');
   if(window.innerWidth<=768) document.getElementById('menuBtn').style.display='block';
   loadAll();
   if(!logInterval) logInterval = setInterval(loadLivelog, 5000);
@@ -1027,6 +1049,24 @@ function showApp() {
 }
 
 // ===== NAVIGATION =====
+function applySidebarCollapseState(collapsed) {
+  var sb = document.getElementById('sidebar');
+  var btn = document.getElementById('sidebarCollapseBtn');
+  if (!sb || !btn) return;
+  var isCollapsed = !!collapsed;
+  sb.classList.toggle('collapsed', isCollapsed);
+  btn.setAttribute('aria-label', isCollapsed ? 'Sidebar erweitern' : 'Sidebar einklappen');
+  btn.setAttribute('title', isCollapsed ? 'Sidebar erweitern' : 'Sidebar einklappen');
+  btn.setAttribute('aria-expanded', (!isCollapsed).toString());
+}
+function toggleSidebarCollapse() {
+  if (window.innerWidth <= 768) return;
+  var sb = document.getElementById('sidebar');
+  if (!sb) return;
+  var collapsed = !sb.classList.contains('collapsed');
+  applySidebarCollapseState(collapsed);
+  localStorage.setItem(SIDEBAR_COLLAPSE_KEY, collapsed ? '1' : '0');
+}
 function toggleMobileSidebar() {
   var sb = document.getElementById('sidebar');
   var ov = document.getElementById('sidebarOverlay');
