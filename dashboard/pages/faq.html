@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BLUN FAQ</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --surface: #ffffff;
+      --text: #142033;
+      --muted: #4a5a72;
+      --brand: #0f6fff;
+      --brand-soft: #e8f1ff;
+      --border: #dbe4f0;
+      --shadow: 0 10px 30px rgba(17, 33, 57, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      background: radial-gradient(circle at top right, #dceaff 0%, #f4f7fb 40%, #f4f7fb 100%);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 48px 20px 64px;
+    }
+
+    .hero {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 28px;
+      box-shadow: var(--shadow);
+      margin-bottom: 24px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 2.4vw, 2.4rem);
+      line-height: 1.2;
+    }
+
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      max-width: 70ch;
+    }
+
+    .faq-list {
+      display: grid;
+      gap: 14px;
+    }
+
+    details {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 18px 20px;
+      font-weight: 650;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .icon {
+      width: 26px;
+      height: 26px;
+      border-radius: 999px;
+      background: var(--brand-soft);
+      color: var(--brand);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      flex-shrink: 0;
+      transition: transform 0.2s ease;
+    }
+
+    details[open] .icon {
+      transform: rotate(45deg);
+    }
+
+    .answer {
+      padding: 0 20px 18px;
+      color: var(--muted);
+    }
+
+    .answer p {
+      margin: 0 0 10px;
+    }
+
+    .answer p:last-child {
+      margin-bottom: 0;
+    }
+
+    .tag {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      color: #0c4fb3;
+      background: #dce9ff;
+      border-radius: 999px;
+      padding: 3px 9px;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+
+    @media (max-width: 640px) {
+      .container {
+        padding-top: 24px;
+      }
+
+      .hero,
+      summary,
+      .answer {
+        padding-left: 16px;
+        padding-right: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <section class="hero">
+      <h1>BLUN FAQ</h1>
+      <p>Die wichtigsten Antworten zu Setup, Agents, Task-Dispenser und Fehlerbehandlung. Kurz, klar und direkt für den laufenden Betrieb.</p>
+    </section>
+
+    <section class="faq-list" aria-label="Häufige Fragen">
+      <details>
+        <summary>
+          <span><span class="tag">Setup</span>Wie starte ich BLUN zum ersten Mal?</span>
+          <span class="icon">+</span>
+        </summary>
+        <div class="answer">
+          <p>Starte zuerst die Basisdienste (Datenbank, API, Dashboard), dann den Agent-Runner. Danach prüfst du im Dashboard, ob alle Kernmodule als <strong>healthy</strong> gemeldet werden.</p>
+          <p>Wenn ein Dienst fehlt, starte ihn gezielt nach und wiederhole den Health-Check, bevor du produktive Tasks freigibst.</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>
+          <span><span class="tag">Setup</span>Welche Minimal-Konfiguration braucht ein Agent?</span>
+          <span class="icon">+</span>
+        </summary>
+        <div class="answer">
+          <p>Ein Agent braucht mindestens: eindeutige Agent-ID, Rolle, erlaubte Workdir, Tool-Rechte und ein gültiges Prompt-/Policy-Set.</p>
+          <p>Ohne saubere Rechte-Definition kann der Agent Tasks annehmen, aber sie nicht sauber ausführen oder committen.</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>
+          <span><span class="tag">Agents</span>Wie wählen wir den richtigen Agent pro Task?</span>
+          <span class="icon">+</span>
+        </summary>
+        <div class="answer">
+          <p>Rolle nach Ergebnis wählen: Dev-Agent für Code, QA-Agent für Prüfung, Operator für Ablaufsteuerung, Architect für Strukturentscheidungen.</p>
+          <p>Wenn ein Task mehrere Disziplinen braucht, lieber in einzelne Subtasks splitten statt einen Agent alles "mitmachen" zu lassen.</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>
+          <span><span class="tag">Agents</span>Was passiert, wenn zwei Agents dieselbe Datei ändern?</span>
+          <span class="icon">+</span>
+        </summary>
+        <div class="answer">
+          <p>Dann steigt das Merge-Risiko sofort. BLUN sollte pro Task klare Datei-Verantwortung vergeben und Konflikte vor dem Merge blocken.</p>
+          <p>Best Practice: disjunkte Write-Sets je Agent und ein kurzer Integrationsschritt durch einen verantwortlichen Agent.</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>
+          <span><span class="tag">Task-Dispenser</span>Wie priorisiert der Task-Dispenser Aufgaben?</span>
+          <span class="icon">+</span>
+        </summary>
+        <div class="answer">
+          <p>Standardmäßig nach Priorität, Abhängigkeiten und Blocker-Status. Tasks mit offenen Vorbedingungen bleiben hinten, auch wenn sie hoch priorisiert sind.</p>
+          <p>So verhindert BLUN, dass Agents an Aufgaben arbeiten, die wegen fehlender Inputs nicht abschließbar sind.</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>
+          <span><span class="tag">Task-Dispenser</span>Wann sollte ein Task aufgeteilt werden?</span>
+          <span class="icon">+</span>
+        </summary>
+        <div class="answer">
+          <p>Immer dann, wenn unterschiedliche Module betroffen sind oder die Abnahme-Kriterien unabhängig prüfbar sind.</p>
+          <p>Kleine, klar abgegrenzte Tasks erhöhen Durchsatz, senken Konflikte und machen Fehlersuche deutlich schneller.</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>
+          <span><span class="tag">Fehlerbehandlung</span>Wie reagieren wir bei einem fehlgeschlagenen Task-Lauf?</span>
+          <span class="icon">+</span>
+        </summary>
+        <div class="answer">
+          <p>Zuerst Fehlerklasse feststellen: Konfigurationsfehler, Laufzeitfehler, Berechtigungsproblem oder externe Abhängigkeit.</p>
+          <p>Dann nur den kleinsten nötigen Fix einspielen, Lauf gezielt wiederholen und Ergebnis mit Logs sowie Diff validieren.</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>
+          <span><span class="tag">Fehlerbehandlung</span>Was ist bei wiederholten Fehlern trotz Retries zu tun?</span>
+          <span class="icon">+</span>
+        </summary>
+        <div class="answer">
+          <p>Retries stoppen, wenn derselbe Fehler deterministisch erneut auftritt. Sonst verschwendest du Laufzeit und verdeckst die eigentliche Ursache.</p>
+          <p>Stattdessen Incident eröffnen, Logs bündeln, Root Cause eingrenzen und erst nach Fix wieder automatisiert retryn.</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>
+          <span><span class="tag">Betrieb</span>Wie prüfen wir, dass ein Fix nichts anderes kaputt macht?</span>
+          <span class="icon">+</span>
+        </summary>
+        <div class="answer">
+          <p>Mindestens: betroffene Tests, kurzer Smoke-Test des kritischen Flows und Vergleich von Logs/Metriken vor vs. nach dem Fix.</p>
+          <p>Für produktionsnahe Änderungen zusätzlich Rollback-Plan bereithalten, bevor der Task als abgeschlossen markiert wird.</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>
+          <span><span class="tag">Betrieb</span>Wann gilt ein BLUN-Task wirklich als "done"?</span>
+          <span class="icon">+</span>
+        </summary>
+        <div class="answer">
+          <p>Nur wenn die Anforderung umgesetzt ist, Seiteneffekte geprüft sind, relevante Änderungen committed wurden und der Status nachvollziehbar dokumentiert ist.</p>
+          <p>"Nur analysiert" oder "TODO ergänzt" reicht nicht als Done-Definition.</p>
+        </div>
+      </details>
+    </section>
+  </main>
+</body>
+</html>
