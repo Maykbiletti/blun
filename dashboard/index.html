@@ -2580,6 +2580,39 @@ var SKILL_REGISTRY = [
 
 var _marketplaceAgentId = null;
 
+
+function searchMarketSkills(){
+  var q=document.getElementById('skillMarketSearch').value.trim();
+  var container=document.getElementById('skillSearchResults');
+  if(!q){container.innerHTML='';return;}
+  container.innerHTML='<div style="padding:8px;color:var(--tx2)"><span class="thinking-dots"><span></span><span></span><span></span></span> Suche...</div>';
+  // Local search first
+  var local=SKILL_REGISTRY.filter(function(s){return s.label.toLowerCase().includes(q.toLowerCase())||s.desc.toLowerCase().includes(q.toLowerCase())||s.cat.includes(q.toLowerCase());});
+  // GitHub search via API
+  api('/api/organisator/skills/search?q='+encodeURIComponent(q)).then(function(gh){
+    var html='';
+    if(local.length){
+      html+='<div style="font-size:11px;color:var(--tx2);margin-bottom:4px;font-weight:600">Lokal ('+local.length+')</div>';
+      local.forEach(function(s){
+        html+='<div class="card" style="padding:6px 10px;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;font-size:12px"><div><b>'+esc(s.label)+'</b> <span style="color:var(--tx2)">'+esc(s.desc)+'</span></div><button class="btn btn-sm btn-primary" style="flex-shrink:0" data-sname="'+s.name+'" onclick="installMarketSkillBtn(this)">+</button></div>';
+      });
+    }
+    if(gh&&gh.length){
+      html+='<div style="font-size:11px;color:var(--tx2);margin-bottom:4px;margin-top:8px;font-weight:600">GitHub ('+gh.length+')</div>';
+      gh.forEach(function(r){
+        var btn=r.source==='github'?'<button class="btn btn-sm btn-outline" style="flex-shrink:0" onclick="opImportFromSearch(\''+esc(r.raw_url||r.repo_url||'')+'\')">Import</button>':(r.id?'<button class="btn btn-sm btn-primary" style="flex-shrink:0" onclick="opQuickAssignSkill('+r.id+')">+</button>':'');
+        html+='<div class="card" style="padding:6px 10px;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;font-size:12px"><div><b>'+esc(r.name||r.label||'')+'</b> <span style="color:var(--tx2)">'+esc(r.description||r.desc||'')+'</span></div>'+btn+'</div>';
+      });
+    }
+    if(!local.length&&(!gh||!gh.length)) html='<div style="padding:8px;color:var(--tx2);font-size:12px">Keine Skills gefunden fuer "'+esc(q)+'"</div>';
+    container.innerHTML=html;
+  }).catch(function(){
+    // Fallback: show local only
+    if(local.length){
+      container.innerHTML=local.map(function(s){return '<div class="card" style="padding:6px 10px;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;font-size:12px"><div><b>'+esc(s.label)+'</b> <span style="color:var(--tx2)">'+esc(s.desc)+'</span></div><button class="btn btn-sm btn-primary" data-sname="'+s.name+'" onclick="installMarketSkillBtn(this)">+</button></div>';}).join('');
+    }else{container.innerHTML='<div style="padding:8px;color:var(--tx2)">Keine Ergebnisse</div>';}
+  });
+}
 function openSkillMarketplace() {
   if(!currentAgent) return;
   _marketplaceAgentId = currentAgent.id;
@@ -2596,13 +2629,10 @@ function openSkillMarketplace() {
   };
   var dept = currentAgent.department || '';
   var autoFilter = deptMap[dept] || '';
-  // Hide irrelevant category buttons, only show own dept
+  // Show all category buttons (don't hide any)
   var catBtns = document.getElementById('skillCategoryBtns');
-  if(catBtns && autoFilter) {
-    catBtns.querySelectorAll('button').forEach(function(btn){
-      var matches = btn.textContent.toLowerCase().trim() === autoFilter || btn.textContent.toLowerCase() === 'alle';
-      btn.style.display = matches ? '' : 'none';
-    });
+  if(catBtns) {
+    catBtns.querySelectorAll('button').forEach(function(btn){ btn.style.display = ''; });
   }
   filterMarketSkills(autoFilter);
   openModal('skillMarketModal');
@@ -3148,6 +3178,11 @@ function initBlunWS() {
       <input id="skillUrlInput" placeholder="GitHub URL einfügen..." style="flex:1">
       <button class="btn btn-sm btn-primary" onclick="installFromUrl()">&#x2B06; Importieren</button>
     </div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <input id="skillMarketSearch" placeholder="Skills suchen (GitHub, lokal)..." style="flex:1" onkeyup="if(event.key==='Enter')searchMarketSkills()">
+      <button class="btn btn-sm btn-primary" onclick="searchMarketSkills()">Suchen</button>
+    </div>
+    <div id="skillSearchResults" style="max-height:180px;overflow-y:auto;margin-bottom:8px"></div>
     <div id="skillCategoryBtns" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
       <button class="btn btn-sm btn-outline" onclick="filterMarketSkills('marketing')">Marketing</button>
       <button class="btn btn-sm btn-outline" onclick="filterMarketSkills('seo')">SEO</button>
