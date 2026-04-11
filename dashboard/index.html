@@ -208,7 +208,7 @@ textarea{resize:vertical;min-height:80px}
 .model-meta{font-size:11px;color:var(--tx2)}
 
 /* MODAL */
-.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:none;align-items:center;justify-content:center}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000;display:none;align-items:center;justify-content:center}
 .modal-bg.open{display:flex}
 .modal{background:var(--bg3);border:1px solid var(--brd);border-radius:14px;padding:24px;width:90%;max-width:500px;max-height:80vh;overflow-y:auto}
 .modal h3{font-size:17px;font-weight:700;margin-bottom:16px}
@@ -2427,12 +2427,9 @@ function loadWsChat(id) {
   }catch(e){}
   api('/api/organisator/agents/'+id+'/conversations').then(function(d){
     if(!Array.isArray(d)){return;} // keep cached view on unexpected shape
-    // Merge: prefer DB, but keep any cached entries newer than the latest DB row
-    var latestDb=d.length?new Date(d[d.length-1].created_at||0).getTime():0;
-    var extras=cached.filter(function(m){return new Date(m.created_at||0).getTime()>latestDb;});
-    var merged=d.concat(extras);
-    renderMsgs(merged);
-    try{localStorage.setItem(cacheKey, JSON.stringify(merged.slice(-100)));}catch(e){}
+    // DB is truth — replace cache entirely
+    renderMsgs(d);
+    try{localStorage.setItem(cacheKey, JSON.stringify(d.slice(-100)));}catch(e){}
   }).catch(function(){/* keep cached view on error */});
 }
 function sendWsChat() {
@@ -3607,7 +3604,9 @@ window.toggleNotificationCenter = function() {
     });
     input.addEventListener('blur',function(){if(pop)setTimeout(function(){pop.classList.remove('open');},150);});
   }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',function(){hookInput('wsChatInput');hookInput('chatInput');});
+  // One-time purge stale chat caches (v2)
+try{if(!localStorage.getItem('blun_chat_purge_v2')){Object.keys(localStorage).forEach(function(k){if(k.startsWith('blun_chat_'))localStorage.removeItem(k);});localStorage.setItem('blun_chat_purge_v2','1');}}catch(e){}
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',function(){hookInput('wsChatInput');hookInput('chatInput');});
   else{hookInput('wsChatInput');hookInput('chatInput');}
 })();
 </script>
