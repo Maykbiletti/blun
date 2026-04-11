@@ -7,6 +7,9 @@ class TaskDetail extends HTMLElement {
         this.attachShadow({ mode: 'open' });
         this.task = null;
         this.history = [];
+        this._activeFilter = 'all';
+        this._collapsed = false;
+        this._collapseThreshold = 5;
         this._boundHideTooltip = this._hideTooltip.bind(this);
     }
 
@@ -31,11 +34,13 @@ class TaskDetail extends HTMLElement {
     setTask(task) {
         this.task = task;
         this.history = task?.history || this._buildFakeHistory(task);
+        this._collapsed = this.history.length > this._collapseThreshold;
         this.render();
     }
 
     setHistory(history) {
         this.history = history || [];
+        this._collapsed = this.history.length > this._collapseThreshold;
         this.render();
     }
 
@@ -138,6 +143,17 @@ class TaskDetail extends HTMLElement {
         return `${Math.floor(diff/2592000000)}mo ago`;
     }
 
+    // Delta zwischen zwei Timestamps als lesbarer String
+    _formatDelta(tsA, tsB) {
+        if (!tsA || !tsB) return null;
+        const ms = Math.abs(new Date(tsB) - new Date(tsA));
+        if (ms < 1000) return `${ms}ms`;
+        if (ms < 60000) return `${(ms/1000).toFixed(1)}s`;
+        if (ms < 3600000) return `${Math.floor(ms/60000)}m ${Math.floor((ms%60000)/1000)}s`;
+        if (ms < 86400000) return `${Math.floor(ms/3600000)}h ${Math.floor((ms%3600000)/60000)}m`;
+        return `${Math.floor(ms/86400000)}d ${Math.floor((ms%86400000)/3600000)}h`;
+    }
+
     _escHtml(s) {
         if (s == null) return '';
         return String(s)
@@ -147,35 +163,153 @@ class TaskDetail extends HTMLElement {
             .replace(/"/g, '&quot;');
     }
 
-    _renderHistory() {
-        if (!this.history.length) {
-            return `<div class="empty">Keine History vorhanden.</div>`;
+    // Einzigartige Status-Typen für Filter
+    _getUniqueStatuses() {
+        const seen = new Set();
+        this.history.forEach(e => { if (e.status) seen.add(e.status); });
+        return Array.from(seen);
+    }
+
+    // Gefilterte + ggf. kollabierte History
+    _getVisibleHistory() {
+        let list = this.history;
+        if (this._activeFilter !== 'all') {
+            list = list.filter(e => e.status === this._activeFilter);
         }
-        return this.history.map((entry, idx) => {
+        if (this._collapsed && list.length > this._collapseThreshold) {
+            return list.slice(-this._collapseThreshold);
+        }
+        return list;
+    }
+
+    // Summary-Zahlen: Gesamt, Agent-Wechsel, Laufzeit
+    _buildSummary() {
+        const h = this.history;
+        if (!h.length) return null;
+
+        let agentChanges = 0;
+        for (let i = 1; i < h.length; i++) {
+            if (h[i].agent && h[i-1].agent && h[i].agent !== h[i-1].agent) agentChanges++;
+        }
+
+        const first = h[0]?.timestamp;
+        const last  = h[h.length-1]?.timestamp;
+        const totalTime = this._formatDelta(first, last);
+
+        return { total: h.length, agentChanges, totalTime };
+    }
+
+    _renderSummary() {
+        const s = this._buildSummary();
+        if (!s) return '';
+        return `
+        <div class="summary-bar">
+            <div class="summary-item">
+                <span class="summary-num">${s.total}</span>
+                <span class="summary-label">Einträge</span>
+            </div>
+            ${s.agentChanges > 0 ? `
+            <div class="summary-item">
+                <span class="summary-num">${s.agentChanges}</span>
+                <span class="summary-label">Agent-Wechsel</span>
+            </div>` : ''}
+            ${s.totalTime ? `
+            <div class="summary-item">
+                <span class="summary-num">${this._escHtml(s.totalTime)}</span>
+                <span class="summary-label">Gesamtdauer</span>
+            </div>` : ''}
+        </div>`;
+    }
+
+    _renderFilters() {
+        const statuses = this._getUniqueStatuses();
+        if (statuses.length < 2) return '';
+
+        const allActive = this._activeFilter === 'all';
+        const pills = statuses.map(s => {
+            const active = this._activeFilter === s;
+            const color = this.getStatusColor(s);
+            return `<button class="filter-pill${active ? ' active' : ''}"
+                        data-filter="${this._escHtml(s)}"
+                        style="${active ? `--fc:${color}` : ''}">
+                        ${this.getStatusIcon(s)} ${this._escHtml(s)}
+                    </button>`;
+        }).join('');
+
+        return `
+        <div class="filter-bar">
+            <button class="filter-pill${allActive ? ' active all' : ''}" data-filter="all">Alle</button>
+            ${pills}
+        </div>`;
+    }
+
+    _renderHistory() {
+        const visible = this._getVisibleHistory();
+        const allFiltered = this.history.filter(e =>
+            this._activeFilter === 'all' || e.status === this._activeFilter
+        );
+        const hiddenCount = allFiltered.length - visible.length;
+
+        if (!visible.length) {
+            return `<div class="empty">Keine Einträge${this._activeFilter !== 'all' ? ` für Status "${this._escHtml(this._activeFilter)}"` : ''}.</div>`;
+        }
+
+        const collapseToggle = hiddenCount > 0 ? `
+            <div class="collapse-hint" data-action="expand">
+                ↑ ${hiddenCount} ältere Einträge anzeigen
+            </div>` : (this._collapsed === false && allFiltered.length > this._collapseThreshold ? `
+            <div class="collapse-hint" data-action="collapse">
+                ↓ Ältere Einträge ausblenden
+            </div>` : '');
+
+        // Vollständige gefilterte Liste für Delta-Berechnung
+        const fullFiltered = allFiltered;
+        const offsetIndex = allFiltered.length - visible.length;
+
+        const rows = visible.map((entry, visIdx) => {
+            const globalIdx = offsetIndex + visIdx;
             const color = this.getStatusColor(entry.status);
             const icon  = this.getStatusIcon(entry.status);
-            const isLast = idx === this.history.length - 1;
+            const isLast = visIdx === visible.length - 1;
+
+            // Agent-Wechsel gegenüber Vorgänger
+            const prevEntry = globalIdx > 0 ? fullFiltered[globalIdx - 1] : null;
+            const agentChanged = prevEntry && prevEntry.agent && entry.agent && prevEntry.agent !== entry.agent;
+
+            // Delta zum vorherigen Eintrag
+            const delta = prevEntry ? this._formatDelta(prevEntry.timestamp, entry.timestamp) : null;
+
             const tooltipData = JSON.stringify({
                 agent: entry.agent || '—',
+                prevAgent: prevEntry?.agent || null,
+                agentChanged,
                 timestamp: this.formatTimestamp(entry.timestamp),
                 status: entry.status || '—',
                 note: entry.note || entry.reason || entry.message || '—',
                 duration: entry.duration ? `${entry.duration}ms` : null,
+                delta: delta,
                 meta: entry.meta || null
             }).replace(/'/g, '&#39;');
 
             return `
-            <div class="history-entry${isLast ? ' is-last' : ''}"
+            <div class="history-entry${isLast ? ' is-last' : ''}${agentChanged ? ' agent-changed' : ''}"
                  data-tooltip='${tooltipData}'
                  style="--sc:${color}">
-                <div class="entry-dot" title="${this._escHtml(entry.status)}">
-                    <span class="entry-icon">${icon}</span>
+                <div class="entry-left">
+                    <div class="entry-dot" title="${this._escHtml(entry.status)}">
+                        <span class="entry-icon">${icon}</span>
+                    </div>
+                    ${!isLast ? '<div class="entry-line"></div>' : ''}
                 </div>
-                ${!isLast ? '<div class="entry-line"></div>' : ''}
                 <div class="entry-body">
+                    ${agentChanged ? `<div class="agent-change-badge">
+                        <span class="acb-from">${this._escHtml(prevEntry.agent)}</span>
+                        <span class="acb-arrow">→</span>
+                        <span class="acb-to">${this._escHtml(entry.agent)}</span>
+                    </div>` : ''}
                     <div class="entry-header">
                         <span class="entry-status" style="color:${color}">${this._escHtml(entry.status || 'unknown')}</span>
-                        ${entry.agent ? `<span class="entry-agent">
+                        ${entry.agent && !agentChanged ? `<span class="entry-agent">
                             <span class="agent-chip">${this._escHtml(entry.agent.charAt(0).toUpperCase())}</span>
                             ${this._escHtml(entry.agent)}
                         </span>` : ''}
@@ -183,12 +317,15 @@ class TaskDetail extends HTMLElement {
                             ${this.formatRelative(entry.timestamp)}
                         </span>
                     </div>
+                    ${delta ? `<div class="entry-delta">+${this._escHtml(delta)}</div>` : ''}
                     ${entry.note || entry.reason || entry.message ? `
                     <div class="entry-note">${this._escHtml(entry.note || entry.reason || entry.message)}</div>
                     ` : ''}
                 </div>
             </div>`;
         }).join('');
+
+        return collapseToggle + rows;
     }
 
     _hideTooltip() {
@@ -202,15 +339,34 @@ class TaskDetail extends HTMLElement {
 
         const tooltip = root.querySelector('.tooltip');
         const entries = root.querySelectorAll('.history-entry');
+        const wrap    = root.querySelector('.detail-wrap');
 
+        // Tooltip on hover
         entries.forEach(entry => {
-            entry.addEventListener('mouseenter', (e) => {
+            entry.addEventListener('mouseenter', () => {
                 let data;
                 try { data = JSON.parse(entry.dataset.tooltip); } catch { return; }
 
                 let html = `<div class="tt-row"><span class="tt-label">Status</span><span class="tt-val tt-status" style="color:${this.getStatusColor(data.status)}">${this._escHtml(data.status)}</span></div>`;
-                html += `<div class="tt-row"><span class="tt-label">Agent</span><span class="tt-val">${this._escHtml(data.agent)}</span></div>`;
+
+                if (data.agentChanged && data.prevAgent) {
+                    html += `<div class="tt-row tt-agent-change">
+                        <span class="tt-label">Agent</span>
+                        <span class="tt-val">
+                            <span style="color:#71717a">${this._escHtml(data.prevAgent)}</span>
+                            <span style="color:#52525b"> → </span>
+                            <span style="color:#e4e4e7">${this._escHtml(data.agent)}</span>
+                        </span>
+                    </div>`;
+                } else {
+                    html += `<div class="tt-row"><span class="tt-label">Agent</span><span class="tt-val">${this._escHtml(data.agent)}</span></div>`;
+                }
+
                 html += `<div class="tt-row"><span class="tt-label">Zeit</span><span class="tt-val">${this._escHtml(data.timestamp)}</span></div>`;
+
+                if (data.delta) {
+                    html += `<div class="tt-row"><span class="tt-label">Δ vorher</span><span class="tt-val tt-delta">+${this._escHtml(data.delta)}</span></div>`;
+                }
                 if (data.note && data.note !== '—') {
                     html += `<div class="tt-row tt-note"><span class="tt-label">Notiz</span><span class="tt-val">${this._escHtml(data.note)}</span></div>`;
                 }
@@ -222,12 +378,20 @@ class TaskDetail extends HTMLElement {
                 }
                 tooltip.innerHTML = html;
 
-                const rect = entry.getBoundingClientRect();
-                const hostRect = root.host.getBoundingClientRect();
-                const shadowRect = root.querySelector('.detail-wrap').getBoundingClientRect();
+                // Tooltip-Position: rechts neben Eintrag, innerhalb des Containers
+                const rect      = entry.getBoundingClientRect();
+                const wrapRect  = wrap.getBoundingClientRect();
+                let topPos  = rect.top - wrapRect.top + 8;
+                let leftPos = rect.right - wrapRect.left + 12;
 
-                tooltip.style.top = (rect.top - shadowRect.top + 8) + 'px';
-                tooltip.style.left = (rect.right - shadowRect.left + 12) + 'px';
+                // Overflow-Schutz rechts
+                const ttWidth = 260;
+                if (leftPos + ttWidth > wrapRect.width - 8) {
+                    leftPos = rect.left - wrapRect.left - ttWidth - 12;
+                }
+                // Overflow-Schutz unten
+                tooltip.style.top  = `${topPos}px`;
+                tooltip.style.left = `${leftPos}px`;
                 tooltip.classList.add('visible');
             });
 
@@ -235,6 +399,35 @@ class TaskDetail extends HTMLElement {
                 tooltip.classList.remove('visible');
             });
         });
+
+        // Filter-Buttons
+        root.querySelectorAll('.filter-pill').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this._activeFilter = btn.dataset.filter;
+                this._collapsed = false;
+                this.render();
+            });
+        });
+
+        // Collapse-Toggle
+        const collapseBtn = root.querySelector('.collapse-hint');
+        if (collapseBtn) {
+            collapseBtn.addEventListener('click', () => {
+                this._collapsed = collapseBtn.dataset.action === 'expand' ? false : true;
+                this.render();
+            });
+        }
+
+        // History als JSON kopieren
+        const copyBtn = root.querySelector('.copy-history-btn');
+        if (copyBtn) {
+            copyBtn.addEventListener('click', () => {
+                navigator.clipboard?.writeText(JSON.stringify(this.history, null, 2)).then(() => {
+                    copyBtn.textContent = '✓ Kopiert';
+                    setTimeout(() => { copyBtn.textContent = '⎘ JSON'; }, 1500);
+                }).catch(() => {});
+            });
+        }
     }
 
     render() {
@@ -256,20 +449,44 @@ class TaskDetail extends HTMLElement {
                 min-height: 120px;
             }
 
+            .section-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: 14px;
+            }
+
             .section-title {
                 font-size: 13px;
                 font-weight: 600;
                 letter-spacing: 0.08em;
                 text-transform: uppercase;
                 color: #71717a;
-                margin: 0 0 20px 0;
+                margin: 0;
+            }
+
+            .copy-history-btn {
+                background: transparent;
+                border: 1px solid #27272a;
+                border-radius: 5px;
+                color: #52525b;
+                font-size: 11px;
+                padding: 3px 9px;
+                cursor: pointer;
+                transition: color 0.15s, border-color 0.15s;
+                font-family: inherit;
+            }
+
+            .copy-history-btn:hover {
+                color: #a1a1aa;
+                border-color: #3f3f46;
             }
 
             /* Task meta */
             .task-meta {
-                margin-bottom: 28px;
+                margin-bottom: 24px;
                 padding-bottom: 20px;
-                border-bottom: 1px solid #27272a;
+                border-bottom: 1px solid #1c1c1f;
             }
 
             .task-title {
@@ -311,6 +528,87 @@ class TaskDetail extends HTMLElement {
                 color: var(--sc, #52525b);
             }
 
+            /* Summary Bar */
+            .summary-bar {
+                display: flex;
+                gap: 20px;
+                margin-bottom: 18px;
+                padding: 10px 14px;
+                background: #111113;
+                border: 1px solid #1c1c1f;
+                border-radius: 7px;
+            }
+
+            .summary-item {
+                display: flex;
+                flex-direction: column;
+                gap: 2px;
+            }
+
+            .summary-num {
+                font-size: 16px;
+                font-weight: 600;
+                color: #e4e4e7;
+                line-height: 1;
+            }
+
+            .summary-label {
+                font-size: 10px;
+                color: #52525b;
+                text-transform: uppercase;
+                letter-spacing: 0.06em;
+            }
+
+            /* Filter Bar */
+            .filter-bar {
+                display: flex;
+                gap: 6px;
+                flex-wrap: wrap;
+                margin-bottom: 16px;
+            }
+
+            .filter-pill {
+                background: #18181b;
+                border: 1px solid #27272a;
+                border-radius: 20px;
+                color: #71717a;
+                font-size: 11px;
+                padding: 3px 10px;
+                cursor: pointer;
+                transition: all 0.15s;
+                font-family: inherit;
+                line-height: 1.5;
+            }
+
+            .filter-pill:hover {
+                border-color: #3f3f46;
+                color: #a1a1aa;
+            }
+
+            .filter-pill.active {
+                background: #111113;
+                border-color: var(--fc, #3f3f46);
+                color: var(--fc, #a1a1aa);
+            }
+
+            .filter-pill.active.all {
+                border-color: #3f3f46;
+                color: #d4d4d8;
+            }
+
+            /* Collapse hint */
+            .collapse-hint {
+                font-size: 11px;
+                color: #52525b;
+                padding: 6px 0 10px 42px;
+                cursor: pointer;
+                transition: color 0.15s;
+            }
+
+            .collapse-hint:hover {
+                color: #71717a;
+            }
+
             /* Timeline */
             .history-list {
                 position: relative;
@@ -325,11 +623,23 @@ class TaskDetail extends HTMLElement {
                 gap: 0;
                 position: relative;
                 cursor: default;
-                padding-bottom: 0;
             }
 
             .history-entry:hover .entry-body {
                 background: #18181b;
+                border-color: #27272a;
+            }
+
+            .history-entry.agent-changed .entry-body {
+                border-left: 2px solid #a78bfa44;
+            }
+
+            .entry-left {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                flex-shrink: 0;
+                width: 28px;
             }
 
             .entry-dot {
@@ -360,14 +670,13 @@ class TaskDetail extends HTMLElement {
             }
 
             .entry-line {
-                position: absolute;
-                left: 13px;
-                top: 40px;
-                bottom: -12px;
+                flex: 1;
                 width: 2px;
+                min-height: 12px;
                 background: linear-gradient(to bottom, var(--sc, #27272a) 0%, #27272a 100%);
-                opacity: 0.4;
+                opacity: 0.35;
                 z-index: 1;
+                margin-bottom: 0;
             }
 
             .history-entry.is-last .entry-line {
@@ -382,8 +691,28 @@ class TaskDetail extends HTMLElement {
                 background: #111113;
                 border: 1px solid #1c1c1f;
                 margin-bottom: 10px;
-                transition: background 0.15s;
+                margin-top: 6px;
+                transition: background 0.15s, border-color 0.15s;
+                min-height: 44px;
             }
+
+            /* Agent-Wechsel Badge */
+            .agent-change-badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 5px;
+                font-size: 11px;
+                margin-bottom: 6px;
+                padding: 2px 8px;
+                background: #1e1020;
+                border: 1px solid #2d1a40;
+                border-radius: 4px;
+                color: #c084fc;
+            }
+
+            .acb-from { color: #71717a; }
+            .acb-arrow { color: #52525b; }
+            .acb-to   { color: #c084fc; font-weight: 600; }
 
             .entry-header {
                 display: flex;
@@ -428,6 +757,14 @@ class TaskDetail extends HTMLElement {
                 white-space: nowrap;
             }
 
+            .entry-delta {
+                display: inline-block;
+                margin-top: 4px;
+                font-size: 10px;
+                color: #3f3f46;
+                letter-spacing: 0.03em;
+            }
+
             .entry-note {
                 margin-top: 6px;
                 font-size: 12px;
@@ -450,8 +787,7 @@ class TaskDetail extends HTMLElement {
                 border: 1px solid #3f3f46;
                 border-radius: 8px;
                 padding: 12px 14px;
-                min-width: 220px;
-                max-width: 320px;
+                width: 260px;
                 pointer-events: none;
                 opacity: 0;
                 transform: translateY(-4px);
@@ -493,6 +829,11 @@ class TaskDetail extends HTMLElement {
                 text-transform: capitalize;
             }
 
+            .tt-delta {
+                color: #52525b;
+                font-size: 11px;
+            }
+
             .tt-note {
                 border-top: 1px solid #27272a;
                 padding-top: 6px;
@@ -525,7 +866,14 @@ class TaskDetail extends HTMLElement {
             </div>
             ` : ''}
 
-            <div class="section-title">History</div>
+            ${this._renderSummary()}
+
+            <div class="section-header">
+                <div class="section-title">History</div>
+                ${this.history.length ? `<button class="copy-history-btn">⎘ JSON</button>` : ''}
+            </div>
+
+            ${this._renderFilters()}
 
             <div class="history-list">
                 ${this._renderHistory()}
