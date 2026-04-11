@@ -1784,6 +1784,24 @@ function sendChat() {
   var now=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
   var userEl=document.createElement('div');userEl.className='msg msg-user';userEl.innerHTML=esc(msg)+'<span class="msg-ts">'+now+'</span>';msgs.appendChild(userEl);
   msgs.scrollTop=msgs.scrollHeight;
+  // /task slash-command: create agent task directly from chat
+  if(msg.indexOf('/task')===0){
+    var taskText=msg.replace(/^\/task\s*/,'').trim();
+    if(!taskText){
+      var hint=document.createElement('div');hint.className='msg msg-ai';hint.style.color='var(--text-muted)';hint.textContent='Nutzung: /task <Beschreibung>';msgs.appendChild(hint);msgs.scrollTop=msgs.scrollHeight;return;
+    }
+    var pending=document.createElement('div');pending.className='msg msg-ai';pending.innerHTML='<span class="thinking-dots"><span></span><span></span><span></span></span> lege Task an...';msgs.appendChild(pending);
+    api('/api/organisator/agents/'+chatAgent.id+'/task',{method:'POST',body:JSON.stringify({task:taskText})}).then(function(t){
+      var ok=document.createElement('div');ok.className='msg msg-ai';ok.innerHTML='Task #'+t.id+' angelegt fuer '+esc(chatAgent.name||'Agent')+': '+esc(taskText);
+      pending.parentNode.replaceChild(ok,pending);
+      msgs.scrollTop=msgs.scrollHeight;
+      if(typeof loadAll==='function') loadAll();
+    }).catch(function(e){
+      var err=document.createElement('div');err.className='msg msg-ai';err.style.color='var(--red)';err.textContent='Fehler beim Anlegen: '+e.message;
+      pending.parentNode.replaceChild(err,pending);
+    });
+    return;
+  }
   var localThink=document.createElement('div');localThink.className='msg msg-ai';localThink.innerHTML='<span class="thinking-dots"><span></span><span></span><span></span></span>';msgs.appendChild(localThink);
   msgs.scrollTop=msgs.scrollHeight;
   document.getElementById('chatSendBtn').disabled=true;
