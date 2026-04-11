@@ -61,6 +61,7 @@ const healthDetailedRoutes = require("./src/routes/health-detailed");
 const usageTrackingRoutes = require("./src/routes/usage-tracking");
 const codeQualityRoutes = require("./src/routes/code-quality");
 const activityFeedRoutes = require("./src/routes/activity-feed");
+const systemStatusRoutes = require("./src/routes/system-status");
 const { router: companiesRoutes, companyContext } = require("./src/routes/companies");
 const { startAllBots, activeBots } = require("./src/channels/telegram");
 
@@ -287,6 +288,7 @@ app.use("/api/health-detailed", healthDetailedRoutes);
 app.use("/api/usage-tracking", usageTrackingRoutes);
 app.use("/api/code-quality", codeQualityRoutes);
 app.use("/api/activity-feed", activityFeedRoutes);
+app.use("/api/system-status", systemStatusRoutes);
 
 // --- Page routes (authenticated) ---
 function authPage(path, file, adminOnly) {
