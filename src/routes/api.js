@@ -12,6 +12,38 @@ const { requireAuth } = require('../middleware/auth');
 
 const router = Router();
 
+function parsePositiveInt(value, fallback, maxValue) {
+  var n = parseInt(value, 10);
+  if (!Number.isFinite(n) || n <= 0) return fallback;
+  if (typeof maxValue === 'number' && n > maxValue) return maxValue;
+  return n;
+}
+
+function parseSinceDate(value) {
+  if (!value) return null;
+  var d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return d;
+}
+
+async function resolveTableAvailability(tableNames) {
+  var rows = await query(
+    'SELECT name AS table_name, to_regclass(name) IS NOT NULL AS exists FROM unnest($1::text[]) AS name',
+    [tableNames]
+  );
+  var map = {};
+  rows.forEach(function (r) {
+    map[r.table_name] = r.exists === true;
+  });
+  return map;
+}
+
+function sortFeedDesc(a, b) {
+  var at = new Date(a.timestamp).getTime();
+  var bt = new Date(b.timestamp).getTime();
+  return bt - at;
+}
+
 
 router.get("/health", async function (req, res) {
   try {
@@ -157,6 +189,188 @@ router.get('/dashboard', requireAuth, async function (req, res) {
     query("SELECT COALESCE(SUM(cost_cents), 0)::numeric AS total_cost_cents, COALESCE(SUM(input_tokens), 0) AS total_input_tokens, COALESCE(SUM(output_tokens), 0) AS total_output_tokens FROM cost_events WHERE created_at > NOW() - INTERVAL '30 days'"),
   ]);
   res.json({ companies: results[0], agents: results[1], recentTasks: results[2], costSummary: results[3][0], processes: getProcessStatus() });
+});
+
+router.get('/activity-feed', requireAuth, async function (req, res) {
+  try {
+    var limit = parsePositiveInt(req.query.limit, 50, 200);
+    var sourceLimit = parsePositiveInt(req.query.sourceLimit, Math.max(20, limit * 2), 500);
+    var since = parseSinceDate(req.query.since);
+    var companyId = req.query.company_id ? String(req.query.company_id) : null;
+    var agentId = req.query.agent_id ? String(req.query.agent_id) : null;
+    var tables = await resolveTableAvailability(['tasks', 'agents', 'heartbeats', 'conversations', 'conversation_messages', 'cost_events']);
+    var events = [];
+
+    if (tables.tasks && tables.agents) {
+      var taskSql = [
+        "SELECT t.id, t.agent_id, t.company_id, t.title, t.status, t.priority,",
+        "COALESCE(t.updated_at, t.created_at) AS ts, a.name AS agent_name",
+        "FROM tasks t",
+        "LEFT JOIN agents a ON a.id = t.agent_id",
+        "WHERE 1=1"
+      ];
+      var taskParams = [];
+      if (since) {
+        taskParams.push(since);
+        taskSql.push('AND COALESCE(t.updated_at, t.created_at) >= $' + taskParams.length);
+      }
+      if (companyId) {
+        taskParams.push(companyId);
+        taskSql.push('AND t.company_id = $' + taskParams.length);
+      }
+      if (agentId) {
+        taskParams.push(agentId);
+        taskSql.push('AND t.agent_id = $' + taskParams.length);
+      }
+      taskSql.push('ORDER BY ts DESC LIMIT ' + sourceLimit);
+      var taskRows = await query(taskSql.join(' '), taskParams);
+      events = events.concat(taskRows.map(function (row) {
+        return {
+          id: 'task:' + row.id,
+          type: 'task',
+          timestamp: row.ts,
+          agent_id: row.agent_id,
+          company_id: row.company_id,
+          title: row.title,
+          status: row.status,
+          priority: row.priority,
+          actor: row.agent_name || null
+        };
+      }));
+    }
+
+    if (tables.heartbeats && tables.agents) {
+      var hbSql = [
+        "SELECT h.id, h.agent_id, a.company_id, a.name AS agent_name, h.status,",
+        "COALESCE(h.ended_at, h.started_at) AS ts, h.started_at, h.ended_at",
+        "FROM heartbeats h",
+        "LEFT JOIN agents a ON a.id = h.agent_id",
+        "WHERE 1=1"
+      ];
+      var hbParams = [];
+      if (since) {
+        hbParams.push(since);
+        hbSql.push('AND COALESCE(h.ended_at, h.started_at) >= $' + hbParams.length);
+      }
+      if (companyId) {
+        hbParams.push(companyId);
+        hbSql.push('AND a.company_id = $' + hbParams.length);
+      }
+      if (agentId) {
+        hbParams.push(agentId);
+        hbSql.push('AND h.agent_id = $' + hbParams.length);
+      }
+      hbSql.push('ORDER BY ts DESC LIMIT ' + sourceLimit);
+      var heartbeatRows = await query(hbSql.join(' '), hbParams);
+      events = events.concat(heartbeatRows.map(function (row) {
+        return {
+          id: 'heartbeat:' + row.id,
+          type: 'heartbeat',
+          timestamp: row.ts,
+          agent_id: row.agent_id,
+          company_id: row.company_id,
+          status: row.status,
+          actor: row.agent_name || null,
+          started_at: row.started_at,
+          ended_at: row.ended_at
+        };
+      }));
+    }
+
+    if (tables.conversation_messages && tables.conversations && tables.agents) {
+      var msgSql = [
+        "SELECT cm.id, cm.conversation_id, cm.sender_type, cm.body, cm.created_at AS ts,",
+        "c.agent_id, a.company_id, a.name AS agent_name",
+        "FROM conversation_messages cm",
+        "LEFT JOIN conversations c ON c.id = cm.conversation_id",
+        "LEFT JOIN agents a ON a.id = c.agent_id",
+        "WHERE 1=1"
+      ];
+      var msgParams = [];
+      if (since) {
+        msgParams.push(since);
+        msgSql.push('AND cm.created_at >= $' + msgParams.length);
+      }
+      if (companyId) {
+        msgParams.push(companyId);
+        msgSql.push('AND a.company_id = $' + msgParams.length);
+      }
+      if (agentId) {
+        msgParams.push(agentId);
+        msgSql.push('AND c.agent_id = $' + msgParams.length);
+      }
+      msgSql.push('ORDER BY cm.created_at DESC LIMIT ' + sourceLimit);
+      var messageRows = await query(msgSql.join(' '), msgParams);
+      events = events.concat(messageRows.map(function (row) {
+        return {
+          id: 'message:' + row.id,
+          type: 'message',
+          timestamp: row.ts,
+          conversation_id: row.conversation_id,
+          agent_id: row.agent_id,
+          company_id: row.company_id,
+          sender_type: row.sender_type,
+          body_preview: typeof row.body === 'string' ? row.body.slice(0, 180) : '',
+          actor: row.agent_name || null
+        };
+      }));
+    }
+
+    if (tables.cost_events && tables.agents) {
+      var costSql = [
+        "SELECT ce.id, ce.agent_id, a.company_id, a.name AS agent_name, ce.provider, ce.model,",
+        "ce.input_tokens, ce.output_tokens, ce.cost_cents, ce.created_at AS ts",
+        "FROM cost_events ce",
+        "LEFT JOIN agents a ON a.id = ce.agent_id",
+        "WHERE 1=1"
+      ];
+      var costParams = [];
+      if (since) {
+        costParams.push(since);
+        costSql.push('AND ce.created_at >= $' + costParams.length);
+      }
+      if (companyId) {
+        costParams.push(companyId);
+        costSql.push('AND a.company_id = $' + costParams.length);
+      }
+      if (agentId) {
+        costParams.push(agentId);
+        costSql.push('AND ce.agent_id = $' + costParams.length);
+      }
+      costSql.push('ORDER BY ce.created_at DESC LIMIT ' + sourceLimit);
+      var costRows = await query(costSql.join(' '), costParams);
+      events = events.concat(costRows.map(function (row) {
+        return {
+          id: 'cost:' + row.id,
+          type: 'cost',
+          timestamp: row.ts,
+          agent_id: row.agent_id,
+          company_id: row.company_id,
+          actor: row.agent_name || null,
+          provider: row.provider,
+          model: row.model,
+          input_tokens: row.input_tokens,
+          output_tokens: row.output_tokens,
+          cost_cents: row.cost_cents
+        };
+      }));
+    }
+
+    events.sort(sortFeedDesc);
+    var feed = events.slice(0, limit);
+
+    res.json({
+      success: true,
+      result_len: feed.length,
+      limit: limit,
+      source_limit: sourceLimit,
+      since: since ? since.toISOString() : null,
+      generated_at: new Date().toISOString(),
+      data: feed
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 router.get('/tools', function (req, res) {
