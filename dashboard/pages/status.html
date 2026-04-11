@@ -1,28 +1,312 @@
 <div class="page-frag" data-page-slug="status">
-  <div style="font-size:20px;font-weight:700;color:var(--tx);margin-bottom:16px">System Status</div>
-  <div class="stats-row" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
-    <div class="stat-card"><div class="stat-label">API</div><div class="stat-val" id="stApi"><span class="status-dot" style="background:var(--green)"></span> OK</div></div>
-    <div class="stat-card"><div class="stat-label">Datenbank</div><div class="stat-val" id="stDb"><span class="status-dot" style="background:var(--green)"></span> OK</div></div>
-    <div class="stat-card"><div class="stat-label">Agents</div><div class="stat-val" id="stAg">–</div></div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+    <div style="font-size:20px;font-weight:700;color:var(--tx)">System Status</div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span id="stPulse" style="width:8px;height:8px;border-radius:50%;background:var(--tx2);display:inline-block"></span>
+      <span id="stOverall" style="font-size:13px;color:var(--tx2)">Polling...</span>
+      <span id="stTime" style="font-size:11px;color:var(--tx2);font-family:'Courier New',monospace"></span>
+    </div>
   </div>
+
+  <!-- KPI Row -->
+  <div class="stats-row" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">
+    <div class="stat-card">
+      <div class="stat-label">System</div>
+      <div class="stat-val" id="stSys" style="font-size:18px">–</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Datenbank</div>
+      <div class="stat-val" id="stDb" style="font-size:18px">–</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Prozesse</div>
+      <div class="stat-val" id="stProcs" style="font-size:18px">–</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Disk</div>
+      <div class="stat-val" id="stDiskPct" style="font-size:18px">–</div>
+    </div>
+  </div>
+
+  <!-- Process Table -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-head">
+      <div class="card-title">PM2 Prozesse</div>
+      <span id="stProcCount" class="badge badge-blue" style="font-size:11px">0</span>
+    </div>
+    <div id="stProcTable" style="margin-top:12px;color:var(--tx2);font-size:13px">Lade...</div>
+  </div>
+
+  <!-- DB + Disk Side by Side -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+    <!-- DB Card -->
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">PostgreSQL</div>
+        <span id="stDbBadge" class="badge" style="font-size:11px">–</span>
+      </div>
+      <div id="stDbDetail" style="margin-top:12px;color:var(--tx2);font-size:13px">Lade...</div>
+    </div>
+
+    <!-- Disk Card -->
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Disk Usage</div>
+        <span id="stDiskBadge" class="badge" style="font-size:11px">–</span>
+      </div>
+      <div id="stDiskDetail" style="margin-top:12px">
+        <div id="stDiskBar" style="width:100%;height:20px;background:var(--bg4);border-radius:6px;overflow:hidden;margin-bottom:10px">
+          <div id="stDiskFill" style="height:100%;width:0%;border-radius:6px;transition:width .6s ease"></div>
+        </div>
+        <div id="stDiskInfo" style="color:var(--tx2);font-size:13px">Lade...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Poll Log -->
   <div class="card">
-    <div class="card-head"><div class="card-title">Services</div></div>
-    <div id="stSvc" style="color:var(--tx2);font-size:13px">Lade…</div>
+    <div class="card-head">
+      <div class="card-title">Poll Log</div>
+      <button class="btn btn-sm btn-outline" onclick="document.getElementById('stLog').innerHTML=''">Clear</button>
+    </div>
+    <div id="stLog" style="margin-top:10px;max-height:160px;overflow-y:auto;font-size:11px;font-family:'Courier New',monospace;color:var(--tx2);line-height:1.7"></div>
   </div>
+
+  <style>
+    @media(max-width:768px){
+      .page-frag[data-page-slug="status"] .stats-row{grid-template-columns:repeat(2,1fr)!important}
+      .page-frag[data-page-slug="status"] > div:nth-child(4){grid-template-columns:1fr!important}
+    }
+    @media(max-width:400px){
+      .page-frag[data-page-slug="status"] .stats-row{grid-template-columns:1fr!important}
+    }
+    #stProcTable table{width:100%;border-collapse:collapse}
+    #stProcTable th{text-align:left;font-size:11px;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;padding:6px 8px;border-bottom:1px solid var(--brd)}
+    #stProcTable td{padding:8px;border-bottom:1px solid var(--brd);font-size:13px;color:var(--tx)}
+    #stProcTable tr:last-child td{border-bottom:none}
+  </style>
 </div>
+
 <script>
 (function(){
   if(typeof api!=='function') return;
-  api('/api/organisator/health').then(function(d){
-    var set=function(id,html){var e=document.getElementById(id); if(e) e.innerHTML=html;};
-    if(d){
-      var ok=function(b){return '<span class="status-dot" style="background:var('+(b?'--green':'--red')+')"></span> '+(b?'OK':'DOWN')};
-      set('stApi',ok(d.api!==false));
-      set('stDb',ok(d.db!==false));
-      set('stAg',(d.agents_online||0)+' online');
-      var svc=document.getElementById('stSvc');
-      if(svc&&d.services){ svc.innerHTML=Object.keys(d.services).map(function(k){return '<div style="padding:6px 0;border-bottom:1px solid var(--brd);display:flex;justify-content:space-between"><span>'+k+'</span>'+ok(d.services[k])+'</div>'}).join(''); }
+
+  var _timer = null;
+  var _pollCount = 0;
+
+  function el(id){ return document.getElementById(id); }
+
+  function dot(ok, label){
+    var c = ok ? '--green' : '--red';
+    return '<span class="status-dot" style="background:var('+c+');margin-right:6px"></span>' + (label || (ok ? 'OK' : 'DOWN'));
+  }
+
+  function badge(ok){
+    var e = ok ? 'badge-green' : 'badge-red';
+    return e;
+  }
+
+  function fmtBytes(bytes){
+    if(!bytes || bytes < 1024) return (bytes||0)+' B';
+    if(bytes < 1048576) return (bytes/1024).toFixed(1)+' KB';
+    if(bytes < 1073741824) return (bytes/1048576).toFixed(1)+' MB';
+    return (bytes/1073741824).toFixed(1)+' GB';
+  }
+
+  function fmtKb(kb){
+    return fmtBytes((kb||0)*1024);
+  }
+
+  function fmtUptime(sec){
+    if(!sec || sec < 0) return '–';
+    var d = Math.floor(sec/86400);
+    var h = Math.floor((sec%86400)/3600);
+    var m = Math.floor((sec%3600)/60);
+    if(d > 0) return d+'d '+h+'h '+m+'m';
+    if(h > 0) return h+'h '+m+'m';
+    return m+'m '+Math.floor(sec%60)+'s';
+  }
+
+  function statusColor(s){
+    if(!s) return 'var(--tx2)';
+    if(s === 'online') return 'var(--green)';
+    if(s === 'stopped' || s === 'errored') return 'var(--red)';
+    return 'var(--amber)';
+  }
+
+  function addLog(msg, ok){
+    var log = el('stLog');
+    if(!log) return;
+    var t = new Date().toLocaleTimeString();
+    var c = ok ? 'var(--green)' : 'var(--red)';
+    log.innerHTML = '<div><span style="color:var(--tx2)">['+t+']</span> <span style="color:'+c+'">'+msg+'</span></div>' + log.innerHTML;
+    // keep max 50 entries
+    var items = log.children;
+    while(items.length > 50) log.removeChild(items[items.length-1]);
+  }
+
+  function renderProcs(pm2){
+    var container = el('stProcTable');
+    var countBadge = el('stProcCount');
+    if(!container) return;
+
+    if(!pm2 || !pm2.ok){
+      container.innerHTML = '<div style="color:var(--red)">PM2 nicht erreichbar'+(pm2 && pm2.error ? ': '+pm2.error : '')+'</div>';
+      if(countBadge) countBadge.textContent = '!';
+      return;
     }
-  }).catch(function(){});
+
+    var procs = pm2.processes || [];
+    if(countBadge) countBadge.textContent = procs.length;
+
+    if(!procs.length){
+      container.innerHTML = '<div style="color:var(--tx2)">Keine Prozesse</div>';
+      return;
+    }
+
+    var html = '<table><thead><tr><th>Name</th><th>ID</th><th>Status</th><th>CPU</th><th>RAM</th><th>Uptime</th></tr></thead><tbody>';
+    for(var i=0; i<procs.length; i++){
+      var p = procs[i];
+      var sc = statusColor(p.status);
+      html += '<tr>';
+      html += '<td style="font-weight:600">'+((p.name||'–').replace(/</g,'&lt;'))+'</td>';
+      html += '<td style="color:var(--tx2)">'+(p.pm_id!=null?p.pm_id:'–')+'</td>';
+      html += '<td><span class="status-dot" style="background:'+sc+';margin-right:6px"></span>'+(p.status||'unknown')+'</td>';
+      html += '<td>'+(p.cpu_percent||0)+'%</td>';
+      html += '<td>'+fmtBytes(p.memory_bytes||0)+'</td>';
+      html += '<td style="color:var(--tx2)">'+fmtUptime(p.uptime_seconds)+'</td>';
+      html += '</tr>';
+    }
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  }
+
+  function renderDb(pg){
+    var detail = el('stDbDetail');
+    var bdg = el('stDbBadge');
+    if(bdg){
+      bdg.className = 'badge '+ badge(pg && pg.ok);
+      bdg.textContent = pg && pg.ok ? 'Connected' : 'Down';
+    }
+    if(!detail) return;
+    if(!pg || !pg.ok){
+      detail.innerHTML = '<div style="color:var(--red)">Verbindung fehlgeschlagen'+(pg && pg.error ? '<br><span style="font-size:11px">'+pg.error+'</span>' : '')+'</div>';
+      return;
+    }
+    var ts = pg.timestamp ? new Date(pg.timestamp).toLocaleString() : '–';
+    detail.innerHTML = '<div style="margin-bottom:4px"><span style="color:var(--tx2)">Status:</span> <span style="color:var(--green)">Connected</span></div>'
+      + '<div><span style="color:var(--tx2)">Server Time:</span> <span style="color:var(--tx)">'+ts+'</span></div>';
+  }
+
+  function renderDisk(disk){
+    var fill = el('stDiskFill');
+    var info = el('stDiskInfo');
+    var bdg = el('stDiskBadge');
+    var pct = disk && disk.ok ? (disk.used_percent||0) : 0;
+
+    if(bdg){
+      var ok = disk && disk.ok && pct < 90;
+      bdg.className = 'badge '+ (pct >= 90 ? 'badge-red' : pct >= 75 ? '' : 'badge-green');
+      bdg.textContent = pct+'%';
+      if(pct >= 75 && pct < 90) bdg.style.cssText = 'font-size:11px;background:rgba(245,158,11,.15);color:var(--amber)';
+    }
+
+    if(fill){
+      fill.style.width = pct+'%';
+      fill.style.background = pct >= 90 ? 'var(--red)' : pct >= 75 ? 'var(--amber)' : 'var(--green)';
+    }
+
+    if(!info) return;
+    if(!disk || !disk.ok){
+      info.innerHTML = '<div style="color:var(--red)">Disk-Info nicht verfuegbar</div>';
+      return;
+    }
+
+    info.innerHTML = '<div style="display:flex;justify-content:space-between;margin-bottom:4px">'
+      + '<span style="color:var(--tx2)">Belegt:</span><span style="color:var(--tx)">'+fmtKb(disk.used_kb)+'</span></div>'
+      + '<div style="display:flex;justify-content:space-between;margin-bottom:4px">'
+      + '<span style="color:var(--tx2)">Frei:</span><span style="color:var(--tx)">'+fmtKb(disk.available_kb)+'</span></div>'
+      + '<div style="display:flex;justify-content:space-between">'
+      + '<span style="color:var(--tx2)">Total:</span><span style="color:var(--tx)">'+fmtKb(disk.size_kb)+'</span></div>';
+  }
+
+  function poll(){
+    api('/api/system/status').then(function(d){
+      _pollCount++;
+      if(!d) return;
+
+      // Overall status
+      var pulse = el('stPulse');
+      var overall = el('stOverall');
+      var timeEl = el('stTime');
+      if(pulse) pulse.style.background = d.ok ? 'var(--green)' : 'var(--red)';
+      if(overall){
+        overall.textContent = d.ok ? 'All Systems Operational' : 'Degraded';
+        overall.style.color = d.ok ? 'var(--green)' : 'var(--red)';
+      }
+      if(timeEl && d.timestamp){
+        timeEl.textContent = new Date(d.timestamp).toLocaleTimeString();
+      }
+
+      // KPI cards
+      var sysStat = el('stSys');
+      if(sysStat) sysStat.innerHTML = dot(d.ok, d.ok ? 'Healthy' : 'Degraded');
+
+      var dbStat = el('stDb');
+      if(dbStat) dbStat.innerHTML = dot(d.postgres && d.postgres.ok);
+
+      var procStat = el('stProcs');
+      if(procStat){
+        var online = 0;
+        var total = 0;
+        if(d.pm2 && d.pm2.processes){
+          total = d.pm2.processes.length;
+          for(var i=0;i<d.pm2.processes.length;i++){
+            if(d.pm2.processes[i].status==='online') online++;
+          }
+        }
+        procStat.innerHTML = '<span style="color:var(--green);font-weight:800">'+online+'</span><span style="color:var(--tx2);font-size:13px"> / '+total+'</span>';
+      }
+
+      var diskPct = el('stDiskPct');
+      if(diskPct && d.disk){
+        var pct = d.disk.used_percent || 0;
+        var dc = pct >= 90 ? 'var(--red)' : pct >= 75 ? 'var(--amber)' : 'var(--green)';
+        diskPct.innerHTML = '<span style="color:'+dc+';font-weight:800">'+pct+'%</span>';
+      }
+
+      // Sections
+      renderProcs(d.pm2);
+      renderDb(d.postgres);
+      renderDisk(d.disk);
+
+      addLog('Poll #'+_pollCount+' — '+(d.ok?'OK':'DEGRADED')+' — '+((d.pm2&&d.pm2.count)||0)+' procs', d.ok);
+
+    }).catch(function(err){
+      _pollCount++;
+      var pulse = el('stPulse');
+      var overall = el('stOverall');
+      if(pulse) pulse.style.background = 'var(--red)';
+      if(overall){ overall.textContent = 'Unreachable'; overall.style.color = 'var(--red)'; }
+      addLog('Poll #'+_pollCount+' FAILED: '+(err&&err.message||'Network error'), false);
+    });
+  }
+
+  // Initial poll
+  poll();
+
+  // Poll every 5 seconds
+  _timer = setInterval(poll, 5000);
+
+  // Cleanup when page is navigated away
+  var obs = new MutationObserver(function(muts){
+    var frag = document.querySelector('.page-frag[data-page-slug="status"]');
+    if(!frag || !frag.isConnected){
+      clearInterval(_timer);
+      obs.disconnect();
+    }
+  });
+  obs.observe(document.body, {childList:true, subtree:true});
+
 })();
 </script>
