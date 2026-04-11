@@ -1,0 +1,252 @@
+{
+  "meta": {
+    "name": "BLUN UI Kit Components",
+    "version": "1.0.0",
+    "type": "design-system",
+    "platform": ["web", "mobile", "desktop"],
+    "description": "Core component library with 10 most-used UI components.",
+    "author": "Hanno"
+  },
+  "tokens": {
+    "colors": {
+      "brand": {
+        "primary": "#0D6EFD",
+        "primaryHover": "#0B5ED7",
+        "primaryActive": "#0A58CA"
+      },
+      "neutral": {
+        "0": "#FFFFFF",
+        "50": "#F8F9FA",
+        "100": "#F1F3F5",
+        "200": "#E9ECEF",
+        "300": "#DEE2E6",
+        "500": "#ADB5BD",
+        "700": "#495057",
+        "900": "#212529"
+      },
+      "semantic": {
+        "success": "#198754",
+        "warning": "#FFC107",
+        "danger": "#DC3545",
+        "info": "#0DCAF0"
+      }
+    },
+    "typography": {
+      "fontFamily": "Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
+      "sizes": {
+        "xs": 12,
+        "sm": 14,
+        "md": 16,
+        "lg": 18,
+        "xl": 20,
+        "2xl": 24
+      },
+      "weights": {
+        "regular": 400,
+        "medium": 500,
+        "semibold": 600,
+        "bold": 700
+      },
+      "lineHeight": {
+        "tight": 1.2,
+        "normal": 1.5,
+        "relaxed": 1.7
+      }
+    },
+    "spacing": {
+      "0": 0,
+      "1": 4,
+      "2": 8,
+      "3": 12,
+      "4": 16,
+      "5": 20,
+      "6": 24,
+      "8": 32,
+      "10": 40,
+      "12": 48
+    },
+    "radius": {
+      "none": 0,
+      "sm": 4,
+      "md": 8,
+      "lg": 12,
+      "xl": 16,
+      "pill": 999
+    },
+    "shadow": {
+      "sm": "0 1px 2px rgba(0,0,0,0.08)",
+      "md": "0 4px 12px rgba(0,0,0,0.12)",
+      "lg": "0 10px 24px rgba(0,0,0,0.16)"
+    }
+  },
+  "components": [
+    {
+      "name": "Button",
+      "type": "interactive",
+      "variants": {
+        "style": ["primary", "secondary", "ghost", "danger"],
+        "size": ["sm", "md", "lg"],
+        "state": ["default", "hover", "active", "disabled"],
+        "icon": ["none", "left", "right"]
+      },
+      "props": {
+        "label": "string",
+        "fullWidth": "boolean"
+      },
+      "anatomy": ["container", "icon-left", "label", "icon-right"]
+    },
+    {
+      "name": "Input",
+      "type": "form",
+      "variants": {
+        "size": ["sm", "md", "lg"],
+        "state": ["default", "focus", "error", "disabled"],
+        "icon": ["none", "left", "right"]
+      },
+      "props": {
+        "label": "string",
+        "placeholder": "string",
+        "helperText": "string",
+        "value": "string"
+      },
+      "anatomy": ["label", "field", "prefix-icon", "value", "suffix-icon", "helper-text"]
+    },
+    {
+      "name": "Textarea",
+      "type": "form",
+      "variants": {
+        "size": ["md", "lg"],
+        "state": ["default", "focus", "error", "disabled"],
+        "resize": ["none", "vertical"]
+      },
+      "props": {
+        "label": "string",
+        "placeholder": "string",
+        "helperText": "string",
+        "rows": "number"
+      },
+      "anatomy": ["label", "field", "content", "character-counter", "helper-text"]
+    },
+    {
+      "name": "Select",
+      "type": "form",
+      "variants": {
+        "size": ["sm", "md", "lg"],
+        "state": ["default", "focus", "error", "disabled"],
+        "mode": ["single", "multi"]
+      },
+      "props": {
+        "label": "string",
+        "placeholder": "string",
+        "selected": "array"
+      },
+      "anatomy": ["label", "trigger", "value", "caret", "dropdown", "option"]
+    },
+    {
+      "name": "Checkbox",
+      "type": "form",
+      "variants": {
+        "state": ["unchecked", "checked", "indeterminate", "disabled"],
+        "size": ["sm", "md"]
+      },
+      "props": {
+        "label": "string",
+        "description": "string"
+      },
+      "anatomy": ["box", "checkmark", "label", "description"]
+    },
+    {
+      "name": "Radio",
+      "type": "form",
+      "variants": {
+        "state": ["unchecked", "checked", "disabled"],
+        "size": ["sm", "md"]
+      },
+      "props": {
+        "label": "string",
+        "description": "string",
+        "group": "string"
+      },
+      "anatomy": ["outer-circle", "inner-dot", "label", "description"]
+    },
+    {
+      "name": "Switch",
+      "type": "form",
+      "variants": {
+        "state": ["off", "on", "disabled"],
+        "size": ["sm", "md"]
+      },
+      "props": {
+        "label": "string",
+        "description": "string"
+      },
+      "anatomy": ["track", "thumb", "label", "description"]
+    },
+    {
+      "name": "Card",
+      "type": "layout",
+      "variants": {
+        "elevation": ["flat", "sm", "md"],
+        "padding": ["sm", "md", "lg"],
+        "state": ["default", "hover", "selected"]
+      },
+      "props": {
+        "title": "string",
+        "subtitle": "string",
+        "media": "boolean",
+        "actions": "boolean"
+      },
+      "anatomy": ["container", "header", "media", "content", "footer-actions"]
+    },
+    {
+      "name": "Modal",
+      "type": "overlay",
+      "variants": {
+        "size": ["sm", "md", "lg", "fullscreen"],
+        "state": ["closed", "open"],
+        "dismissible": ["true", "false"]
+      },
+      "props": {
+        "title": "string",
+        "description": "string",
+        "primaryAction": "string",
+        "secondaryAction": "string"
+      },
+      "anatomy": ["backdrop", "container", "header", "body", "footer", "close-button"]
+    },
+    {
+      "name": "Table",
+      "type": "data-display",
+      "variants": {
+        "density": ["compact", "default", "comfortable"],
+        "state": ["default", "loading", "empty"],
+        "selection": ["none", "single", "multi"]
+      },
+      "props": {
+        "columns": "array",
+        "rows": "array",
+        "sortable": "boolean",
+        "paginated": "boolean"
+      },
+      "anatomy": ["header-row", "header-cell", "body-row", "body-cell", "pagination"]
+    }
+  ],
+  "layout": {
+    "frame": {
+      "width": 1920,
+      "height": 1080,
+      "grid": {
+        "columns": 12,
+        "gutter": 24,
+        "margin": 80
+      }
+    },
+    "sections": [
+      "Tokens",
+      "Form Components",
+      "Action Components",
+      "Data Display",
+      "Overlays"
+    ]
+  }
+}
