@@ -368,7 +368,7 @@
       t.textContent = (h<10?'0':'')+h+':'+(m<10?'0':'')+m+':'+(sec<10?'0':'')+sec;
     }
     fetchData();
-    setInterval(fetchData, 30000);
+    setInterval(fetchData, 5000);
     setInterval(tick, 1000);
   }
 
