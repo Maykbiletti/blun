@@ -51,7 +51,7 @@ function pickCLI(model) {
   return "claude"; // fallback
 }
 
-function buildPrompt(agent, task, agentDir) {
+function buildPrompt(agent, task, agentDir, memory) {
   return (BEHAVIOR_CONTRACT ? BEHAVIOR_CONTRACT + "\n\n---\n\n" : "") + "Du bist " + agent.name + ", " + (agent.role || "Entwickler") + " bei BLUN.\n" +
     "Arbeitsverzeichnis: " + agentDir + "\n\n" +
     "TASK: " + task.task + "\n\n" +
@@ -61,7 +61,8 @@ function buildPrompt(agent, task, agentDir) {
     "3. Teste mit node -c bei .js Dateien\n" +
     "4. Git add + commit wenn fertig\n" +
     "5. KEINE Erklaerungen, KEINE Reviews, KEIN Smalltalk — NUR CODE\n" +
-    "6. NIEMALS agent-engine.js, server.js, index.html, db.js aendern";
+    "6. NIEMALS agent-engine.js, server.js, index.html, db.js aendern" +
+    (memory && memory.length ? "\n\nDEINE MEMORY (abgeschlossene Tasks und Wissen):\n" + memory.map(function(m){ return "- [" + m.key + "] " + m.value; }).join("\n") : "");
 }
 
 function sanitizeText(value, maxLen) {
@@ -251,7 +252,8 @@ async function executeTask(agent, task, queryFn) {
   }
 
   var cliName = pickCLI(agent.model);
-  var prompt = buildPrompt(agent, task, agentDir);
+  var memory = await loadAgentMemory(agent.id);
+  var prompt = buildPrompt(agent, task, agentDir, memory);
   var startHead = "";
   try {
     startHead = cp.execSync("cd " + agentDir + " && git rev-parse --verify HEAD 2>/dev/null", { timeout: 2500 }).toString().trim();
@@ -358,6 +360,7 @@ async function executeTask(agent, task, queryFn) {
 
   await queryFn("UPDATE agent_tasks SET status = 'completed', result = $1, completed_at = NOW() WHERE id = $2",
     [JSON.stringify(completedPayload), task.id]);
+  await saveTaskToMemory(agent.id, task, completedPayload);
   console.log("[task-runner] " + agent.name + " PASS #" + task.id + " — " + commitsAfter + " commits, " + validation.changedFiles + " files, clean tree");
   return { pass: true, cli: cliName, commits: commitsAfter, files: validation.changedFiles };
 }
