@@ -4,6 +4,10 @@ const DEFAULT_CAPACITY = 100;
 const DEFAULT_REFILL_WINDOW_MS = 60 * 1000;
 const DEFAULT_BUCKET_TTL_MS = 2 * DEFAULT_REFILL_WINDOW_MS;
 
+function isPositiveFiniteNumber(value) {
+  return Number.isFinite(value) && value > 0;
+}
+
 function normalizeIp(ip) {
   if (!ip) return "unknown";
   if (ip.startsWith("::ffff:")) return ip.slice(7);
@@ -13,20 +17,48 @@ function normalizeIp(ip) {
 
 function createMemoryStore() {
   const map = new Map();
+  const expiry = new Map();
+
+  function isExpired(key, now) {
+    const expiresAt = expiry.get(key);
+    return typeof expiresAt === "number" && expiresAt <= now;
+  }
+
+  function purgeIfExpired(key, now) {
+    if (!isExpired(key, now)) return false;
+    map.delete(key);
+    expiry.delete(key);
+    return true;
+  }
+
   return {
     get(key) {
+      purgeIfExpired(key, Date.now());
       return map.get(key);
     },
-    set(key, value) {
+    set(key, value, ttlMs) {
       map.set(key, value);
+      if (isPositiveFiniteNumber(ttlMs)) {
+        expiry.set(key, Date.now() + ttlMs);
+      } else {
+        expiry.delete(key);
+      }
     },
     delete(key) {
+      expiry.delete(key);
       map.delete(key);
     },
     entries() {
+      this.cleanupExpired();
       return map.entries();
     },
+    cleanupExpired(now = Date.now()) {
+      for (const key of map.keys()) {
+        purgeIfExpired(key, now);
+      }
+    },
     size() {
+      this.cleanupExpired();
       return map.size;
     }
   };
@@ -34,9 +66,14 @@ function createMemoryStore() {
 
 class TokenBucketRateLimiter {
   constructor(options = {}) {
-    this.capacity = Number.isFinite(options.capacity) ? options.capacity : DEFAULT_CAPACITY;
-    this.refillWindowMs = Number.isFinite(options.refillWindowMs) ? options.refillWindowMs : DEFAULT_REFILL_WINDOW_MS;
-    this.bucketTtlMs = Number.isFinite(options.bucketTtlMs) ? options.bucketTtlMs : DEFAULT_BUCKET_TTL_MS;
+    this.capacity = isPositiveFiniteNumber(options.capacity) ? options.capacity : DEFAULT_CAPACITY;
+    this.refillWindowMs = isPositiveFiniteNumber(options.refillWindowMs)
+      ? options.refillWindowMs
+      : DEFAULT_REFILL_WINDOW_MS;
+    this.bucketTtlMs = isPositiveFiniteNumber(options.bucketTtlMs)
+      ? options.bucketTtlMs
+      : DEFAULT_BUCKET_TTL_MS;
+
     this.refillRatePerMs = this.capacity / this.refillWindowMs;
     this.now = typeof options.now === "function" ? options.now : Date.now;
     this.store = options.store || createMemoryStore();
@@ -54,7 +91,8 @@ class TokenBucketRateLimiter {
     }
 
     const req = input || {};
-    const headerApiKey = req.headers && (req.headers["x-api-key"] || req.headers["X-API-Key"]);
+    const headers = req.headers || {};
+    const headerApiKey = headers["x-api-key"] || headers["X-API-Key"];
     const explicitApiKey = req.apiKey || req.api_key;
     const apiKey = explicitApiKey || headerApiKey;
 
@@ -69,10 +107,13 @@ class TokenBucketRateLimiter {
       throw new Error("tokens must be a positive number");
     }
 
-    const now = this.now();
+    const now = Number(this.now());
+    if (!Number.isFinite(now)) {
+      throw new Error("now() must return a finite timestamp");
+    }
+
     const key = this.resolveKey(input);
     const bucket = this._getOrCreateBucket(key, now);
-
     this._refill(bucket, now);
 
     if (tokens > this.capacity) {
@@ -101,7 +142,7 @@ class TokenBucketRateLimiter {
 
     bucket.tokens -= tokens;
     bucket.expiresAt = now + this.bucketTtlMs;
-    this.store.set(key, bucket);
+    this.store.set(key, bucket, this.bucketTtlMs);
 
     return {
       allowed: true,
@@ -125,13 +166,26 @@ class TokenBucketRateLimiter {
 
   cleanup() {
     const now = this.now();
+
+    if (typeof this.store.cleanupExpired === "function") {
+      this.store.cleanupExpired(now);
+    }
+
+    if (typeof this.store.entries !== "function") {
+      return;
+    }
+
     for (const [key, bucket] of this.store.entries()) {
-      if (bucket.expiresAt <= now) this.store.delete(key);
+      if (bucket.expiresAt <= now) {
+        this.store.delete(key);
+      }
     }
   }
 
   stop() {
-    if (this.cleanupTimer) clearInterval(this.cleanupTimer);
+    if (this.cleanupTimer) {
+      clearInterval(this.cleanupTimer);
+    }
   }
 
   _getOrCreateBucket(key, now) {
@@ -143,7 +197,8 @@ class TokenBucketRateLimiter {
       lastRefill: now,
       expiresAt: now + this.bucketTtlMs
     };
-    this.store.set(key, created);
+
+    this.store.set(key, created, this.bucketTtlMs);
     return created;
   }
 
