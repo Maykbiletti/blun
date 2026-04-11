@@ -3436,4 +3436,82 @@ window.toggleNotificationCenter = function() {
 })();
 </script>
 
+
+<!-- Slash Command Autocomplete -->
+<style>
+.slash-autocomplete{position:absolute;bottom:100%;left:0;right:0;background:var(--bg2);border:1px solid var(--brd);border-radius:8px;margin-bottom:4px;max-height:220px;overflow-y:auto;display:none;z-index:999;box-shadow:0 -4px 16px rgba(0,0,0,.4)}
+.slash-autocomplete.open{display:block}
+.slash-ac-item{padding:8px 12px;cursor:pointer;display:flex;gap:8px;align-items:center;font-size:13px;color:var(--tx)}
+.slash-ac-item:hover,.slash-ac-item.active{background:var(--bg3)}
+.slash-ac-cmd{font-weight:600;color:var(--b);min-width:70px}
+.slash-ac-desc{color:var(--tx2);font-size:12px}
+</style>
+<script>
+(function(){
+  var cmds=[
+    {cmd:'/task',desc:'Task fuer Agent anlegen'},
+    {cmd:'/direct',desc:'Dieter fuehrt selbst aus'},
+    {cmd:'/d',desc:'Kurzform fuer /direct'},
+    {cmd:'/issues',desc:'Offene Tasks anzeigen'},
+    {cmd:'/help',desc:'Alle Befehle anzeigen'}
+  ];
+  function createPopup(input){
+    var wrap=input.parentElement;
+    if(!wrap) return null;
+    if(wrap.style.position!=='relative'&&wrap.style.position!=='absolute') wrap.style.position='relative';
+    var pop=document.createElement('div');
+    pop.className='slash-autocomplete';
+    pop.dataset.for=input.id;
+    wrap.appendChild(pop);
+    return pop;
+  }
+  function renderItems(pop,filter,input){
+    var f=filter.toLowerCase();
+    var matches=cmds.filter(function(c){return c.cmd.indexOf(f)===0;});
+    if(!matches.length||!f.startsWith('/')){pop.classList.remove('open');return;}
+    pop.innerHTML='';
+    matches.forEach(function(c,i){
+      var el=document.createElement('div');
+      el.className='slash-ac-item'+(i===0?' active':'');
+      el.innerHTML='<span class="slash-ac-cmd">'+c.cmd+'</span><span class="slash-ac-desc">'+c.desc+'</span>';
+      el.onclick=function(){
+        var rest=input.value.replace(/^\/\w*/,'');
+        input.value=c.cmd+(c.cmd==='/help'?'':' ')+rest.trimStart();
+        pop.classList.remove('open');
+        input.focus();
+      };
+      pop.appendChild(el);
+    });
+    pop.classList.add('open');
+  }
+  function hookInput(id){
+    var input=document.getElementById(id);
+    if(!input) return;
+    var pop=null;
+    input.addEventListener('input',function(){
+      if(!pop) pop=createPopup(input);
+      if(!pop) return;
+      var val=input.value;
+      if(val.startsWith('/')){renderItems(pop,val,input);}
+      else{pop.classList.remove('open');}
+    });
+    input.addEventListener('keydown',function(e){
+      if(!pop||!pop.classList.contains('open')) return;
+      var items=pop.querySelectorAll('.slash-ac-item');
+      var active=pop.querySelector('.slash-ac-item.active');
+      var idx=Array.prototype.indexOf.call(items,active);
+      if(e.key==='ArrowDown'){e.preventDefault();if(active)active.classList.remove('active');idx=(idx+1)%items.length;items[idx].classList.add('active');}
+      if(e.key==='ArrowUp'){e.preventDefault();if(active)active.classList.remove('active');idx=(idx-1+items.length)%items.length;items[idx].classList.add('active');}
+      if(e.key==='Tab'||e.key==='Enter'){
+        if(active){e.preventDefault();active.click();}
+      }
+      if(e.key==='Escape'){pop.classList.remove('open');}
+    });
+    input.addEventListener('blur',function(){if(pop)setTimeout(function(){pop.classList.remove('open');},150);});
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',function(){hookInput('wsChatInput');hookInput('chatInput');});
+  else{hookInput('wsChatInput');hookInput('chatInput');}
+})();
+</script>
+
 </body></html><!-- test -->
