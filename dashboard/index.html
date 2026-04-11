@@ -3189,10 +3189,107 @@ window.toggleNotificationCenter = function() {
 
 
 <script>
-// Auto-Sidebar Enricher: zieht alle pages/*.html und integriert sie in .sidebar-nav
-(function autoSidebarEnrich(){
-  function titleCase(s) { return s.split(' ').map(function(w){ return w.charAt(0).toUpperCase() + w.slice(1); }).join(' '); }
-  function go() {
+// SPA Page Loader + Auto-Sidebar Enricher
+// Auto-discovers /dashboard/pages/*.html, integrates them as in-shell tabs (no full reload).
+(function(){
+  var loadedFrags = {};
+
+  function stripStyles(html) {
+    // remove inline <style>, <link rel=stylesheet>, <script>, <html>, <head>, <body> wrappers
+    html = html.replace(/<!DOCTYPE[\s\S]*?>/gi, '');
+    html = html.replace(/<html[\s\S]*?>/gi, '').replace(/<\/html>/gi, '');
+    html = html.replace(/<head[\s\S]*?<\/head>/gi, '');
+    html = html.replace(/<body[\s\S]*?>/i, '').replace(/<\/body>/gi, '');
+    html = html.replace(/<style[\s\S]*?<\/style>/gi, '');
+    html = html.replace(/<link[^>]*rel=["']?stylesheet[^>]*>/gi, '');
+    return html.trim();
+  }
+
+  function ensureFragHost(slug) {
+    var id = 'page-frag-' + slug;
+    var el = document.getElementById(id);
+    if (!el) {
+      el = document.createElement('div');
+      el.id = id;
+      el.className = 'page';
+      el.style.cssText = 'overflow-y:auto;padding:16px';
+      var main = document.querySelector('.main') || document.body;
+      main.appendChild(el);
+    }
+    return el;
+  }
+
+  function setActiveSidebar(slug) {
+    document.querySelectorAll('.nav-item').forEach(function(n){ n.classList.remove('active'); });
+    var sel = document.querySelector('.nav-item[data-frag="' + slug + '"]');
+    if (sel) sel.classList.add('active');
+  }
+
+  function showFrag(el) {
+    document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
+    el.classList.add('active');
+  }
+
+  window.loadFragment = function(slug, url, label) {
+    var host = ensureFragHost(slug);
+    var done = function(){
+      showFrag(host);
+      setActiveSidebar(slug);
+      var t = document.getElementById('topbarTitle');
+      if (t && label) t.textContent = label;
+      try { history.pushState(null, '', '/dashboard/p/' + slug); } catch(e){}
+      if (window.innerWidth <= 768) {
+        var sb = document.getElementById('sidebar'); if (sb) sb.classList.remove('open');
+      }
+    };
+    if (loadedFrags[slug]) { done(); return; }
+    fetch(url, { credentials: 'same-origin' })
+      .then(function(r){ return r.text(); })
+      .then(function(html){
+        host.innerHTML = stripStyles(html);
+        loadedFrags[slug] = true;
+        // execute any inline <script> from the fragment in shell context
+        host.querySelectorAll('script').forEach(function(s){
+          var ns = document.createElement('script');
+          if (s.src) ns.src = s.src; else ns.textContent = s.textContent;
+          document.body.appendChild(ns);
+          s.remove();
+        });
+        done();
+      })
+      .catch(function(e){
+        host.innerHTML = '<div style="padding:24px;color:#f87171">Seite konnte nicht geladen werden: ' + (e.message || e) + '</div>';
+        done();
+      });
+  };
+
+  // popstate: handle back/forward to /dashboard/p/<slug>
+  window.addEventListener('popstate', function(){
+    var m = window.location.pathname.match(/\/dashboard\/p\/([a-z0-9_-]+)/i);
+    if (m) {
+      var slug = m[1];
+      var el = document.getElementById('page-frag-' + slug);
+      if (el) { showFrag(el); setActiveSidebar(slug); }
+    }
+  });
+
+  function svgIcon(name) {
+    var icons = {
+      user:'<circle cx="12" cy="8" r="4"/><path d="M6 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/>',
+      bar:'<rect x="3" y="12" width="4" height="8"/><rect x="10" y="6" width="4" height="14"/><rect x="17" y="9" width="4" height="11"/>',
+      chart:'<path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-5"/>',
+      shield:'<path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6l8-4z"/>',
+      play:'<polygon points="6 4 20 12 6 20 6 4"/>',
+      history:'<path d="M3 12a9 9 0 109-9 9.7 9.7 0 00-7 3"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/>',
+      pulse:'<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+      help:'<circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 015.8 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12" y2="17"/>',
+      question:'<circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 015.8 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12" y2="17"/>',
+      doc:'<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/>'
+    };
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' + (icons[name]||icons.doc) + '</svg>';
+  }
+
+  function buildSidebar() {
     try {
       var nav = document.querySelector('.sidebar-nav');
       if (!nav) return;
@@ -3205,39 +3302,44 @@ window.toggleNotificationCenter = function() {
         .then(function(r){ return r.json(); })
         .then(function(d){
           if (!d || !d.grouped) return;
-          var existing = document.querySelectorAll('.auto-pages-section');
-          existing.forEach(function(e){ e.remove(); });
-          var path = window.location.pathname;
+          // remove old auto sections
+          document.querySelectorAll('.auto-pages-section').forEach(function(e){ e.remove(); });
           var cats = Object.keys(d.grouped);
           cats.forEach(function(cat){
-            var sec = document.createElement('div');
-            sec.className = 'auto-pages-section';
-            sec.style.cssText = 'margin-top:14px;padding-top:10px;border-top:1px solid #2a2a4a';
+            var wrap = document.createElement('div');
+            wrap.className = 'auto-pages-section';
             var head = document.createElement('div');
+            head.className = 'nav-section';
             head.textContent = cat;
-            head.style.cssText = 'font-size:10px;text-transform:uppercase;color:#64748b;letter-spacing:0.5px;padding:6px 16px';
-            sec.appendChild(head);
+            wrap.appendChild(head);
             d.grouped[cat].forEach(function(p){
-              var a = document.createElement('a');
-              a.href = p.url;
-              a.textContent = p.label;
-              var isActive = path.indexOf(p.slug) >= 0;
-              var baseColor = isActive ? '#3b82f6' : '#94a3b8';
-              var bg = isActive ? '#1e293b' : '';
-              a.style.cssText = 'display:block;padding:7px 16px;color:'+baseColor+';text-decoration:none;font-size:13px;border-radius:4px;margin:1px 6px;background:'+bg+';transition:background 0.15s;font-weight:'+(isActive?'600':'400');
-              a.onmouseover = function(){ if(!isActive){ a.style.background = '#1e293b'; a.style.color = '#e2e8f0'; } };
-              a.onmouseout = function(){ if(!isActive){ a.style.background = ''; a.style.color = '#94a3b8'; } };
-              sec.appendChild(a);
+              var item = document.createElement('div');
+              item.className = 'nav-item';
+              item.setAttribute('data-frag', p.slug);
+              item.setAttribute('aria-label', p.label);
+              item.innerHTML = svgIcon(p.icon || 'doc') + ' ' + p.label;
+              item.onclick = function(ev){
+                ev.preventDefault();
+                window.loadFragment(p.slug, p.url, p.label);
+              };
+              wrap.appendChild(item);
             });
-            nav.appendChild(sec);
+            nav.appendChild(wrap);
           });
+          // if URL is already a fragment, load it now
+          var m = window.location.pathname.match(/\/dashboard\/p\/([a-z0-9_-]+)/i);
+          if (m) {
+            var slug = m[1];
+            var meta = (d.pages || []).filter(function(x){ return x.slug === slug; })[0];
+            if (meta) window.loadFragment(slug, meta.url, meta.label);
+          }
         }).catch(function(){});
     } catch(e) {}
   }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ setTimeout(go, 800); });
-  else setTimeout(go, 800);
-  // re-run alle 60s damit neue Pages automatisch erscheinen
-  setInterval(go, 60000);
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ setTimeout(buildSidebar, 600); });
+  else setTimeout(buildSidebar, 600);
+  setInterval(buildSidebar, 60000);
 })();
 </script>
 
