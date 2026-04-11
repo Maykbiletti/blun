@@ -231,22 +231,22 @@
       <article class="tile">
         <p class="label">Tasks Heute</p>
         <p class="value v-cyan" id="kpi-tasks-today">-</p>
-        <p class="hint">abgeschlossen in den letzten 24h</p>
+        <p class="hint">Tasks gestartet oder erledigt heute</p>
       </article>
       <article class="tile">
-        <p class="label">Avg Dauer</p>
-        <p class="value v-green" id="kpi-avg-duration">-</p>
-        <p class="hint">durchschnittliche Task-Laufzeit</p>
+        <p class="label">Completed Gestern</p>
+        <p class="value v-green" id="kpi-completed-yesterday">-</p>
+        <p class="hint">abgeschlossene Tasks vom Vortag</p>
       </article>
       <article class="tile">
-        <p class="label">Erfolgsrate</p>
-        <p class="value v-amber" id="kpi-success-rate">-</p>
-        <p class="hint">completed vs. failed</p>
+        <p class="label">Agents Online</p>
+        <p class="value v-amber" id="kpi-agents-online">-</p>
+        <p class="hint">aktuell aktive Agents</p>
       </article>
       <article class="tile">
-        <p class="label">Aktive Agents</p>
-        <p class="value v-rose" id="kpi-active-agents">-</p>
-        <p class="hint">aktuell online</p>
+        <p class="label">Queue Pending</p>
+        <p class="value v-rose" id="kpi-queue-pending">-</p>
+        <p class="hint">Tasks warten auf Zuweisung</p>
       </article>
     </section>
 
@@ -393,24 +393,27 @@
     }
 
     function renderStats(stats) {
-      var tasksToday = num(stats.tasks_today ?? stats.tasksToday ?? stats.tasks_completed_today, null);
-      var avgDuration = stats.avg_duration_seconds ?? stats.avg_duration_sec ?? stats.avg_duration ?? stats.average_duration;
-
-      var successRate = stats.success_rate ?? stats.successRate ?? stats.task_success_rate ?? null;
-      if (successRate === null) {
-        var completed = num(stats.tasks_completed, null);
-        var failed = num(stats.tasks_failed, 0);
-        if (completed !== null && (completed + failed) > 0) {
-          successRate = completed / (completed + failed);
-        }
-      }
-
-      var activeAgents = num(stats.active_agents ?? stats.activeAgents ?? stats.agents_active, null);
+      var tasksToday = num(
+        stats.tasks_today ?? stats.tasksToday ?? stats.tasks_completed_today ?? stats.today_tasks,
+        null
+      );
+      var completedYesterday = num(
+        stats.completed_yesterday ?? stats.tasks_completed_yesterday ?? stats.yesterday_completed ?? stats.completedYesterday,
+        null
+      );
+      var agentsOnline = num(
+        stats.agents_online ?? stats.active_agents ?? stats.activeAgents ?? stats.agents_active ?? stats.online_agents,
+        null
+      );
+      var queuePending = num(
+        stats.queue_pending ?? stats.pending_tasks ?? stats.tasks_pending ?? stats.queuePending ?? stats.pending,
+        null
+      );
 
       txt("kpi-tasks-today", tasksToday === null ? "-" : String(tasksToday));
-      txt("kpi-avg-duration", durationText(avgDuration));
-      txt("kpi-success-rate", percentText(successRate));
-      txt("kpi-active-agents", activeAgents === null ? "-" : String(activeAgents));
+      txt("kpi-completed-yesterday", completedYesterday === null ? "-" : String(completedYesterday));
+      txt("kpi-agents-online", agentsOnline === null ? "-" : String(agentsOnline));
+      txt("kpi-queue-pending", queuePending === null ? "-" : String(queuePending));
 
       renderTaskRows(extractTasks(stats));
       txt("updated-at", "Letztes Update: " + new Date().toLocaleString("de-DE"));
