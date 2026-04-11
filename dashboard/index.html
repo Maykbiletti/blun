@@ -1807,6 +1807,14 @@ function slashHelp(){
     '<b>Slash-Befehle:</b>',
     '<code>/task &lt;Beschreibung&gt;</code> — legt sofort einen Task fuer diesen Agent an',
     '<code>/direct &lt;Aufgabe&gt;</code> — Dieter fuehrt die Aufgabe <b>selbst</b> aus (kein Delegieren)',
+    '<code>/status</code> — System-Health, PM2, Disk',
+    '<code>/logs</code> — Letzte Livefeed-Eintraege',
+    '<code>/deploy</code> — git pull + pm2 restart',
+    '<code>/agents</code> — Alle Agents mit Status',
+    '<code>/kill &lt;id&gt;</code> — Task abbrechen',
+    '<code>/priority &lt;id&gt; &lt;1-10&gt;</code> — Prioritaet setzen',
+    '<code>/merge &lt;id&gt;</code> — Agent-Branch mergen',
+    '<code>/stats</code> — 24h Statistiken',
     '<code>/issues</code> — zeigt offene Tasks dieses Agenten',
     '<code>/help</code> — diese Liste'
   ].join('<br>');
@@ -1851,6 +1859,79 @@ function handleSlashCommand(msg, msgs, agent){
       dp.innerHTML='<span style="color:var(--green)">&#9889;</span> Dieter Task #'+t.id+' gestartet: '+esc(rest)+'<br><span style="color:var(--tx2);font-size:12px">Laeuft im Hintergrund. Ergebnis in Agent-Detail sichtbar.</span>';
       if(typeof loadAll==='function') loadAll();
     }).catch(function(e){ dp.style.color='var(--red)'; dp.textContent='Fehler: '+e.message; });
+    return true;
+  }
+    if(cmd==='status'){
+    var sp=appendChatMsg(msgs,'<span class="thinking-dots"><span></span><span></span><span></span></span> lade Status...');
+    api('/api/organisator/slash/status').then(function(d){
+      var h='<b>System Status</b><br>';
+      h+='<b>Agents aktiv:</b> '+d.active_agents+'<br>';
+      h+='<b>Disk:</b> '+esc(d.disk)+'<br>';
+      h+='<b>Prozesse:</b><br>';
+      (d.procs||[]).forEach(function(p){h+='  '+esc(p.name)+': '+p.status+' ('+p.memory+', '+p.restarts+' restarts)<br>';});
+      sp.innerHTML=h;
+    }).catch(function(e){sp.style.color='var(--red)';sp.textContent='Fehler: '+e.message;});
+    return true;
+  }
+  if(cmd==='logs'){
+    var lp=appendChatMsg(msgs,'<span class="thinking-dots"><span></span><span></span><span></span></span> lade Logs...');
+    api('/api/organisator/slash/logs').then(function(rows){
+      if(!rows.length){lp.innerHTML='Keine Logs.';return;}
+      var h='<b>Letzte 15 Heartbeats:</b><br>';
+      rows.forEach(function(r){h+='#'+r.agent_id+' '+r.status+' ('+r.model+') '+new Date(r.created_at).toLocaleTimeString()+'<br>';});
+      lp.innerHTML=h;
+    }).catch(function(e){lp.style.color='var(--red)';lp.textContent='Fehler: '+e.message;});
+    return true;
+  }
+  if(cmd==='deploy'){
+    var dep=appendChatMsg(msgs,'<span class="thinking-dots"><span></span><span></span><span></span></span> Deploy laeuft...');
+    api('/api/organisator/slash/deploy',{method:'POST'}).then(function(d){
+      dep.innerHTML='<span style="color:var(--green)">&#9989;</span> <b>Deploy OK</b><br><code>'+esc(d.pull)+'</code>';
+    }).catch(function(e){dep.style.color='var(--red)';dep.textContent='Deploy Fehler: '+e.message;});
+    return true;
+  }
+  if(cmd==='agents'){
+    var ap=appendChatMsg(msgs,'<span class="thinking-dots"><span></span><span></span><span></span></span> lade Agents...');
+    api('/api/organisator/slash/agents').then(function(rows){
+      var h='<b>Agents ('+rows.length+'):</b><br>';
+      rows.forEach(function(a){h+='#'+a.id+' <b>'+esc(a.name)+'</b> ['+a.status+'] '+esc(a.role||'')+' ('+esc(a.model||'')+')<br>';});
+      ap.innerHTML=h;
+    }).catch(function(e){ap.style.color='var(--red)';ap.textContent='Fehler: '+e.message;});
+    return true;
+  }
+  if(cmd==='kill'){
+    var tid=parseInt(rest);
+    if(!tid){appendChatMsg(msgs,'Nutzung: <code>/kill &lt;task-id&gt;</code>','var(--text-muted)');return true;}
+    var kp=appendChatMsg(msgs,'<span class="thinking-dots"><span></span><span></span><span></span></span> breche Task ab...');
+    api('/api/organisator/slash/kill',{method:'POST',body:JSON.stringify({task_id:tid})}).then(function(d){
+      kp.innerHTML='<span style="color:var(--red)">&#10060;</span> Task #'+d.id+' abgebrochen.';
+      if(typeof loadAll==='function') loadAll();
+    }).catch(function(e){kp.style.color='var(--red)';kp.textContent='Fehler: '+e.message;});
+    return true;
+  }
+  if(cmd==='priority'){
+    var pp=rest.split(/\s+/);var ptid=parseInt(pp[0]);var pval=parseInt(pp[1]);
+    if(!ptid||isNaN(pval)){appendChatMsg(msgs,'Nutzung: <code>/priority &lt;task-id&gt; &lt;1-10&gt;</code>','var(--text-muted)');return true;}
+    var prp=appendChatMsg(msgs,'<span class="thinking-dots"><span></span><span></span><span></span></span> setze Prioritaet...');
+    api('/api/organisator/slash/priority',{method:'POST',body:JSON.stringify({task_id:ptid,priority:pval})}).then(function(d){
+      prp.innerHTML='Task #'+d.id+' Prioritaet auf <b>'+d.priority+'</b> gesetzt.';
+    }).catch(function(e){prp.style.color='var(--red)';prp.textContent='Fehler: '+e.message;});
+    return true;
+  }
+  if(cmd==='merge'){
+    var mtid=parseInt(rest);
+    if(!mtid){appendChatMsg(msgs,'Nutzung: <code>/merge &lt;task-id&gt;</code>','var(--text-muted)');return true;}
+    var mp=appendChatMsg(msgs,'<span class="thinking-dots"><span></span><span></span><span></span></span> merge laeuft...');
+    api('/api/organisator/slash/merge',{method:'POST',body:JSON.stringify({task_id:mtid})}).then(function(d){
+      mp.innerHTML='<span style="color:var(--green)">&#9989;</span> Branch <b>'+esc(d.merged)+'</b> gemerged.<br><code>'+esc(d.output)+'</code>';
+    }).catch(function(e){mp.style.color='var(--red)';mp.textContent='Merge Fehler: '+e.message;});
+    return true;
+  }
+  if(cmd==='stats'){
+    var stp=appendChatMsg(msgs,'<span class="thinking-dots"><span></span><span></span><span></span></span> lade Stats...');
+    api('/api/organisator/slash/stats').then(function(d){
+      stp.innerHTML='<b>24h Stats:</b><br>Completed: '+d.completed_24h+'<br>Failed: '+d.failed_24h+'<br>Offen: '+d.open_now+'<br>Kosten: '+parseFloat(d.cost_24h).toFixed(4)+' USD';
+    }).catch(function(e){stp.style.color='var(--red)';stp.textContent='Fehler: '+e.message;});
     return true;
   }
     appendChatMsg(msgs,'Unbekannter Befehl: <code>'+esc(msg)+'</code> — <code>/help</code> fuer Liste','var(--text-muted)');

@@ -427,6 +427,91 @@ router.post("/direct-exec", async function(req, res) {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+
+// === SLASH COMMAND ROUTES ===
+// GET /slash/status — system health
+router.get("/slash/status", async function(req, res) {
+  try {
+    var cp = require("child_process");
+    var pm2 = ""; try { pm2 = cp.execSync("pm2 jlist 2>/dev/null", { timeout: 5000 }).toString(); } catch(e) { pm2 = "[]"; }
+    var procs = JSON.parse(pm2).map(function(p) { return { name: p.name, status: p.pm2_env.status, uptime: p.pm2_env.pm_uptime, memory: Math.round((p.monit.memory || 0) / 1048576) + "MB", restarts: p.pm2_env.restart_time }; });
+    var disk = ""; try { disk = cp.execSync("df -h / | tail -1", { timeout: 3000 }).toString().trim(); } catch(e) {}
+    var db = await queryOne("SELECT COUNT(*)::int as total FROM blun_agents WHERE status IN ('active','working')");
+    res.json({ procs: procs, disk: disk, active_agents: db ? db.total : 0 });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /slash/logs — last livefeed entries
+router.get("/slash/logs", async function(req, res) {
+  try {
+    var rows = await query("SELECT id, agent_id, status, model, created_at FROM agent_heartbeats ORDER BY created_at DESC LIMIT 15");
+    res.json(rows);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /slash/deploy — git pull + pm2 restart
+router.post("/slash/deploy", async function(req, res) {
+  try {
+    var cp = require("child_process");
+    var pull = cp.execSync("cd /root/blun && git pull pro admin-arch-base 2>&1", { timeout: 15000, env: Object.assign({}, process.env, { BLUN_DEPLOYER: "dieter" }) }).toString();
+    var restart = cp.execSync("pm2 restart blun 2>&1", { timeout: 10000 }).toString();
+    res.json({ pull: pull.trim(), restart: restart.trim() });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /slash/agents — all agents overview
+router.get("/slash/agents", async function(req, res) {
+  try {
+    var rows = await query("SELECT id, name, role, status, model FROM blun_agents ORDER BY id");
+    res.json(rows);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /slash/kill — cancel a stuck task
+router.post("/slash/kill", async function(req, res) {
+  try {
+    var { task_id } = req.body;
+    if (!task_id) return res.status(400).json({ error: "task_id required" });
+    var row = await queryOne("UPDATE agent_tasks SET status='failed', result=$1, completed_at=NOW() WHERE id=$2 AND status IN ('processing','in_progress','pending') RETURNING id, status",
+      [JSON.stringify({ killed_by: "slash_command" }), task_id]);
+    if (!row) return res.status(404).json({ error: "Task not found or already done" });
+    res.json(row);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /slash/priority — set task priority
+router.post("/slash/priority", async function(req, res) {
+  try {
+    var { task_id, priority } = req.body;
+    if (!task_id || priority === undefined) return res.status(400).json({ error: "task_id and priority required" });
+    var row = await queryOne("UPDATE agent_tasks SET priority=$1, updated_at=NOW() WHERE id=$2 RETURNING id, priority", [parseInt(priority), task_id]);
+    if (!row) return res.status(404).json({ error: "Task not found" });
+    res.json(row);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /slash/merge — merge agent branch
+router.post("/slash/merge", async function(req, res) {
+  try {
+    var { task_id } = req.body;
+    if (!task_id) return res.status(400).json({ error: "task_id required" });
+    var task = await queryOne("SELECT t.*, a.name as agent_name FROM agent_tasks t JOIN blun_agents a ON a.id = t.agent_id WHERE t.id = $1", [task_id]);
+    if (!task) return res.status(404).json({ error: "Task not found" });
+    var cp = require("child_process");
+    var branch = "agent/" + (task.agent_name || "unknown").toLowerCase().replace(/[^a-z0-9-]/g, "-");
+    var result = cp.execSync("cd /root/blun && BLUN_DEPLOYER=dieter git merge " + branch + " --no-edit 2>&1", { timeout: 15000, env: Object.assign({}, process.env, { BLUN_DEPLOYER: "dieter" }) }).toString();
+    res.json({ merged: branch, output: result.trim() });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /slash/stats — completion stats
+router.get("/slash/stats", async function(req, res) {
+  try {
+    var stats = await queryOne("SELECT (SELECT COUNT(*)::int FROM agent_tasks WHERE status='completed' AND created_at > NOW()-INTERVAL '24 hours') as completed_24h, (SELECT COUNT(*)::int FROM agent_tasks WHERE status='failed' AND created_at > NOW()-INTERVAL '24 hours') as failed_24h, (SELECT COUNT(*)::int FROM agent_tasks WHERE status IN ('pending','processing','in_progress')) as open_now, (SELECT COALESCE(SUM(cost),0)::numeric FROM agent_heartbeats WHERE created_at > NOW()-INTERVAL '24 hours') as cost_24h");
+    res.json(stats);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 require("./upload-route")(router, query);
 require("./skills-route")(router, query, queryOne);
 
