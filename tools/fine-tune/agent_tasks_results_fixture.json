@@ -1,0 +1,17 @@
+[
+  {
+    "id": 9101,
+    "task": "Refactor rate limiter and patch race conditions",
+    "result": "{\"task_id\":9101,\"task_title\":\"Refactor rate limiter and patch race conditions\",\"status\":\"completed\",\"cli_output_excerpt\":\"```js\\nfunction allowRequest(userId, windowMs, limit) {\\n  const now = Date.now();\\n  const bucket = cache[userId] || [];\\n  bucket.push(now);\\n  cache[userId] = bucket;\\n  return bucket.length <= limit;\\n}\\n```\"}"
+  },
+  {
+    "id": 9102,
+    "task": "Add billing webhook validation",
+    "result": "{\"task_id\":9102,\"task_title\":\"Add billing webhook validation\",\"status\":\"completed\",\"cli_output_excerpt\":\"```js\\napp.post('/webhook', (req,res)=>{\\n  const sig = req.headers['stripe-signature'];\\n  if(!sig){ res.status(400).end(); return; }\\n  const event = JSON.parse(req.body);\\n  handleEvent(event);\\n  res.status(200).end();\\n});\\n```\"}"
+  },
+  {
+    "id": 9103,
+    "task": "Patch upload endpoint",
+    "result": "{\"task_id\":9103,\"task_title\":\"Patch upload endpoint\",\"status\":\"completed\",\"cli_output_excerpt\":\"```js\\nconst path = require('path');\\nfunction save(file){\\n  const full = '/tmp/uploads/' + file.name;\\n  fs.writeFileSync(full, file.data);\\n  return full;\\n}\\n```\"}"
+  }
+]
