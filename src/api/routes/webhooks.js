@@ -12,7 +12,7 @@ var tableReady = false;
 var tableUnsupported = false;
 
 function generateId() {
-  if (crypto.randomUUID) {
+  if (typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
   }
   return crypto.randomBytes(16).toString("hex");
@@ -78,13 +78,13 @@ function buildPublicSubscription(row) {
 }
 
 function buildCreatedSubscription(row) {
-  var subscription = buildPublicSubscription(row);
-  if (!subscription) {
+  var out = buildPublicSubscription(row);
+  if (!out) {
     return null;
   }
 
-  subscription.secret = row.secret;
-  return subscription;
+  out.secret = row.secret;
+  return out;
 }
 
 async function ensureTable() {
@@ -207,7 +207,7 @@ async function updateTestStatus(subscription, statusText) {
         IN_MEMORY_SUBSCRIPTIONS[i].last_test_at = new Date().toISOString();
         IN_MEMORY_SUBSCRIPTIONS[i].last_test_status = statusText;
         IN_MEMORY_SUBSCRIPTIONS[i].updated_at = new Date().toISOString();
-        break;
+        return;
       }
     }
     return;
@@ -232,12 +232,14 @@ function createSignature(secret, rawPayload) {
 }
 
 router.post("/webhooks/subscribe", async function(req, res) {
-  var targetUrl = pickTargetUrl(req.body);
+  var body = req.body || {};
+  var targetUrl = pickTargetUrl(body);
+
   if (!isValidHttpUrl(targetUrl)) {
     return res.status(400).json({ error: "Valid target URL is required (http/https)." });
   }
 
-  var eventType = normalizeEventType(req.body && (req.body.event_type || req.body.event));
+  var eventType = normalizeEventType(body.event_type || body.event);
   if (!isAllowedEventType(eventType)) {
     return res.status(400).json({
       error: "Unsupported event type.",
@@ -245,12 +247,14 @@ router.post("/webhooks/subscribe", async function(req, res) {
     });
   }
 
+  var userSecret = typeof body.secret === "string" ? body.secret.trim() : "";
+
   var subscription = {
     id: generateId(),
     target_url: targetUrl,
     event_type: eventType,
-    secret: req.body && typeof req.body.secret === "string" && req.body.secret.trim() ? req.body.secret.trim() : generateSecret(),
-    enabled: !(req.body && req.body.enabled === false),
+    secret: userSecret || generateSecret(),
+    enabled: body.enabled !== false,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     last_test_at: null,
@@ -281,8 +285,9 @@ router.post("/webhooks/test", async function(req, res) {
   var subscription = null;
 
   try {
-    if (input.subscription_id || input.id) {
-      subscription = await findSubscriptionById(input.subscription_id || input.id);
+    var subscriptionId = input.subscription_id || input.id;
+    if (subscriptionId) {
+      subscription = await findSubscriptionById(subscriptionId);
       if (!subscription) {
         return res.status(404).json({ error: "Subscription not found." });
       }
@@ -305,7 +310,7 @@ router.post("/webhooks/test", async function(req, res) {
       id: null,
       target_url: directUrl,
       event_type: DEFAULT_EVENT_TYPE,
-      secret: input.secret || "",
+      secret: typeof input.secret === "string" ? input.secret : "",
       enabled: true
     };
   }
