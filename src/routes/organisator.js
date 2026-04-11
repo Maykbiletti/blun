@@ -27,7 +27,7 @@ function getCompanyId(req) {
   }
   var cid = req.headers["x-company-id"] || req.query.company_id;
   if (cid) return parseInt(cid);
-  if (req.activeCompanyId) return req.activeCompanyId;
+  // admin: skip stale activeCompanyId fallback so all agents are visible
   return null;
 }
 
@@ -132,6 +132,14 @@ router.get("/agents", async function(req, res) {
         var qs = await queryOne("SELECT COUNT(*)::int as c FROM agent_tasks WHERE agent_id = $1 AND status = 'pending'", [a.id]);
         a.queue_size = qs ? qs.c : 0;
       } catch(e1) { a.queue_size = 0; }
+      try {
+        var dt = await queryOne("SELECT COUNT(*)::int as c FROM agent_tasks WHERE agent_id = $1 AND status = 'completed' AND LENGTH(result) > 200 AND COALESCE((result::jsonb->>'changed_files_count')::int,0) >= 1 AND created_at >= NOW() - INTERVAL '24 hours'", [a.id]);
+        a.completed_today = dt ? dt.c : 0;
+      } catch(eX) { a.completed_today = 0; }
+      try {
+        var tt = await queryOne("SELECT COUNT(*)::int as c FROM agent_tasks WHERE agent_id = $1", [a.id]);
+        a.tasks_total = tt ? tt.c : 0;
+      } catch(eY) { a.tasks_total = 0; }
       try {
         var running = await queryOne("SELECT id, task, created_at FROM agent_tasks WHERE agent_id = $1 AND status IN ('processing','in_progress') ORDER BY created_at DESC LIMIT 1", [a.id]);
         if (running) {
@@ -350,7 +358,7 @@ router.get("/stats", async function(req, res) {
     if (!uid) return res.status(401).json({ error: "auth required" });
     var [agents, tasks, costs, companies] = await Promise.all([
       query("SELECT a.status, COUNT(*)::int as count FROM blun_agents a JOIN company_members cm ON cm.company_id = a.company_id WHERE cm.user_id = $1 GROUP BY a.status", [uid]),
-      queryOne("SELECT (SELECT COUNT(*)::int FROM agent_tasks at JOIN blun_agents a ON a.id = at.agent_id JOIN company_members cm ON cm.company_id = a.company_id WHERE cm.user_id = $1 AND at.status = 'completed') as total", [uid]),
+      queryOne("SELECT (SELECT COUNT(*)::int FROM agent_tasks at JOIN blun_agents a ON a.id = at.agent_id JOIN company_members cm ON cm.company_id = a.company_id WHERE cm.user_id = $1 AND at.status = 'completed' AND LENGTH(at.result) > 200 AND COALESCE((at.result::jsonb->>'changed_files_count')::int,0) >= 1) as total", [uid]),
       queryOne("SELECT COALESCE(SUM(h.cost),0)::numeric as total FROM agent_heartbeats h JOIN blun_agents a ON a.id = h.agent_id JOIN company_members cm ON cm.company_id = a.company_id WHERE cm.user_id = $1 AND h.created_at > NOW() - INTERVAL '30 days'", [uid]),
       queryOne("SELECT COUNT(*)::int as total FROM company_members WHERE user_id = $1", [uid]),
     ]);
@@ -553,10 +561,10 @@ router.post("/agents/:id/merge", async function(req, res) {
 router.get("/kanban", async function(req, res) {
   try {
     var cid = getCompanyId(req);
-    var sql = "SELECT t.id, t.agent_id, t.task, t.status, t.score, t.created_at, t.completed_at, a.name as agent_name, a.role as agent_role FROM agent_tasks t JOIN blun_agents a ON t.agent_id = a.id";
+    var sql = "SELECT t.id, t.agent_id, t.task, t.status, t.score, t.created_at, t.completed_at, a.name as agent_name, a.role as agent_role FROM agent_tasks t JOIN blun_agents a ON t.agent_id = a.id WHERE (t.status != 'completed' OR (LENGTH(t.result) > 200 AND COALESCE((t.result::jsonb->>'changed_files_count')::int,0) >= 1))";
     var params = [];
-    if (cid) { sql += " WHERE t.company_id = $1"; params.push(cid); }
-    sql += " ORDER BY t.created_at DESC";
+    if (cid) { sql += " AND t.company_id = $1"; params.push(cid); }
+    sql += " ORDER BY (CASE WHEN t.status = 'pending' THEN t.priority ELSE 0 END) DESC, t.created_at DESC";
     var tasks = await query(sql, params);
     res.json(tasks);
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -568,6 +576,90 @@ router.put("/agents/:agentId/tasks/:taskId", async function(req, res) {
     if (["pending","processing","completed","failed"].indexOf(status) === -1) return res.status(400).json({ error: "Invalid status" });
     await query("UPDATE agent_tasks SET status = $1, updated_at = NOW() WHERE id = $2", [status, req.params.taskId]);
     res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+
+router.get("/tasks/:id/details", async function(req, res) {
+  try {
+    var cid = getCompanyId(req);
+    var sql = "SELECT t.id, t.agent_id, t.task, t.status, t.score, t.result, t.feedback, t.created_at, t.completed_at, t.updated_at, t.company_id, t.priority, a.name as agent_name, a.role as agent_role, a.adapter_type as agent_adapter, a.model as agent_model FROM agent_tasks t LEFT JOIN blun_agents a ON t.agent_id = a.id WHERE t.id = $1";
+    var params = [req.params.id];
+    if (cid) { sql += " AND (t.company_id = $2 OR t.company_id IS NULL)"; params.push(cid); }
+    var t = await queryOne(sql, params);
+    if (!t) return res.status(404).json({ error: "task not found" });
+    var parsed = null;
+    if (t.result) { try { parsed = JSON.parse(t.result); } catch(e) { parsed = { raw_output: String(t.result).substring(0, 4000) }; } }
+    t.parsed = parsed;
+    res.json(t);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+
+router.post("/tasks/reorder", async function(req, res) {
+  try {
+    var ids = req.body.ids; // array of task ids in desired order (top first = highest priority)
+    if (!Array.isArray(ids)) return res.status(400).json({ error: "ids array required" });
+    var n = ids.length;
+    for (var i = 0; i < n; i++) {
+      var prio = n - i; // top gets highest
+      await query("UPDATE agent_tasks SET priority = $1, updated_at = NOW() WHERE id = $2", [prio, ids[i]]);
+    }
+    res.json({ ok: true, count: n });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+
+router.post("/tasks/:id/retry", async function(req, res) {
+  try {
+    var newAgent = req.body && req.body.agent_id ? parseInt(req.body.agent_id, 10) : null;
+    if (newAgent) {
+      await query("UPDATE agent_tasks SET status='pending', feedback=NULL, result=NULL, agent_id=$1, updated_at=NOW() WHERE id=$2", [newAgent, req.params.id]);
+    } else {
+      await query("UPDATE agent_tasks SET status='pending', feedback=NULL, result=NULL, updated_at=NOW() WHERE id=$1", [req.params.id]);
+    }
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+
+router.get("/code-feed", async function(req, res) {
+  try {
+    var cp = require("child_process");
+    cp.exec("cd /root/blun && git log -30 --pretty=format:'%H|%an|%ar|%s' --name-status", { maxBuffer: 4*1024*1024 }, function(err, stdout) {
+      if (err) return res.status(500).json({ error: err.message });
+      var commits = [];
+      var current = null;
+      stdout.split(String.fromCharCode(10)).forEach(function(line) {
+        if (!line) { if (current) { commits.push(current); current = null; } return; }
+        if (line.indexOf("|") !== -1 && line.split("|").length >= 4) {
+          if (current) commits.push(current);
+          var parts = line.split("|");
+          current = { sha: parts[0], author: parts[1], when: parts[2], msg: parts.slice(3).join("|"), files: [] };
+        } else if (current && /^[A-Z]	/.test(line)) {
+          var p = line.split("	");
+          current.files.push({ status: p[0], path: p[1] });
+        }
+      });
+      if (current) commits.push(current);
+      res.json(commits);
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+
+router.get("/next-deploy", async function(req, res) {
+  try {
+    var fs = require("fs");
+    var INTERVAL = 150 * 60 * 1000; // 2.5h
+    var last = 0;
+    try { last = parseInt(fs.readFileSync("/tmp/blun_last_deploy.txt","utf8"),10) || 0; } catch(e) {}
+    var now = Date.now();
+    var nextAt = last > 0 ? last + INTERVAL : now + INTERVAL;
+    var msLeft = Math.max(0, nextAt - now);
+    var todayStart = new Date(); todayStart.setHours(0,0,0,0);
+    var dt = await query("SELECT COUNT(*)::int as c FROM agent_tasks WHERE status='completed' AND COALESCE((result::jsonb->>'deployed')::text,'')='true' AND completed_at >= $1", [todayStart]);
+    res.json({ next_deploy_at: nextAt, ms_left: msLeft, deployed_today: (dt && dt.c) || 0, interval_ms: INTERVAL });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 

@@ -448,6 +448,7 @@ Livelog
 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
 <span>Projekte</span>
 </div>
+<div class="nav-item" data-page="tagebuch" onclick="showPage('tagebuch')" aria-label="Code-Tagebuch"><span style="font-size:14px">📓</span> <span class="nav-label">Tagebuch</span></div>
 <div class="nav-item" data-page="kanban" onclick="showPage('kanban')" aria-label="Kanban Board">
 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="5" height="18" rx="1"/><rect x="10" y="3" width="5" height="12" rx="1"/><rect x="17" y="3" width="5" height="8" rx="1"/></svg>
 <span>Kanban</span>
@@ -823,6 +824,10 @@ Profil
 <div class="page" id="page-projects" style="overflow:hidden;padding:0">
 <div id="projectsContainer" style="height:100%;background:#0d1117;display:flex;flex-direction:column"></div>
 </div>
+<div class="page" id="page-tagebuch" style="overflow:hidden;padding:0">
+<div id="tagebuchContainer" style="height:100%;background:#0d1117"></div>
+</div>
+
 
 <div class="page" id="page-settings" style="overflow-y:auto;padding:16px">
 <div class="card" style="max-width:600px">
@@ -1058,6 +1063,7 @@ function closeMobileSidebar() {
 }
 function showPage(name) {
   if(name==='kanban'&&typeof renderKanban==='function'){setTimeout(function(){renderKanban('kanbanContainer');},50);}
+  if(name==='tagebuch'&&typeof renderCodeTagebuch==='function'){setTimeout(function(){renderCodeTagebuch();},50);}
   if(name==='projects'&&typeof renderProjectsView==='function'){setTimeout(function(){renderProjectsView();},50);}
   if(name !== 'agents') {
     // Close workspace when leaving agents page
@@ -3079,5 +3085,66 @@ window.toggleNotificationCenter = function() {
 };
 </script>
 
+
+
+
+<script>
+(function(){
+  var __tagebuchHash = null;
+  function escT(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+  function statusInfoT(st){
+    if(st==='A')return{label:'NEU',color:'#22c55e',bg:'rgba(34,197,94,0.12)'};
+    if(st==='M')return{label:'GEAEND',color:'#f59e0b',bg:'rgba(245,158,11,0.12)'};
+    if(st==='D')return{label:'GELOESCHT',color:'#ef4444',bg:'rgba(239,68,68,0.12)'};
+    if(st==='R'||(st&&st.indexOf('R')===0))return{label:'UMBEN',color:'#3b82f6',bg:'rgba(59,130,246,0.12)'};
+    return{label:st||'?',color:'#94a3b8',bg:'#262640'};
+  }
+  window.renderCodeTagebuch = function(){
+    var c = document.getElementById('tagebuchContainer');
+    if(!c) return;
+    var headers = { 'Content-Type':'application/json' };
+    var t = localStorage.getItem('blun_token'); if(t) headers['Authorization']='Bearer '+t;
+    fetch('/api/organisator/code-feed',{headers:headers}).then(function(r){return r.json();}).then(function(commits){
+      if(commits.error){c.innerHTML='<div style="color:#ef4444;padding:20px">'+commits.error+'</div>';return;}
+      var fp = commits.map(function(co){return co.sha;}).join(',');
+      if(fp === __tagebuchHash) return;
+      __tagebuchHash = fp;
+      var html = '<div style="padding:16px;overflow-y:auto;height:100%;font-family:system-ui">';
+      html += '<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px"><h2 style="color:#fff;margin:0;font-size:18px">Code-Tagebuch</h2><span style="color:#64748b;font-size:11px">Letzte 30 Commits aus /root/blun</span></div>';
+      commits.forEach(function(co){
+        var nNew = co.files.filter(function(f){return f.status==='A';}).length;
+        var nMod = co.files.filter(function(f){return f.status==='M';}).length;
+        var nDel = co.files.filter(function(f){return f.status==='D';}).length;
+        html += '<div style="background:#16213e;border:1px solid #2a2a4a;border-radius:8px;padding:12px 14px;margin-bottom:10px;border-left:3px solid '+(nNew>0?'#22c55e':nMod>0?'#f59e0b':'#475569')+'">';
+        html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:6px">';
+        html += '<div style="font-size:13px;color:#e2e8f0;font-weight:500;line-height:1.3;flex:1">'+escT(co.msg)+'</div>';
+        html += '<div style="font-family:monospace;font-size:10px;color:#22c55e;background:#0d1117;padding:3px 7px;border-radius:4px;flex-shrink:0">'+escT(co.sha.substring(0,8))+'</div></div>';
+        html += '<div style="font-size:11px;color:#64748b;margin-bottom:8px">'+escT(co.author)+' &middot; '+escT(co.when);
+        if(nNew>0) html += ' &middot; <span style="color:#22c55e">+'+nNew+' neu</span>';
+        if(nMod>0) html += ' &middot; <span style="color:#f59e0b">~'+nMod+' geaend</span>';
+        if(nDel>0) html += ' &middot; <span style="color:#ef4444">-'+nDel+' geloesht</span>';
+        html += '</div>';
+        if(co.files && co.files.length){
+          html += '<div style="display:flex;flex-direction:column;gap:3px;margin-top:6px">';
+          co.files.slice(0,12).forEach(function(f){
+            var info = statusInfoT(f.status);
+            html += '<div style="display:flex;align-items:center;gap:8px;font-size:11px;background:'+info.bg+';padding:4px 8px;border-radius:4px"><span style="color:'+info.color+';font-weight:600;font-size:9px;min-width:55px">'+info.label+'</span><span style="color:#cbd5e1;font-family:monospace">'+escT(f.path)+'</span></div>';
+          });
+          if(co.files.length>12) html += '<div style="font-size:10px;color:#64748b;margin-top:2px">... '+(co.files.length-12)+' weitere</div>';
+          html += '</div>';
+        }
+        html += '</div>';
+      });
+      html += '</div>';
+      c.innerHTML = html;
+    }).catch(function(e){c.innerHTML='<div style="color:#ef4444;padding:20px">Fehler: '+e.message+'</div>';});
+  };
+  setInterval(function(){
+    var pp = document.getElementById('page-tagebuch');
+    if(!pp || pp.style.display==='none' || pp.offsetParent===null) return;
+    if(typeof renderCodeTagebuch==='function') renderCodeTagebuch();
+  }, 15000);
+})();
+</script>
 
 </body></html><!-- test -->

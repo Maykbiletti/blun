@@ -223,7 +223,7 @@ function autoQaCheck(filePath, content) {
   // 4. Self-rendering check DISABLED — body.appendChild is legitimate for toasts/modals/onboarding overlays
 
   // 5. Protected file check
-  var protectedFiles = ["agent-engine.js","code-tools.js","server.js",".env","package.json","package-lock.json","login.html","dieter-daemon.js","auth.js","db.js","blun.db"];
+  var protectedFiles = ["agent-engine.js","code-tools.js","server.js",".env","package.json","package-lock.json","login.html","dieter-daemon.js","auth.js","db.js","blun.db","task-runner.js"];
   var basename = filePath.split("/").pop();
   if (protectedFiles.indexOf(basename) !== -1) {
     issues.push("PROTECTED file: " + basename);
@@ -568,7 +568,7 @@ async function autoIntegrate(db) {
       try {
         var mergeOut = "";
         try {
-          mergeOut = execSync("cd /root/blun && git merge " + branch + " --no-edit 2>&1").toString();
+          mergeOut = execSync("cd /root/blun && git merge -X theirs " + branch + " --no-edit 2>&1").toString();
         } catch(mergeExecErr) {
           // execSync throws on non-zero exit — ALWAYS abort to clean up half-merge state
           try { execSync("cd /root/blun && git merge --abort 2>/dev/null"); } catch(eAbort) {}
@@ -609,7 +609,7 @@ async function autoIntegrate(db) {
         }
 
         execSync("cd " + dir + " && git reset --hard main 2>/dev/null");
-        await db.query("UPDATE agent_tasks SET status = 'completed', completed_at = NOW() WHERE agent_id = $1 AND status IN ('processing', 'in_progress')", [agent.id]);
+        await db.query("UPDATE agent_tasks SET status = 'completed', completed_at = NOW(), result = COALESCE(result::jsonb, '{}'::jsonb) || jsonb_build_object('merged', true, 'merged_at', to_char(NOW(),'YYYY-MM-DD\"T\"HH24:MI:SS')) WHERE agent_id = $1 AND status IN ('processing', 'in_progress')", [agent.id]);
       } catch(mergeErr) {
         try { execSync("cd /root/blun && git merge --abort 2>/dev/null"); } catch(eA) {}
         log("Merge error " + agent.name + ": " + mergeErr.message);
@@ -625,6 +625,12 @@ async function autoIntegrate(db) {
       execSync("cd /root/blun && git push pro main 2>&1");
       execSync("pm2 restart blun --silent 2>/dev/null");
       log("DEPLOYED: " + merged.join(", "));
+      try {
+        for (var dn = 0; dn < merged.length; dn++) {
+          var nm = merged[dn];
+          await db.query("UPDATE agent_tasks SET result = COALESCE(result::jsonb, '{}'::jsonb) || jsonb_build_object('deployed', true, 'deployed_at', to_char(NOW(),'YYYY-MM-DD\"T\"HH24:MI:SS')) WHERE id = (SELECT t.id FROM agent_tasks t JOIN blun_agents a ON a.id = t.agent_id WHERE a.name = $1 AND t.status = 'completed' AND COALESCE((t.result::jsonb->>'merged')::text,'')='true' AND COALESCE((t.result::jsonb->>'deployed')::text,'') != 'true' ORDER BY t.completed_at DESC LIMIT 1)", [nm]);
+        }
+      } catch(de) { log("deployed-flag err: " + de.message); }
       await sendTelegram("Auto-Deploy: " + merged.length + " Agent(s) gemerged: " + merged.join(", "));
     } catch(pushErr) {
       log("Push/restart error: " + pushErr.message);
@@ -673,7 +679,7 @@ async function runCheck() {
       report.push(taskResult.msg);
 
       if (isDeployCycle) {
-        lastDeployTime = now;
+        lastDeployTime = now; try { require('fs').writeFileSync('/tmp/blun_last_deploy.txt', String(now)); } catch(e) {}
         log("=== DEPLOY CYCLE (every 2.5h) ===");
 
         try {
@@ -742,4 +748,88 @@ async function runCheck() {
 log('Dieter CEO Daemon starting...');
 log('Check interval: ' + (CHECK_INTERVAL / 1000) + 's');
 runCheck();
+
+// === AUTO-RETRY LOOP (every 60s) ===
+// Requeues failed tasks max 3x. Retry 1: same agent. Retry 2: any other agent. Retry 3: any other agent.
+async function autoRetryFailed() {
+  try {
+    var r = await taskPool.query("SELECT t.id, t.agent_id, t.company_id, COALESCE(t.feedback,'') as fb, a.role as role FROM agent_tasks t LEFT JOIN blun_agents a ON a.id = t.agent_id WHERE t.status='failed' AND t.created_at > NOW() - INTERVAL '24 hours' LIMIT 100");
+    var requeued = 0;
+    for (var i = 0; i < r.rows.length; i++) {
+      var row = r.rows[i];
+      var retries = 0;
+      var m = row.fb && row.fb.match(/\[retry:(\d+)\]/);
+      if (m) retries = parseInt(m[1], 10);
+      if (retries >= 3) continue;
+      var newAgentId = row.agent_id;
+      if (retries >= 1) {
+        // Pick any other active agent in the same company (or any if no company match)
+        var alt = await taskPool.query("SELECT id FROM blun_agents WHERE id != $1 AND status='active' AND ($2::int IS NULL OR company_id = $2 OR company_id IS NULL) ORDER BY RANDOM() LIMIT 1", [row.agent_id, row.company_id || null]);
+        if (alt.rows.length) newAgentId = alt.rows[0].id;
+      }
+      var newFb = (row.fb || '').replace(/\[retry:\d+\]/g, '').trim() + ' [retry:' + (retries + 1) + ']';
+      await taskPool.query("UPDATE agent_tasks SET status='pending', agent_id=$1, feedback=$2, result=NULL, updated_at=NOW() WHERE id=$3", [newAgentId, newFb.trim(), row.id]);
+      requeued++;
+    }
+    if (requeued > 0) console.log('[auto-retry] requeued ' + requeued + ' failed tasks');
+  } catch (e) { console.log('[auto-retry] err: ' + e.message); }
+}
+setInterval(autoRetryFailed, 60 * 1000);
+setTimeout(autoRetryFailed, 15 * 1000);
+
+
 setInterval(runCheck, CHECK_INTERVAL);
+
+// === GHOST SWEEPER (every 90s) ===
+// Tasks die >15min in processing haengen werden auf pending zurueckgesetzt und an einen anderen freien Agent verteilt.
+async function ghostSweep() {
+  try {
+    var r = await taskPool.query("SELECT t.id, t.agent_id, t.company_id, COALESCE(t.feedback,'') as fb FROM agent_tasks t WHERE t.status='processing' AND t.updated_at < NOW() - INTERVAL '15 minutes' LIMIT 50");
+    var n = 0;
+    for (var i = 0; i < r.rows.length; i++) {
+      var row = r.rows[i];
+      var ghosts = 0;
+      var m = row.fb && row.fb.match(/\[ghost:(\d+)\]/);
+      if (m) ghosts = parseInt(m[1], 10);
+      var newAgentId = row.agent_id;
+      // Nach 1. Ghost an anderen Agent
+      if (ghosts >= 1) {
+        var alt = await taskPool.query("SELECT id FROM blun_agents WHERE id != $1 AND status='active' AND ($2::int IS NULL OR company_id = $2 OR company_id IS NULL) ORDER BY RANDOM() LIMIT 1", [row.agent_id, row.company_id || null]);
+        if (alt.rows.length) newAgentId = alt.rows[0].id;
+      }
+      var newFb = (row.fb || '').replace(/\[ghost:\d+\]/g, '').trim() + ' [ghost:' + (ghosts + 1) + ']';
+      await taskPool.query("UPDATE agent_tasks SET status='pending', agent_id=$1, feedback=$2, result=NULL, updated_at=NOW() WHERE id=$3", [newAgentId, newFb.trim(), row.id]);
+      n++;
+    }
+    console.log('[ghost-sweep] tick n=' + n); if (n > 0) console.log('[ghost-sweep] requeued ' + n + ' stuck processing tasks');
+  } catch (e) { console.log('[ghost-sweep] err: ' + e.message); }
+}
+setInterval(ghostSweep, 60 * 1000);
+setTimeout(ghostSweep, 25 * 1000);
+
+// === GHOST COMPLETION SWEEPER (every 120s) ===
+// Tasks die als 'completed' markiert sind aber 0 geaenderte Dateien haben werden zurueck auf pending gesetzt und neu verteilt.
+async function ghostDoneSweep() {
+  try {
+    var r = await taskPool.query("SELECT t.id, t.agent_id, t.company_id, COALESCE(t.feedback,'') as fb FROM agent_tasks t WHERE t.status='completed' AND t.result IS NOT NULL AND COALESCE((t.result::jsonb->>'changed_files_count')::int,0) = 0 LIMIT 50");
+    var n = 0;
+    for (var i = 0; i < r.rows.length; i++) {
+      var row = r.rows[i];
+      var ghosts = 0;
+      var m = row.fb && row.fb.match(/\[ghostdone:(\d+)\]/);
+      if (m) ghosts = parseInt(m[1], 10);
+      if (ghosts >= 3) continue;
+      var newAgentId = row.agent_id;
+      if (ghosts >= 1) {
+        var alt = await taskPool.query("SELECT id FROM blun_agents WHERE id != $1 AND status='active' AND ($2::int IS NULL OR company_id = $2 OR company_id IS NULL) ORDER BY RANDOM() LIMIT 1", [row.agent_id, row.company_id || null]);
+        if (alt.rows.length) newAgentId = alt.rows[0].id;
+      }
+      var newFb = (row.fb || '').replace(/\[ghostdone:\d+\]/g, '').trim() + ' [ghostdone:' + (ghosts + 1) + ']';
+      await taskPool.query("UPDATE agent_tasks SET status='pending', agent_id=$1, feedback=$2, result=NULL, updated_at=NOW() WHERE id=$3", [newAgentId, newFb.trim(), row.id]);
+      n++;
+    }
+    console.log('[ghost-done] tick n=' + n); if (n > 0) console.log('[ghost-done] requeued ' + n + ' fake-completed tasks');
+  } catch (e) { console.log('[ghost-done] err: ' + e.message); }
+}
+setInterval(ghostDoneSweep, 90 * 1000);
+setTimeout(ghostDoneSweep, 35 * 1000);
