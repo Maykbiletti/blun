@@ -3187,4 +3187,51 @@ window.toggleNotificationCenter = function() {
 })();
 </script>
 
+
+<script>
+// Auto-Sidebar Enricher: zieht alle pages/*.html und haengt sie an die Sidebar an
+(function autoSidebarEnrich(){
+  function go() {
+    try {
+      var sidebar = document.querySelector('.sidebar nav, .sidebar-nav, nav.sidebar, aside nav');
+      if (!sidebar) sidebar = document.querySelector('.sidebar');
+      if (!sidebar) return;
+      var headers = { 'Content-Type': 'application/json' };
+      var token = localStorage.getItem('blun_token');
+      if (token) headers['Authorization'] = 'Bearer ' + token;
+      var cid = localStorage.getItem('blun_company');
+      if (cid) headers['x-company-id'] = cid;
+      fetch('/api/organisator/dashboard-pages', { headers: headers })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if (!d || !d.pages) return;
+          var sec = document.getElementById('autoPagesSection');
+          if (sec) sec.remove();
+          sec = document.createElement('div');
+          sec.id = 'autoPagesSection';
+          sec.style.cssText = 'margin-top:14px;padding-top:10px;border-top:1px solid #2a2a4a';
+          var head = document.createElement('div');
+          head.textContent = 'Mehr';
+          head.style.cssText = 'font-size:10px;text-transform:uppercase;color:#64748b;letter-spacing:0.5px;padding:6px 16px';
+          sec.appendChild(head);
+          d.pages.forEach(function(p){
+            var a = document.createElement('a');
+            a.href = p.url;
+            a.textContent = p.label;
+            a.style.cssText = 'display:block;padding:7px 16px;color:#94a3b8;text-decoration:none;font-size:13px;border-radius:4px;margin:1px 6px;transition:background 0.15s';
+            a.onmouseover = function(){ a.style.background = '#1e293b'; a.style.color = '#e2e8f0'; };
+            a.onmouseout = function(){ a.style.background = ''; a.style.color = '#94a3b8'; };
+            sec.appendChild(a);
+          });
+          sidebar.appendChild(sec);
+        }).catch(function(){});
+    } catch(e) {}
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ setTimeout(go, 800); });
+  else setTimeout(go, 800);
+  // re-run alle 60s damit neue Pages automatisch erscheinen
+  setInterval(go, 60000);
+})();
+</script>
+
 </body></html><!-- test -->

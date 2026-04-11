@@ -663,4 +663,20 @@ router.get("/next-deploy", async function(req, res) {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+
+router.get("/dashboard-pages", async function(req, res) {
+  try {
+    var fs = require("fs"); var path = require("path");
+    var dir = path.join(__dirname, "..", "..", "dashboard", "pages");
+    var files = fs.readdirSync(dir).filter(function(f) { return f.endsWith(".html"); });
+    var pages = files.map(function(f) {
+      var name = f.replace(".html","");
+      var pretty = name.replace(/-/g," ").replace(/\w/g, function(c){return c.toUpperCase();});
+      return { file: f, slug: name, label: pretty, url: "/dashboard/pages/" + f };
+    });
+    pages.sort(function(a,b){ return a.label.localeCompare(b.label); });
+    res.json({ pages: pages });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 module.exports = router;
