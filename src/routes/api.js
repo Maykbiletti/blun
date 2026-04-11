@@ -149,6 +149,117 @@ router.get('/costs', requireAuth, async function (req, res) {
   res.json(await query("SELECT agent_id, a.name AS agent_name, provider, model, SUM(input_tokens) AS total_input_tokens, SUM(output_tokens) AS total_output_tokens, SUM(cost_cents)::numeric AS total_cost_cents, COUNT(*)::int AS request_count FROM cost_events ce LEFT JOIN agents a ON a.id = ce.agent_id WHERE ce.created_at > NOW() - INTERVAL '1 day' * $1 GROUP BY agent_id, a.name, provider, model ORDER BY total_cost_cents DESC", [days]));
 });
 
+router.get('/activity-feed', requireAuth, async function (req, res) {
+  function toInt(value, fallback) {
+    var n = parseInt(value, 10);
+    if (!Number.isFinite(n)) return fallback;
+    return n;
+  }
+
+  function normalizeLimit(value) {
+    var n = toInt(value, 50);
+    if (n < 1) return 1;
+    if (n > 200) return 200;
+    return n;
+  }
+
+  function normalizeHours(value) {
+    var n = toInt(value, 24);
+    if (n < 1) return 1;
+    if (n > 168) return 168;
+    return n;
+  }
+
+  function normalizeRow(row, fallbackType) {
+    var createdAt = row.created_at || row.timestamp || new Date().toISOString();
+    var activityType = row.activity_type || row.type || fallbackType || 'system';
+    var agentName = row.agent_name || row.agent || row.source || 'System';
+    var message = row.message || row.description || row.title || 'Activity event';
+    var status = row.status || null;
+    return {
+      id: row.id || ('ev-' + Math.random().toString(36).slice(2)),
+      created_at: createdAt,
+      activity_type: activityType,
+      agent_name: agentName,
+      message: message,
+      status: status,
+      metadata: row.metadata || {}
+    };
+  }
+
+  async function runSafeQuery(sql, params, fallbackType) {
+    try {
+      var rows = await query(sql, params);
+      return rows.map(function (row) {
+        return normalizeRow(row, fallbackType);
+      });
+    } catch (e) {
+      return [];
+    }
+  }
+
+  try {
+    var limit = normalizeLimit(req.query.limit);
+    var hours = normalizeHours(req.query.hours);
+    var rowLimit = Math.max(20, Math.min(limit * 2, 300));
+
+    var recentTaskRows = await runSafeQuery(
+      "SELECT t.id::text AS id, t.created_at, 'task' AS activity_type, COALESCE(a.name, 'Agent #' || t.agent_id::text) AS agent_name, COALESCE(t.title, t.description, 'Task updated') AS message, t.status, jsonb_build_object('task_id', t.id, 'priority', t.priority) AS metadata FROM tasks t LEFT JOIN agents a ON a.id = t.agent_id WHERE t.created_at >= NOW() - INTERVAL '1 hour' * $1 ORDER BY t.created_at DESC LIMIT $2",
+      [hours, rowLimit],
+      'task'
+    );
+
+    var recentAgentTaskRows = await runSafeQuery(
+      "SELECT at.id::text AS id, at.created_at, 'agent_task' AS activity_type, COALESCE(ba.name, 'Agent #' || at.agent_id::text) AS agent_name, COALESCE(at.task, 'Agent task update') AS message, at.status, jsonb_build_object('task_id', at.id) AS metadata FROM agent_tasks at LEFT JOIN blun_agents ba ON ba.id = at.agent_id WHERE at.created_at >= NOW() - INTERVAL '1 hour' * $1 ORDER BY at.created_at DESC LIMIT $2",
+      [hours, rowLimit],
+      'agent_task'
+    );
+
+    var recentMessages = await runSafeQuery(
+      "SELECT cm.id::text AS id, cm.created_at, 'conversation' AS activity_type, COALESCE(a.name, 'Agent') AS agent_name, LEFT(COALESCE(cm.body, 'Conversation message'), 220) AS message, NULL::text AS status, jsonb_build_object('conversation_id', c.id, 'sender_type', cm.sender_type) AS metadata FROM conversation_messages cm LEFT JOIN conversations c ON c.id = cm.conversation_id LEFT JOIN agents a ON a.id = c.agent_id WHERE cm.created_at >= NOW() - INTERVAL '1 hour' * $1 ORDER BY cm.created_at DESC LIMIT $2",
+      [hours, rowLimit],
+      'conversation'
+    );
+
+    var recentHeartbeats = await runSafeQuery(
+      "SELECT h.id::text AS id, h.started_at AS created_at, 'heartbeat' AS activity_type, COALESCE(a.name, 'Agent #' || h.agent_id::text) AS agent_name, 'Heartbeat received' AS message, NULL::text AS status, jsonb_build_object('duration_ms', h.duration_ms, 'ok', h.ok) AS metadata FROM heartbeats h LEFT JOIN agents a ON a.id = h.agent_id WHERE h.started_at >= NOW() - INTERVAL '1 hour' * $1 ORDER BY h.started_at DESC LIMIT $2",
+      [hours, rowLimit],
+      'heartbeat'
+    );
+
+    var allEvents = []
+      .concat(recentTaskRows)
+      .concat(recentAgentTaskRows)
+      .concat(recentMessages)
+      .concat(recentHeartbeats);
+
+    allEvents.sort(function (a, b) {
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+
+    var dedupeMap = {};
+    var items = [];
+    for (var i = 0; i < allEvents.length; i++) {
+      var event = allEvents[i];
+      var key = event.activity_type + '|' + event.id + '|' + event.created_at;
+      if (dedupeMap[key]) continue;
+      dedupeMap[key] = true;
+      items.push(event);
+      if (items.length >= limit) break;
+    }
+
+    res.json({
+      ok: true,
+      count: items.length,
+      range_hours: hours,
+      generated_at: new Date().toISOString(),
+      items: items
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 router.get('/dashboard', requireAuth, async function (req, res) {
   var results = await Promise.all([
     query('SELECT * FROM companies ORDER BY created_at'),
