@@ -9,9 +9,11 @@ const { startAgent, stopAgent, restartAgent, getProcessStatus } = require('../ag
 const { sendToAgent } = require('../ws');
 const { v4: uuid } = require('uuid');
 const { requireAuth } = require('../middleware/auth');
+const systemStatusRoutes = require('./system-status');
 
 const router = Router();
 
+router.use('/system/status', systemStatusRoutes);
 
 router.get("/health", async function (req, res) {
   try {
