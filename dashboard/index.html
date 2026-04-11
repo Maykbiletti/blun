@@ -654,7 +654,7 @@ Profil
 
     </div>
     <div class="ws-cp">
-      <div class="ws-cp-head" style="display:flex;justify-content:space-between;align-items:center">Chat<button class="btn btn-sm btn-outline" id="canvasToggleBtn" onclick="toggleCanvas()" style="font-size:11px;padding:2px 8px">Canvas</button></div>
+      <div class="ws-cp-head" style="display:flex;justify-content:space-between;align-items:center">Chat<button class="btn btn-sm btn-outline" id="canvasToggleBtn" onclick="toggleCanvas()" style="font-size:11px;padding:2px 8px">Tasks</button></div>
       <div class="chat-msgs" id="wsChatMsgs" style="flex:1;overflow-y:auto;padding:12px"></div>
       <div class="chat-input-wrap" style="flex-shrink:0">
         <textarea class="chat-input" id="wsChatInput" rows="1" placeholder="Nachricht..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendWsChat()}"></textarea>
@@ -664,10 +664,18 @@ Profil
     <div class="ws-resize-handle" id="wsResizeHandle" style="display:none"></div>
     <div class="ws-canvas" id="wsCanvas">
       <div class="ws-cp-head" style="display:flex;justify-content:space-between;align-items:center">
-        <span>Live Canvas</span>
+        <span>Agent Tasks</span>
         <button class="btn-icon" onclick="toggleCanvas()" style="font-size:12px">&#x2715;</button>
       </div>
-      <div id="wsCanvasLog" style="flex:1;overflow-y:auto;padding:4px"></div>
+      <div id="wsTaskFeed" style="flex:1;overflow-y:auto;padding:8px"></div>
+      <div id="wsTaskFeedback" style="display:none;border-top:1px solid var(--brd);padding:8px">
+        <div style="font-size:11px;color:var(--tx2);margin-bottom:4px">Aenderungswunsch fuer Task #<span id="wsFbTaskId"></span>:</div>
+        <textarea id="wsFbInput" rows="2" style="width:100%;background:var(--bg);color:var(--tx);border:1px solid var(--brd);border-radius:6px;padding:6px;font-size:12px;resize:vertical" placeholder="Was soll anders sein?"></textarea>
+        <div style="display:flex;gap:6px;margin-top:4px">
+          <button class="btn btn-sm btn-primary" onclick="submitTaskFeedback()">Absenden</button>
+          <button class="btn btn-sm btn-outline" onclick="closeTaskFeedback()">Abbrechen</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -2904,56 +2912,65 @@ function saveInfraModal() {
 }
 
 var _canvasInterval = null;
+var _taskFeedInterval = null;
 
 function loadAgentCanvas(agentId) {
-  var canvas = document.getElementById('wsCanvasLog');
-  if (!canvas) return;
+  var feed = document.getElementById('wsTaskFeed');
+  if (!feed) return;
   var canvasEl = document.getElementById('wsCanvas');
   if (canvasEl && !canvasEl.classList.contains('open')) toggleCanvas();
-  canvas.innerHTML = '<div style="padding:12px;color:var(--tx2)">Lade Code-Output...</div>';
-  
-  api('/api/organisator/agents/' + agentId + '/output').then(function(d) {
+  feed.innerHTML = '<div style="padding:12px;color:var(--tx2)">Lade Tasks...</div>';
+  api('/api/organisator/agents/' + agentId + '/tasks').then(function(tasks) {
+    if (!tasks || !tasks.length) { feed.innerHTML = '<div style="padding:12px;color:var(--tx2)">Keine Tasks.</div>'; return; }
     var html = '';
-    // Header
-    html += '<div style="padding:8px 12px;border-bottom:1px solid var(--brd);font-weight:600;color:var(--tx)">' + esc(d.agent) + ' — Code Output</div>';
-    
-    // Task
-    if (d.latest_task) {
-      html += '<div style="padding:8px 12px;border-bottom:1px solid var(--brd);font-size:12px"><span style="color:var(--amber)">Task:</span> ' + esc(d.latest_task.task.substring(0,120)) + ' <span class="badge badge-' + (d.latest_task.status==='completed'?'green':'blue') + '">' + d.latest_task.status + '</span></div>';
-    }
-    
-    // Commits
-    if (d.commits && d.commits.length > 0) {
-      html += '<div style="padding:8px 12px;border-bottom:1px solid var(--brd)"><div style="color:var(--green);font-size:11px;margin-bottom:4px">' + d.commits.length + ' Commits</div>';
-      d.commits.forEach(function(c) { html += '<div class="canvas-line">' + esc(c) + '</div>'; });
+    tasks.sort(function(a,b){ return b.id - a.id; });
+    tasks.slice(0, 30).forEach(function(t) {
+      var st = t.status;
+      var badge = st === 'completed' ? 'green' : st === 'failed' ? 'red' : st === 'processing' ? 'blue' : 'gray';
+      var files = '';
+      try {
+        var r = typeof t.result === 'string' ? JSON.parse(t.result) : t.result;
+        if (r && r.changed_files_count) files = ' | ' + r.changed_files_count + ' files';
+      } catch(e) {}
+      html += '<div class="card" style="padding:8px 10px;margin-bottom:6px;cursor:pointer;font-size:12px" onclick="openTaskFeedback(' + t.id + ')" title="Klick: Aenderungswunsch">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">';
+      html += '<span style="font-weight:600;color:var(--tx)">#' + t.id + '</span>';
+      html += '<span class="badge badge-' + badge + '" style="font-size:10px">' + st + '</span>';
       html += '</div>';
-    }
-    
-    // Changed files
-    if (d.files && d.files.length > 0) {
-      html += '<div style="padding:8px 12px;border-bottom:1px solid var(--brd)"><div style="color:var(--b);font-size:11px;margin-bottom:4px">' + d.files.length + ' Dateien</div>';
-      d.files.forEach(function(f) { html += '<div class="canvas-line tool">' + esc(f) + '</div>'; });
+      html += '<div style="color:var(--tx2);line-height:1.4">' + esc((t.task || '').substring(0, 120)) + '</div>';
+      if (files) html += '<div style="color:var(--green);font-size:11px;margin-top:2px">' + files + '</div>';
+      if (t.score) html += '<div style="font-size:11px;margin-top:2px">Score: ' + t.score + '/10</div>';
       html += '</div>';
-    }
-    
-    // Diff
-    if (d.diff_full) {
-      html += '<div style="padding:8px 12px"><div style="color:var(--tx2);font-size:11px;margin-bottom:4px">Diff</div>';
-      html += '<pre style="font-size:11px;color:var(--tx);background:#0d1117;padding:8px;border-radius:4px;overflow-x:auto;max-height:400px;overflow-y:auto;white-space:pre-wrap">' + esc(d.diff_full.substring(0,20000)) + '</pre>';
-      html += '</div>';
-    }
-    
-    // Merge button
-    if (d.status === 'has_changes') {
-      html += '<div style="padding:12px;border-top:1px solid var(--brd);text-align:center"><button class="btn btn-sm btn-primary" onclick="mergeAgent(' + agentId + ')" style="min-width:160px">Code uebernehmen</button></div>';
-    } else {
-      html += '<div style="padding:12px;color:var(--tx2);text-align:center;font-size:12px">Keine Aenderungen</div>';
-    }
-    
-    canvas.innerHTML = html;
+    });
+    feed.innerHTML = html;
   }).catch(function(e) {
-    canvas.innerHTML = '<div style="padding:12px;color:var(--red)">Fehler: ' + esc(e.message) + '</div>';
+    feed.innerHTML = '<div style="padding:12px;color:var(--red)">Fehler: ' + esc(e.message) + '</div>';
   });
+}
+
+var _feedbackTaskId = null;
+function openTaskFeedback(taskId) {
+  _feedbackTaskId = taskId;
+  document.getElementById('wsFbTaskId').textContent = taskId;
+  document.getElementById('wsTaskFeedback').style.display = 'block';
+  document.getElementById('wsFbInput').value = '';
+  document.getElementById('wsFbInput').focus();
+}
+function closeTaskFeedback() {
+  document.getElementById('wsTaskFeedback').style.display = 'none';
+  _feedbackTaskId = null;
+}
+function submitTaskFeedback() {
+  var msg = document.getElementById('wsFbInput').value.trim();
+  if (!msg || !_feedbackTaskId) return;
+  var agentId = window.currentAgent ? window.currentAgent.id : null;
+  if (!agentId) return;
+  var newTask = 'Korrektur zu Task #' + _feedbackTaskId + ': ' + msg;
+  api('/api/organisator/agents/' + agentId + '/task', { method: 'POST', body: JSON.stringify({ task: newTask }) }).then(function(t) {
+    closeTaskFeedback();
+    blunAlert('Korrektur-Task #' + t.id + ' angelegt', 'success');
+    loadAgentCanvas(agentId);
+  }).catch(function(e) { blunAlert('Fehler: ' + e.message, 'error'); });
 }
 
 function mergeAgent(agentId) {
