@@ -1,319 +1,206 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<link rel="icon" type="image/svg+xml" href="/favicon.svg">
-<link rel="icon" type="image/png" href="/favicon.png">
-<link rel="apple-touch-icon" href="/apple-touch-icon.png">
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tools — BLUN</title>
-<meta name="description" content="Access all BLUN internal tools and utilities">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BLUN Tools</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+        body {
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+            color: #e0e6ff;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
 
-<style>
-:root {
-  --blue: #3b82f6;
-  --blue-hover: #2563eb;
-  --blue-glow: rgba(59,130,246,0.15);
-  --bg: #0a0a0a;
-  --card: #1a1a1a;
-  --border: #27272a;
-  --text: #fafafa;
-  --text-muted: #a1a1aa;
-  --font: 'Inter', system-ui, sans-serif;
-  --mono: 'JetBrains Mono', monospace;
-}
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
 
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+        header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
 
-html {
-  scroll-behavior: smooth;
-}
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
 
-body {
-  font-family: var(--font);
-  background: var(--bg);
-  color: var(--text);
-  line-height: 1.6;
-  -webkit-font-smoothing: antialiased;
-}
+        .subtitle {
+            font-size: 1.1rem;
+            color: #9ca3af;
+        }
 
-a {
-  color: inherit;
-  text-decoration: none;
-}
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+            gap: 24px;
+            margin-bottom: 40px;
+        }
 
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 24px;
-}
+        .tool-card {
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.8) 100%);
+            border: 1px solid rgba(96, 165, 250, 0.2);
+            border-radius: 12px;
+            padding: 32px;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+        }
 
-/* Navigation */
-nav {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 100;
-  background: rgba(10,10,10,0.8);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--border);
-}
+        .tool-card:hover {
+            border-color: rgba(96, 165, 250, 0.5);
+            background: linear-gradient(135deg, rgba(30, 41, 59, 1) 0%, rgba(15, 23, 42, 1) 100%);
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(96, 165, 250, 0.15);
+        }
 
-.nav-inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 64px;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 24px;
-}
+        .tool-icon {
+            font-size: 3rem;
+            margin-bottom: 16px;
+            display: inline-block;
+        }
 
-.nav-logo {
-  font-weight: 700;
-  font-size: 1.25rem;
-  letter-spacing: -0.02em;
-}
+        .tool-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #f0f9ff;
+        }
 
-.nav-logo span {
-  color: var(--blue);
-}
+        .tool-description {
+            font-size: 0.95rem;
+            color: #cbd5e1;
+            line-height: 1.6;
+            flex-grow: 1;
+            margin-bottom: 20px;
+        }
 
-.nav-links {
-  display: flex;
-  gap: 32px;
-  align-items: center;
-}
+        .tool-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: #60a5fa;
+            font-weight: 500;
+            text-decoration: none;
+            transition: gap 0.2s ease;
+        }
 
-.nav-links a {
-  font-size: 0.875rem;
-  color: var(--text-muted);
-  transition: color 0.2s;
-}
+        .tool-card:hover .tool-link {
+            gap: 12px;
+        }
 
-.nav-links a:hover {
-  color: var(--text);
-}
+        .tool-link::after {
+            content: '→';
+            transition: transform 0.2s ease;
+        }
 
-/* Header */
-header {
-  padding: 160px 0 80px;
-  text-align: center;
-  margin-top: 0;
-}
+        .tool-card:hover .tool-link::after {
+            transform: translateX(2px);
+        }
 
-.header-title {
-  font-size: clamp(2rem, 5vw, 3rem);
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  line-height: 1.1;
-  margin-bottom: 20px;
-}
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
 
-.header-sub {
-  font-size: 1rem;
-  color: var(--text-muted);
-  max-width: 560px;
-  margin: 0 auto;
-  line-height: 1.7;
-}
+            .tools-grid {
+                grid-template-columns: 1fr;
+            }
 
-/* Tools Grid */
-.tools-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
-  margin-bottom: 60px;
-}
+            .tool-card {
+                padding: 24px;
+            }
 
-.tool-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 32px;
-  display: flex;
-  flex-direction: column;
-  transition: all 0.2s;
-  cursor: pointer;
-  text-decoration: none;
-}
+            .tool-icon {
+                font-size: 2.5rem;
+            }
 
-.tool-card:hover {
-  border-color: var(--blue);
-  box-shadow: 0 0 24px var(--blue-glow);
-  transform: translateY(-2px);
-}
-
-.tool-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 10px;
-  background: var(--blue-glow);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 20px;
-  color: var(--blue);
-  font-size: 1.5rem;
-}
-
-.tool-title {
-  font-size: 1.125rem;
-  font-weight: 600;
-  margin-bottom: 12px;
-  color: var(--text);
-}
-
-.tool-desc {
-  font-size: 0.875rem;
-  color: var(--text-muted);
-  line-height: 1.6;
-  flex: 1;
-  margin-bottom: 16px;
-}
-
-.tool-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--blue);
-  font-size: 0.875rem;
-  font-weight: 500;
-  transition: gap 0.2s;
-}
-
-.tool-card:hover .tool-link {
-  gap: 12px;
-}
-
-/* Responsive */
-@media (max-width: 1024px) {
-  .tools-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 20px;
-  }
-}
-
-@media (max-width: 640px) {
-  .tools-grid {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-
-  header {
-    padding: 120px 0 60px;
-  }
-
-  .header-title {
-    font-size: 1.75rem;
-  }
-}
-
-/* Footer */
-footer {
-  border-top: 1px solid var(--border);
-  padding: 40px 0;
-  text-align: center;
-  color: var(--text-muted);
-  font-size: 0.875rem;
-}
-</style>
+            .tool-title {
+                font-size: 1.3rem;
+            }
+        }
+    </style>
 </head>
 <body>
+    <div class="container">
+        <header>
+            <h1>BLUN Tools</h1>
+            <p class="subtitle">All internal tools and platforms in one place</p>
+        </header>
 
-<nav>
-  <div class="nav-inner">
-    <div class="nav-logo">BLU<span>N</span></div>
-    <div class="nav-links">
-      <a href="/">Home</a>
-      <a href="/tools">Tools</a>
+        <div class="tools-grid">
+            <a href="/kanban" class="tool-card">
+                <div class="tool-icon">📋</div>
+                <h2 class="tool-title">Kanban</h2>
+                <p class="tool-description">Project management board for tracking tasks, sprints, and team workflow. Organize work across columns and prioritize deliverables.</p>
+                <span class="tool-link">Open Kanban</span>
+            </a>
+
+            <a href="/livelog" class="tool-card">
+                <div class="tool-icon">📊</div>
+                <h2 class="tool-title">Livelog</h2>
+                <p class="tool-description">Real-time log viewer and monitoring dashboard. Track system events, errors, and performance metrics as they happen.</p>
+                <span class="tool-link">View Logs</span>
+            </a>
+
+            <a href="/marketplace" class="tool-card">
+                <div class="tool-icon">🏪</div>
+                <h2 class="tool-title">Marketplace</h2>
+                <p class="tool-description">Browse and manage applications, agents, and integrations. Discover, install, and configure tools for your workspace.</p>
+                <span class="tool-link">Browse Marketplace</span>
+            </a>
+
+            <a href="/university" class="tool-card">
+                <div class="tool-icon">🎓</div>
+                <h2 class="tool-title">University</h2>
+                <p class="tool-description">Learning hub with documentation, tutorials, and guides. Master BLUN platform features and best practices.</p>
+                <span class="tool-link">Start Learning</span>
+            </a>
+
+            <a href="/settings" class="tool-card">
+                <div class="tool-icon">⚙️</div>
+                <h2 class="tool-title">Settings</h2>
+                <p class="tool-description">Configure workspace preferences, user profiles, security settings, and system integrations. Manage your environment.</p>
+                <span class="tool-link">Go to Settings</span>
+            </a>
+
+            <a href="/operator" class="tool-card">
+                <div class="tool-icon">🚀</div>
+                <h2 class="tool-title">Operator</h2>
+                <p class="tool-description">Control panel for system operations, deployment management, and infrastructure monitoring. Deploy and manage services.</p>
+                <span class="tool-link">Access Operator</span>
+            </a>
+
+            <a href="/companies" class="tool-card">
+                <div class="tool-icon">🏢</div>
+                <h2 class="tool-title">Companies</h2>
+                <p class="tool-description">Manage organization, teams, and company information. Handle billing, subscriptions, and workspace administration.</p>
+                <span class="tool-link">View Companies</span>
+            </a>
+
+            <a href="/models" class="tool-card">
+                <div class="tool-icon">🤖</div>
+                <h2 class="tool-title">Models</h2>
+                <p class="tool-description">AI model management and configuration. Deploy, version, and monitor machine learning models in production.</p>
+                <span class="tool-link">Manage Models</span>
+            </a>
+        </div>
     </div>
-  </div>
-</nav>
-
-<main>
-  <header>
-    <h1 class="header-title">Internal Tools</h1>
-    <p class="header-sub">Access all BLUN internal tools and utilities in one place</p>
-  </header>
-
-  <div class="container">
-    <div class="tools-grid">
-
-      <a href="/kanban" class="tool-card">
-        <div class="tool-icon">📋</div>
-        <h2 class="tool-title">Kanban</h2>
-        <p class="tool-desc">Visual task management and project workflow tracking. Organize work across teams with boards, cards, and automation.</p>
-        <span class="tool-link">Open Kanban →</span>
-      </a>
-
-      <a href="/livelog" class="tool-card">
-        <div class="tool-icon">📺</div>
-        <h2 class="tool-title">Livelog</h2>
-        <p class="tool-desc">Real-time log streaming and monitoring. Watch system events, API calls, and agent activities as they happen.</p>
-        <span class="tool-link">Open Livelog →</span>
-      </a>
-
-      <a href="/marketplace" class="tool-card">
-        <div class="tool-icon">🛒</div>
-        <h2 class="tool-title">Marketplace</h2>
-        <p class="tool-desc">Discover, publish, and manage integrations. Browse agents, templates, and extensions for extending BLUN.</p>
-        <span class="tool-link">Open Marketplace →</span>
-      </a>
-
-      <a href="/university" class="tool-card">
-        <div class="tool-icon">🎓</div>
-        <h2 class="tool-title">University</h2>
-        <p class="tool-desc">Learning resources and documentation. Access tutorials, guides, best practices, and API documentation.</p>
-        <span class="tool-link">Open University →</span>
-      </a>
-
-      <a href="/settings" class="tool-card">
-        <div class="tool-icon">⚙️</div>
-        <h2 class="tool-title">Settings</h2>
-        <p class="tool-desc">Configure your account, workspace, and preferences. Manage API keys, billing, teams, and security settings.</p>
-        <span class="tool-link">Open Settings →</span>
-      </a>
-
-      <a href="/operator" class="tool-card">
-        <div class="tool-icon">🎛️</div>
-        <h2 class="tool-title">Operator</h2>
-        <p class="tool-desc">Control center for system operations. Monitor infrastructure, manage agents, and handle deployments.</p>
-        <span class="tool-link">Open Operator →</span>
-      </a>
-
-      <a href="/companies" class="tool-card">
-        <div class="tool-icon">🏢</div>
-        <h2 class="tool-title">Companies</h2>
-        <p class="tool-desc">Manage organization details and team members. Handle company profiles, billing contacts, and user permissions.</p>
-        <span class="tool-link">Open Companies →</span>
-      </a>
-
-      <a href="/models" class="tool-card">
-        <div class="tool-icon">🧠</div>
-        <h2 class="tool-title">Models</h2>
-        <p class="tool-desc">AI model management and configuration. Browse available models, manage versions, and set default preferences.</p>
-        <span class="tool-link">Open Models →</span>
-      </a>
-
-    </div>
-  </div>
-</main>
-
-<footer>
-  <div class="container">
-    <p>&copy; 2026 BLUN. All rights reserved.</p>
-  </div>
-</footer>
-
 </body>
 </html>
