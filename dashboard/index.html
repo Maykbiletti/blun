@@ -2932,7 +2932,7 @@ function loadAgentCanvas(agentId) {
         var r = typeof t.result === 'string' ? JSON.parse(t.result) : t.result;
         if (r && r.changed_files_count) files = ' | ' + r.changed_files_count + ' files';
       } catch(e) {}
-      html += '<div class="card" style="padding:8px 10px;margin-bottom:6px;cursor:pointer;font-size:12px" onclick="openTaskFeedback(' + t.id + ')" title="Klick: Aenderungswunsch">';
+      html += '<div class="card" style="padding:8px 10px;margin-bottom:6px;cursor:pointer;font-size:12px" onclick="openTaskModal(' + t.id + ',' + (window.currentAgent?window.currentAgent.id:0) + ')" title="Klick: Aenderungswunsch">';
       html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">';
       html += '<span style="font-weight:600;color:var(--tx)">#' + t.id + '</span>';
       html += '<span class="badge badge-' + badge + '" style="font-size:10px">' + st + '</span>';
@@ -3610,6 +3610,94 @@ window.toggleNotificationCenter = function() {
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',function(){hookInput('wsChatInput');hookInput('chatInput');});
   else{hookInput('wsChatInput');hookInput('chatInput');}
 })();
+</script>
+
+
+<!-- Task Detail Modal -->
+<div id="taskDetailModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);align-items:center;justify-content:center" onclick="if(event.target===this)closeTaskModal()">
+  <div style="background:var(--bg2);border:1px solid var(--brd);border-radius:12px;width:90%;max-width:560px;max-height:85vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.5)">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--brd)">
+      <div style="font-weight:700;font-size:15px;color:var(--tx)">Task #<span id="tmId"></span></div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span id="tmBadge" class="badge"></span>
+        <button class="btn-icon" onclick="closeTaskModal()" style="font-size:14px">&#x2715;</button>
+      </div>
+    </div>
+    <div style="padding:16px">
+      <div style="margin-bottom:12px">
+        <div style="font-size:11px;color:var(--tx2);margin-bottom:4px">Aufgabe</div>
+        <div id="tmTask" style="color:var(--tx);line-height:1.5;font-size:13px"></div>
+      </div>
+      <div id="tmFilesWrap" style="display:none;margin-bottom:12px">
+        <div style="font-size:11px;color:var(--tx2);margin-bottom:4px">Dateien</div>
+        <div id="tmFiles" style="font-size:12px;color:var(--green);font-family:monospace"></div>
+      </div>
+      <div id="tmDiffWrap" style="display:none;margin-bottom:12px">
+        <div style="font-size:11px;color:var(--tx2);margin-bottom:4px">Output</div>
+        <pre id="tmDiff" style="font-size:11px;color:var(--tx);background:var(--bg);padding:8px;border-radius:6px;overflow-x:auto;max-height:200px;overflow-y:auto;white-space:pre-wrap;border:1px solid var(--brd)"></pre>
+      </div>
+      <div id="tmScoreWrap" style="display:none;margin-bottom:12px">
+        <div style="font-size:11px;color:var(--tx2);margin-bottom:4px">QA Score</div>
+        <div id="tmScore" style="font-size:18px;font-weight:700"></div>
+      </div>
+      <div style="border-top:1px solid var(--brd);padding-top:12px;margin-top:8px">
+        <div style="font-size:11px;color:var(--tx2);margin-bottom:6px">Aenderungswunsch / Korrektur</div>
+        <textarea id="tmFeedback" rows="3" style="width:100%;background:var(--bg);color:var(--tx);border:1px solid var(--brd);border-radius:6px;padding:8px;font-size:13px;resize:vertical" placeholder="Was soll anders sein?"></textarea>
+        <button class="btn btn-primary" onclick="submitModalFeedback()" style="margin-top:8px;width:100%">Korrektur-Task anlegen</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+var _modalTaskId=null,_modalAgentId=null;
+function openTaskModal(taskId,agentId){
+  _modalTaskId=taskId;_modalAgentId=agentId;
+  var m=document.getElementById('taskDetailModal');
+  m.style.display='flex';
+  document.getElementById('tmId').textContent=taskId;
+  document.getElementById('tmTask').textContent='Lade...';
+  document.getElementById('tmFilesWrap').style.display='none';
+  document.getElementById('tmDiffWrap').style.display='none';
+  document.getElementById('tmScoreWrap').style.display='none';
+  document.getElementById('tmFeedback').value='';
+  // Fetch task details
+  api('/api/organisator/agents/'+agentId+'/tasks').then(function(tasks){
+    var t=(tasks||[]).filter(function(x){return x.id===taskId;})[0];
+    if(!t){document.getElementById('tmTask').textContent='Task nicht gefunden';return;}
+    document.getElementById('tmTask').textContent=t.task||'';
+    var badge=document.getElementById('tmBadge');
+    var st=t.status;
+    badge.textContent=st;
+    badge.className='badge badge-'+(st==='completed'?'green':st==='failed'?'red':st==='processing'?'blue':'gray');
+    try{
+      var r=typeof t.result==='string'?JSON.parse(t.result):t.result;
+      if(r&&r.files&&r.files.length){
+        document.getElementById('tmFiles').innerHTML=r.files.map(function(f){return esc(f);}).join('<br>');
+        document.getElementById('tmFilesWrap').style.display='block';
+      }
+      if(r&&r.cli_output_excerpt){
+        document.getElementById('tmDiff').textContent=r.cli_output_excerpt;
+        document.getElementById('tmDiffWrap').style.display='block';
+      }
+    }catch(e){}
+    if(t.score){
+      document.getElementById('tmScore').textContent=t.score+'/10';
+      document.getElementById('tmScore').style.color=t.score>=7?'var(--green)':t.score>=4?'var(--amber)':'var(--red)';
+      document.getElementById('tmScoreWrap').style.display='block';
+    }
+  });
+}
+function closeTaskModal(){document.getElementById('taskDetailModal').style.display='none';_modalTaskId=null;}
+function submitModalFeedback(){
+  var msg=document.getElementById('tmFeedback').value.trim();
+  if(!msg||!_modalTaskId||!_modalAgentId)return;
+  var task='Korrektur zu Task #'+_modalTaskId+': '+msg;
+  api('/api/organisator/agents/'+_modalAgentId+'/task',{method:'POST',body:JSON.stringify({task:task})}).then(function(t){
+    closeTaskModal();
+    blunAlert('Korrektur-Task #'+t.id+' angelegt','success');
+    if(window.currentAgent&&window.currentAgent.id===_modalAgentId) loadAgentCanvas(_modalAgentId);
+  }).catch(function(e){blunAlert('Fehler: '+e.message,'error');});
+}
 </script>
 
 </body></html><!-- test -->

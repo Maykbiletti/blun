@@ -339,7 +339,7 @@ app.get("/dashboard", function (req, res) { res.set("Cache-Control","no-cache,no
 });
 
 app.use("/uploads", express.static(path.join(__dirname, "dashboard/uploads")));
-app.use("/dashboard", express.static(path.join(__dirname, "dashboard")));
+app.use("/dashboard", express.static(path.join(__dirname, "dashboard"), { etag: false, maxAge: 0, setHeaders: function(res) { res.set("Cache-Control", "no-cache, no-store, must-revalidate"); res.set("Pragma", "no-cache"); res.set("Expires", "0"); } }));
 
 app.use(function (err, req, res, _next) {
   console.error("[server] Unhandled error:", err);
