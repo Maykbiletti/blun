@@ -1,94 +1,106 @@
 "use strict";
 
-var TRACKED_STATUSES = ["pending", "processing", "completed", "failed"];
-var ALLOWED_TRANSITIONS = {
-  pending: ["processing"],
-  processing: ["completed", "failed"]
-};
+const { query } = require("../db");
 
-function normalizeStatus(status) {
-  if (!status || typeof status !== "string") return "";
-  return status.trim().toLowerCase();
+const TRACKED_TASK_STATES = new Set(["pending", "processing", "completed", "failed"]);
+
+function normalizeState(state) {
+  if (typeof state !== "string") return "";
+  return state.trim().toLowerCase();
 }
 
-function isTrackedStatus(status) {
-  return TRACKED_STATUSES.indexOf(normalizeStatus(status)) !== -1;
+function shouldLogTaskStateChange(fromState, toState) {
+  const from = normalizeState(fromState);
+  const to = normalizeState(toState);
+
+  if (!from || !to) return false;
+  if (from === to) return false;
+  if (!TRACKED_TASK_STATES.has(from) || !TRACKED_TASK_STATES.has(to)) return false;
+
+  return true;
 }
 
-function isAllowedTransition(fromStatus, toStatus) {
-  var from = normalizeStatus(fromStatus);
-  var to = normalizeStatus(toStatus);
-  var allowedTargets = ALLOWED_TRANSITIONS[from] || [];
-  return allowedTargets.indexOf(to) !== -1;
-}
+async function insertAuditLogWithFallbacks(queryFn, payload) {
+  const statements = [
+    {
+      sql: "INSERT INTO audit_logs (task_id, agent_id, from_state, to_state, timestamp) VALUES ($1, $2, $3, $4, $5)",
+      params: [payload.taskId, payload.agentId, payload.fromState, payload.toState, payload.timestamp]
+    },
+    {
+      sql: "INSERT INTO audit_logs (task_id, agent_id, from_state, to_state, created_at) VALUES ($1, $2, $3, $4, $5)",
+      params: [payload.taskId, payload.agentId, payload.fromState, payload.toState, payload.timestamp]
+    },
+    {
+      sql: "INSERT INTO audit_logs (task_id, agent_id, from_state, to_state, changed_at) VALUES ($1, $2, $3, $4, $5)",
+      params: [payload.taskId, payload.agentId, payload.fromState, payload.toState, payload.timestamp]
+    },
+    {
+      sql: "INSERT INTO audit_logs (task_id, agent_id, old_state, new_state, timestamp) VALUES ($1, $2, $3, $4, $5)",
+      params: [payload.taskId, payload.agentId, payload.fromState, payload.toState, payload.timestamp]
+    },
+    {
+      sql: "INSERT INTO audit_logs (task_id, agent_id, old_status, new_status, timestamp) VALUES ($1, $2, $3, $4, $5)",
+      params: [payload.taskId, payload.agentId, payload.fromState, payload.toState, payload.timestamp]
+    }
+  ];
 
-function toDate(value) {
-  if (!value) return new Date();
-  if (value instanceof Date) return value;
-  return new Date(value);
-}
+  let lastError = null;
 
-async function logTaskStateChange(queryFn, change) {
-  if (typeof queryFn !== "function") {
-    throw new Error("task-audit-logger: queryFn must be a function");
+  for (let i = 0; i < statements.length; i++) {
+    try {
+      await queryFn(statements[i].sql, statements[i].params);
+      return;
+    } catch (err) {
+      lastError = err;
+    }
   }
 
-  if (!change || typeof change !== "object") {
-    throw new Error("task-audit-logger: change object is required");
+  throw lastError;
+}
+
+async function logTaskStateChange(input, queryFn = query) {
+  if (!input || typeof input !== "object") {
+    throw new Error("logTaskStateChange requires an input object");
   }
 
-  var taskId = change.taskId;
-  var agentId = change.agentId;
-  var fromStatus = normalizeStatus(change.fromStatus);
-  var toStatus = normalizeStatus(change.toStatus);
-  var timestamp = toDate(change.timestamp);
-  var meta = change.meta || {};
+  const taskId = input.taskId;
+  const agentId = input.agentId;
+  const fromState = normalizeState(input.fromState);
+  const toState = normalizeState(input.toState);
+  const timestamp = input.timestamp || new Date().toISOString();
 
   if (!taskId) {
-    throw new Error("task-audit-logger: taskId is required");
+    throw new Error("taskId is required");
   }
 
   if (!agentId) {
-    throw new Error("task-audit-logger: agentId is required");
+    throw new Error("agentId is required");
   }
 
-  if (!isTrackedStatus(fromStatus) || !isTrackedStatus(toStatus)) {
-    return { logged: false, reason: "status_not_tracked" };
+  if (!shouldLogTaskStateChange(fromState, toState)) {
+    return { logged: false, reason: "not-a-tracked-transition" };
   }
 
-  if (!isAllowedTransition(fromStatus, toStatus)) {
-    return { logged: false, reason: "transition_not_allowed" };
-  }
-
-  if (fromStatus === toStatus) {
-    return { logged: false, reason: "no_change" };
-  }
-
-  var sql = "INSERT INTO audit_logs " +
-    "(task_id, agent_id, from_status, to_status, changed_at, meta) " +
-    "VALUES ($1, $2, $3, $4, $5, $6::jsonb) RETURNING *";
-
-  var params = [
+  await insertAuditLogWithFallbacks(queryFn, {
     taskId,
     agentId,
-    fromStatus,
-    toStatus,
-    timestamp,
-    JSON.stringify(meta)
-  ];
-
-  var rows = await queryFn(sql, params);
-  var row = Array.isArray(rows) ? rows[0] : (rows && rows.rows ? rows.rows[0] : rows);
+    fromState,
+    toState,
+    timestamp
+  });
 
   return {
     logged: true,
-    row: row || null
+    taskId,
+    agentId,
+    fromState,
+    toState,
+    timestamp
   };
 }
 
 module.exports = {
-  TRACKED_STATUSES: TRACKED_STATUSES,
-  isTrackedStatus: isTrackedStatus,
-  isAllowedTransition: isAllowedTransition,
-  logTaskStateChange: logTaskStateChange
+  TRACKED_TASK_STATES,
+  shouldLogTaskStateChange,
+  logTaskStateChange
 };
