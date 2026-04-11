@@ -159,7 +159,7 @@ function runCLI(cliName, model, prompt, agentDir) {
     if (cliName === "claude") {
       args = ["--print", "-", "--output-format", "text", "--max-turns", "10", "--dangerously-skip-permissions"];
       if (model && model.indexOf("claude") === 0) args.push("--model", model);
-      env = Object.assign(baseEnv, { DISABLE_INTERACTIVITY: "1" });
+      env = Object.assign(baseEnv, { DISABLE_INTERACTIVITY: "1", IS_SANDBOX: "1" });
       stdinPrompt = prompt;
     } else if (cliName === "gemini") {
       args = ["-p", prompt, "-y"];
