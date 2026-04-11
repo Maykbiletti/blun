@@ -59,6 +59,7 @@ const agentCommRoutes = require("./src/routes/agent-comm");
 const statsRoutes = require("./src/routes/stats-route");
 const healthDetailedRoutes = require("./src/routes/health-detailed");
 const usageTrackingRoutes = require("./src/routes/usage-tracking");
+const codeQualityRoutes = require("./src/routes/code-quality");
 const { router: companiesRoutes, companyContext } = require("./src/routes/companies");
 const { startAllBots, activeBots } = require("./src/channels/telegram");
 
@@ -283,6 +284,7 @@ app.use("/api/agent-comm", agentCommRoutes);
 app.use("/api/stats", statsRoutes);
 app.use("/api/health-detailed", healthDetailedRoutes);
 app.use("/api/usage-tracking", usageTrackingRoutes);
+app.use("/api/code-quality", codeQualityRoutes);
 
 // --- Page routes (authenticated) ---
 function authPage(path, file, adminOnly) {
@@ -424,6 +426,6 @@ start();
 
 
 // Dashboard SPA routes - serve index.html for all /dashboard/* paths
-['agents','operator','chat','livelog','models','settings','companies'].forEach(function(p){
+['agents','operator','chat','livelog','models','settings','companies','kanban','projects','marketplace','university','affiliate','help-center','erledigt'].forEach(function(p){
   app.get('/dashboard/'+p, function(req,res){ res.set('Cache-Control','no-cache,no-store'); res.sendFile(__dirname+'/dashboard/index.html'); });
 });

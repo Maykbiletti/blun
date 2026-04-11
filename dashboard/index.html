@@ -369,6 +369,20 @@ textarea{resize:vertical;min-height:80px}
 .confirm-box h4{margin:0 0 8px;font-size:16px}
 .confirm-box p{margin:0 0 20px;color:var(--tx2);font-size:14px}
 .confirm-box .confirm-btns{display:flex;gap:8px;justify-content:flex-end}
+/* Help Buttons */
+.help-btn{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--bg3);border:1px solid var(--brd);color:var(--tx2);font-size:11px;font-weight:700;cursor:pointer;margin-left:6px;transition:all .15s;vertical-align:middle;flex-shrink:0}
+.help-btn:hover{background:var(--b);color:#fff;border-color:var(--b)}
+.help-popup-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998}
+.help-popup-overlay.show{display:block}
+.help-popup{display:none;position:fixed;z-index:9999;width:380px;max-width:90vw;max-height:70vh;overflow-y:auto;background:var(--bg2);border:1px solid var(--brd);border-radius:12px;padding:20px;box-shadow:0 12px 40px rgba(0,0,0,.6);top:50%;left:50%;transform:translate(-50%,-50%)}
+.help-popup.show{display:block}
+.help-popup-title{font-size:15px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.help-popup-title .hp-num{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;background:var(--b);color:#fff;font-size:11px;font-weight:700}
+.help-popup-text{color:var(--tx2);font-size:13px;line-height:1.7;margin-bottom:14px}
+.help-popup-link{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--b);font-weight:600;cursor:pointer}
+.help-popup-link:hover{text-decoration:underline}
+.help-popup-close{position:absolute;top:12px;right:12px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:var(--bg3);border:1px solid var(--brd);border-radius:6px;color:var(--tx2);cursor:pointer;font-size:16px}
+.help-popup-close:hover{background:var(--bg4);color:var(--tx)}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 </head>
@@ -1193,9 +1207,8 @@ function renderAgents(filteredAgents) { var agentList = filteredAgents || agents
       '<div class="operator-av">'+agentAvatar(op)+'</div>'+
       '<div class="operator-info"><div class="operator-name">'+esc(op.name)+' <span class="badge badge-blue">OPERATOR</span></div>'+
       '<div class="operator-role">'+esc(op.role||'')+'</div>'+
-      '<div class="operator-status">'+(isOn?'<span class="status-dot on"></span> Online':'<span class="status-dot off"></span> Offline')+' &middot; '+esc(op.model||'?')+'</div></div>'+
+      '<div class="operator-status">'+(isOn?'<span class="status-dot on"></span> Online':'<span class="status-dot off"></span> Offline')+' &middot; '+esc(op.model||'?')+'</div><div style="font-size:11px;color:var(--tx2);margin-top:4px">Warteschlange: '+(op.queue_size||0)+' &middot; Geschafft 24h: '+(op.completed_today||0)+' &middot; Gesamt: '+(op.tasks_total||0)+'</div></div>'+
       '<div style="display:flex;gap:4px">'+
-      '<button class="btn btn-sm btn-outline" onclick="event.stopPropagation();showPage(\'operator\')">Steuern</button>'+
       '<button class="btn btn-sm btn-primary" onclick="event.stopPropagation();openChat('+op.id+')">Chat</button></div></div>';
   } else {
     bannerEl.innerHTML = '<div class="operator-banner" onclick="openModal(\'agentModal\')" style="border-style:dashed"><div class="operator-av" style="background:var(--bg4);color:var(--tx2)">+</div><div class="operator-info"><div class="operator-name" style="color:var(--tx2)">Operator einrichten</div><div class="operator-role" style="color:var(--tx2)">Erstelle deinen Superagent</div></div></div>';
@@ -1224,7 +1237,7 @@ function renderAgents(filteredAgents) { var agentList = filteredAgents || agents
         '<div class="agent-av" style="background:'+agentColor(a)+'">'+agentAvatar(a)+(isOn?'<div class="online-dot"></div>':'')+'</div>'+
         '<div class="agent-info"><div class="agent-name">'+esc(a.name)+'</div><div class="agent-role">'+esc(a.role||'')+'</div>'+
         '<div class="agent-meta">'+modelTag+'<span class="tag">'+esc(a.model||'?')+'</span></div>'+
-        renderSkillTags(a.skills,a.skill_urls)+taskLine+'</div>'+
+        renderSkillTags(a.skills,a.skill_urls)+taskLine+'<div style="font-size:10px;color:var(--tx2);margin-top:3px">Geschafft 24h: '+(a.completed_today||0)+' &middot; Gesamt: '+(a.tasks_total||0)+'</div></div>'+
         '<div class="agent-actions">'+(isOn?'<button class="btn-icon" title="Stoppen" onclick="event.stopPropagation();toggleAgent('+a.id+',false)" style="color:var(--green)">⏸</button>':'<button class="btn-icon" title="Starten" onclick="event.stopPropagation();toggleAgent('+a.id+',true)" style="color:var(--green)">▶</button>')+'</div></div>';
     });
     html += '</div></div>';
@@ -3066,6 +3079,5 @@ window.toggleNotificationCenter = function() {
 };
 </script>
 
-<div id="keyboardHint" style="position:fixed;bottom:20px;right:20px;padding:8px 12px;background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.3);border-radius:6px;font-size:12px;color:rgba(229,229,229,0.6);z-index:1000;font-family:monospace;backdrop-filter:blur(8px);pointer-events:none;user-select:none">Ctrl+K</div>
 
 </body></html><!-- test -->
