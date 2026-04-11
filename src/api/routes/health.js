@@ -20,18 +20,18 @@ function getUptimeSeconds() {
   return Math.floor(uptime);
 }
 
-function buildHealthStatsQuery() {
+function buildHealthQuery() {
   return [
     "SELECT",
-    "  (SELECT COUNT(*)::int FROM blun_agents WHERE status = 'active') AS agents_online,",
-    "  (SELECT COUNT(*)::int FROM agent_tasks WHERE status = 'pending') AS pending_tasks,",
-    "  (SELECT COUNT(*)::int FROM agent_tasks WHERE status IN ('processing', 'in_progress')) AS processing_tasks"
+    "  COALESCE((SELECT COUNT(*) FROM blun_agents WHERE status = 'active'), 0)::int AS agents_online,",
+    "  COALESCE((SELECT COUNT(*) FROM agent_tasks WHERE status = 'pending'), 0)::int AS pending_tasks,",
+    "  COALESCE((SELECT COUNT(*) FROM agent_tasks WHERE status IN ('processing', 'in_progress')), 0)::int AS processing_tasks"
   ].join(" ");
 }
 
 router.get("/api/health", async function(req, res) {
   try {
-    var rows = await db.query(buildHealthStatsQuery());
+    var rows = await db.query(buildHealthQuery());
     var stats = Array.isArray(rows) && rows.length > 0 ? rows[0] : {};
 
     return res.json({
