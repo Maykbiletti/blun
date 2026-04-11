@@ -2,15 +2,36 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const { promisify } = require('util');
+const { execFile } = require('child_process');
+
+const router = express.Router();
+
 const readFileAsync = promisify(fs.readFile);
 const writeFileAsync = promisify(fs.writeFile);
 const appendFileAsync = promisify(fs.appendFile);
+const execFileAsync = promisify(execFile);
 
-const router = express.Router();
 const DEPLOY_LOG_PATH = '/root/blun/logs/deploy.log';
 const MAX_LOG_LINES = 500;
+const WORKTREE_ROOT = process.cwd();
 
-// Rotate log if it exceeds max lines
+function isSafeRelativePath(filePath) {
+    if (typeof filePath !== 'string' || filePath.trim() === '') {
+        return false;
+    }
+
+    if (path.isAbsolute(filePath)) {
+        return false;
+    }
+
+    const normalized = path.normalize(filePath).replace(/\\/g, '/');
+    return !normalized.startsWith('../') && !normalized.includes('/../');
+}
+
+async function ensureLogDir() {
+    await fs.promises.mkdir(path.dirname(DEPLOY_LOG_PATH), { recursive: true });
+}
+
 async function rotateLogIfNeeded() {
     try {
         if (!fs.existsSync(DEPLOY_LOG_PATH)) {
@@ -18,101 +39,169 @@ async function rotateLogIfNeeded() {
         }
 
         const content = await readFileAsync(DEPLOY_LOG_PATH, 'utf8');
-        const lines = content.split('\n').filter(line => line.trim());
+        const lines = content.split('\n').filter(line => line.trim().length > 0);
 
         if (lines.length >= MAX_LOG_LINES) {
-            // Keep only the last 250 lines
-            const keepLines = lines.slice(-250);
-            await writeFileAsync(DEPLOY_LOG_PATH, keepLines.join('\n') + '\n');
+            const keepLines = lines.slice(-Math.floor(MAX_LOG_LINES / 2));
+            await writeFileAsync(DEPLOY_LOG_PATH, `${keepLines.join('\n')}\n`);
         }
     } catch (error) {
-        console.error('Log rotation error:', error);
+        console.error('Log rotation error:', error.message);
     }
 }
 
-// Log deploy event
-async function logDeploy(agentName, file, commitHash, status) {
+async function logDeploy(entry) {
     const logEntry = {
         timestamp: new Date().toISOString(),
-        agentName,
-        file,
-        commitHash,
-        status
+        ...entry
     };
 
-    const logLine = JSON.stringify(logEntry) + '\n';
-
     try {
+        await ensureLogDir();
         await rotateLogIfNeeded();
-        await appendFileAsync(DEPLOY_LOG_PATH, logLine);
+        await appendFileAsync(DEPLOY_LOG_PATH, `${JSON.stringify(logEntry)}\n`);
     } catch (error) {
-        console.error('Deploy logging error:', error);
+        console.error('Deploy logging error:', error.message);
     }
 }
 
-// POST /deploy
-router.post('/', async (req, res) => {
+async function commitExists(commitHash) {
     try {
-        const { agentName, file, commitHash } = req.body;
+        await execFileAsync('git', ['cat-file', '-e', `${commitHash}^{commit}`], { cwd: WORKTREE_ROOT });
+        return true;
+    } catch {
+        return false;
+    }
+}
 
-        if (!agentName || !file || !commitHash) {
-            await logDeploy(agentName || 'unknown', file || 'unknown', commitHash || 'unknown', 'FAIL_MISSING_PARAMS');
-            return res.status(400).json({
-                error: 'Missing required parameters: agentName, file, commitHash'
-            });
-        }
+async function commitTouchesFile(commitHash, filePath) {
+    const { stdout } = await execFileAsync(
+        'git',
+        ['diff-tree', '--no-commit-id', '--name-only', '-r', commitHash],
+        { cwd: WORKTREE_ROOT }
+    );
 
-        // Simulate deploy logic
-        const deploySuccess = Math.random() > 0.1; // 90% success rate
+    const changedFiles = stdout
+        .split('\n')
+        .map(line => line.trim())
+        .filter(Boolean);
 
-        if (deploySuccess) {
-            await logDeploy(agentName, file, commitHash, 'SUCCESS');
-            res.json({
-                status: 'SUCCESS',
-                message: 'Deploy completed successfully',
-                timestamp: new Date().toISOString()
-            });
-        } else {
-            await logDeploy(agentName, file, commitHash, 'FAIL_DEPLOY_ERROR');
-            res.status(500).json({
+    return changedFiles.includes(filePath);
+}
+
+function validatePayload(body) {
+    const errors = [];
+    const { agentName, file, commitHash } = body || {};
+
+    if (typeof agentName !== 'string' || agentName.trim().length < 2) {
+        errors.push('agentName must be a non-empty string');
+    }
+
+    if (!isSafeRelativePath(file)) {
+        errors.push('file must be a safe relative path inside the repository');
+    }
+
+    if (typeof commitHash !== 'string' || !/^[0-9a-f]{7,40}$/i.test(commitHash)) {
+        errors.push('commitHash must be a valid git hash (7-40 hex chars)');
+    }
+
+    return errors;
+}
+
+router.post('/', async (req, res) => {
+    const payload = req.body || {};
+    const errors = validatePayload(payload);
+
+    if (errors.length > 0) {
+        await logDeploy({
+            agentName: payload.agentName || 'unknown',
+            file: payload.file || 'unknown',
+            commitHash: payload.commitHash || 'unknown',
+            status: 'FAIL_VALIDATION',
+            errors
+        });
+
+        return res.status(400).json({
+            status: 'FAIL',
+            error: 'Invalid payload',
+            details: errors,
+            timestamp: new Date().toISOString()
+        });
+    }
+
+    const { agentName, file, commitHash } = payload;
+
+    try {
+        const exists = await commitExists(commitHash);
+        if (!exists) {
+            await logDeploy({ agentName, file, commitHash, status: 'FAIL_COMMIT_NOT_FOUND' });
+            return res.status(404).json({
                 status: 'FAIL',
-                error: 'Deploy failed during execution',
+                error: 'Commit not found',
                 timestamp: new Date().toISOString()
             });
         }
+
+        const touched = await commitTouchesFile(commitHash, file);
+        if (!touched) {
+            await logDeploy({ agentName, file, commitHash, status: 'FAIL_FILE_NOT_IN_COMMIT' });
+            return res.status(409).json({
+                status: 'FAIL',
+                error: 'Commit does not contain changes for the requested file',
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        await logDeploy({ agentName, file, commitHash, status: 'SUCCESS_VERIFIED' });
+        return res.json({
+            status: 'SUCCESS',
+            message: 'Deploy request verified and accepted',
+            agentName,
+            file,
+            commitHash,
+            timestamp: new Date().toISOString()
+        });
     } catch (error) {
-        await logDeploy(req.body?.agentName || 'unknown', req.body?.file || 'unknown', req.body?.commitHash || 'unknown', 'FAIL_INTERNAL_ERROR');
-        res.status(500).json({
+        await logDeploy({
+            agentName,
+            file,
+            commitHash,
+            status: 'FAIL_INTERNAL_ERROR',
+            error: error.message
+        });
+
+        return res.status(500).json({
             status: 'ERROR',
-            error: 'Internal server error',
+            error: 'Internal server error during deploy verification',
             timestamp: new Date().toISOString()
         });
     }
 });
 
-// GET /deploy/logs - View recent deploy logs
 router.get('/logs', async (req, res) => {
     try {
         if (!fs.existsSync(DEPLOY_LOG_PATH)) {
-            return res.json({ logs: [] });
+            return res.json({ logs: [], total: 0 });
         }
 
         const content = await readFileAsync(DEPLOY_LOG_PATH, 'utf8');
-        const lines = content.split('\n').filter(line => line.trim());
-        const logs = lines.map(line => {
-            try {
-                return JSON.parse(line);
-            } catch {
-                return null;
-            }
-        }).filter(Boolean);
+        const lines = content.split('\n').filter(line => line.trim().length > 0);
+        const logs = lines
+            .map(line => {
+                try {
+                    return JSON.parse(line);
+                } catch {
+                    return null;
+                }
+            })
+            .filter(Boolean);
 
-        res.json({
-            logs: logs.slice(-50), // Return last 50 entries
+        return res.json({
+            logs: logs.slice(-50),
             total: logs.length
         });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to read deploy logs' });
+    } catch {
+        return res.status(500).json({ error: 'Failed to read deploy logs' });
     }
 });
 
