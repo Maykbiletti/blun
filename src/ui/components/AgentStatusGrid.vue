@@ -1,132 +1,126 @@
 <template>
   <section class="agent-status-grid" aria-label="Agent Status Grid">
-    <header class="grid-header">
-      <h2 class="title">Agents</h2>
-      <button
-        type="button"
-        class="sort-button"
-        @click="toggleStatusSort"
-        :aria-label="`Sort by status ${sortDirection === 'asc' ? 'ascending' : 'descending'}`"
-      >
-        Sort by Status
-        <span class="sort-indicator">{{ sortDirection === 'asc' ? 'ASC' : 'DESC' }}</span>
-      </button>
+    <header class="agent-status-grid__header">
+      <div>
+        <h2 class="agent-status-grid__title">Agent Status</h2>
+        <p class="agent-status-grid__subtitle">
+          {{ visibleAgents.length }} agents tracked
+        </p>
+      </div>
+      <div class="agent-status-grid__totals">
+        <span class="pill pill--ok">OK {{ summary.ok }}</span>
+        <span class="pill pill--warn">Warn {{ summary.warning }}</span>
+        <span class="pill pill--error">Error {{ summary.error }}</span>
+      </div>
     </header>
 
-    <div v-if="sortedAgents.length" class="cards-grid">
+    <div v-if="visibleAgents.length" class="agent-status-grid__cards">
       <article
-        v-for="agent in sortedAgents"
-        :key="agent.id || agent.name"
-        class="agent-card"
+        v-for="agent in visibleAgents"
+        :key="agent.id"
+        class="agent-status-card"
+        :class="`agent-status-card--${normalizeStatus(agent.status)}`"
       >
-        <div class="card-row">
-          <span class="label">Name</span>
-          <strong class="value">{{ agent.name || '-' }}</strong>
+        <div class="agent-status-card__head">
+          <h3 class="agent-status-card__name">{{ agent.name || agent.id }}</h3>
+          <span class="agent-status-card__badge">{{ labelForStatus(agent.status) }}</span>
         </div>
 
-        <div class="card-row">
-          <span class="label">Model</span>
-          <span class="value">{{ agent.model || '-' }}</span>
-        </div>
+        <p class="agent-status-card__detail">{{ agent.message || 'No details provided' }}</p>
 
-        <div class="card-row">
-          <span class="label">Status</span>
-          <span class="value status-pill" :data-status="normalizedStatus(agent.status)">
-            {{ agent.status || 'unknown' }}
-          </span>
-        </div>
+        <dl class="agent-status-card__meta">
+          <div>
+            <dt>Last heartbeat</dt>
+            <dd>{{ formatDate(agent.lastHeartbeat) }}</dd>
+          </div>
+          <div>
+            <dt>Runtime</dt>
+            <dd>{{ agent.runtime || 'n/a' }}</dd>
+          </div>
+        </dl>
 
-        <div class="card-row">
-          <span class="label">Current Task</span>
-          <span class="value task" :title="agent.currentTask || '-'">{{ agent.currentTask || '-' }}</span>
-        </div>
-
-        <div class="card-row">
-          <span class="label">Success Rate</span>
-          <span class="value">{{ formatSuccessRate(agent.successRate) }}</span>
+        <div class="agent-status-card__actions">
+          <button type="button" @click="$emit('select', agent)">Open</button>
+          <button
+            type="button"
+            :disabled="normalizeStatus(agent.status) === 'ok'"
+            @click="$emit('retry', agent)"
+          >
+            Retry
+          </button>
         </div>
       </article>
     </div>
 
-    <p v-else class="empty-state">No agents available.</p>
+    <p v-else class="agent-status-grid__empty">No agents available.</p>
   </section>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 
 const props = defineProps({
   agents: {
     type: Array,
-    default: () => []
-  }
+    default: () => [],
+  },
 });
 
-const sortDirection = ref('asc');
+defineEmits(['retry', 'select']);
 
-const STATUS_ORDER = {
-  online: 1,
-  active: 1,
-  busy: 2,
-  idle: 3,
-  paused: 4,
-  offline: 5,
-  error: 6,
-  unknown: 7
-};
+const visibleAgents = computed(() =>
+  (props.agents || [])
+    .filter((agent) => agent && (agent.id || agent.name))
+    .map((agent) => ({
+      ...agent,
+      status: normalizeStatus(agent.status),
+    }))
+    .sort((a, b) => severityRank(b.status) - severityRank(a.status)),
+);
 
-function normalizedStatus(status) {
-  return String(status || 'unknown').toLowerCase().trim();
-}
-
-function getStatusWeight(status) {
-  const normalized = normalizedStatus(status);
-  return STATUS_ORDER[normalized] ?? STATUS_ORDER.unknown;
-}
-
-function toggleStatusSort() {
-  sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc';
-}
-
-function formatSuccessRate(value) {
-  if (value === null || value === undefined || value === '') {
-    return '-';
-  }
-
-  if (typeof value === 'string' && value.includes('%')) {
-    return value;
-  }
-
-  const numeric = Number(value);
-
-  if (Number.isNaN(numeric)) {
-    return '-';
-  }
-
-  if (numeric <= 1) {
-    return `${(numeric * 100).toFixed(1)}%`;
-  }
-
-  return `${numeric.toFixed(1)}%`;
-}
-
-const sortedAgents = computed(() => {
-  const list = [...props.agents];
-
-  return list.sort((a, b) => {
-    const weightA = getStatusWeight(a.status);
-    const weightB = getStatusWeight(b.status);
-
-    if (weightA !== weightB) {
-      return sortDirection.value === 'asc' ? weightA - weightB : weightB - weightA;
-    }
-
-    const nameA = String(a.name || '').toLowerCase();
-    const nameB = String(b.name || '').toLowerCase();
-
-    return nameA.localeCompare(nameB);
-  });
+const summary = computed(() => {
+  return visibleAgents.value.reduce(
+    (acc, agent) => {
+      const key = normalizeStatus(agent.status);
+      acc[key] += 1;
+      return acc;
+    },
+    { ok: 0, warning: 0, error: 0 },
+  );
 });
+
+function normalizeStatus(status) {
+  const value = String(status || '').toLowerCase();
+  if (value === 'error' || value === 'failed' || value === 'down') return 'error';
+  if (value === 'warning' || value === 'degraded' || value === 'slow') return 'warning';
+  return 'ok';
+}
+
+function labelForStatus(status) {
+  const normalized = normalizeStatus(status);
+  if (normalized === 'error') return 'Error';
+  if (normalized === 'warning') return 'Warning';
+  return 'OK';
+}
+
+function severityRank(status) {
+  if (status === 'error') return 3;
+  if (status === 'warning') return 2;
+  return 1;
+}
+
+function formatDate(value) {
+  if (!value) return 'n/a';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'n/a';
+  return new Intl.DateTimeFormat('de-DE', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
+}
 </script>
 
 <style scoped>
@@ -135,139 +129,123 @@ const sortedAgents = computed(() => {
   gap: 1rem;
 }
 
-.grid-header {
+.agent-status-grid__header {
   display: flex;
   justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.agent-status-grid__title {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.agent-status-grid__subtitle {
+  margin: 0.25rem 0 0;
+  opacity: 0.7;
+}
+
+.agent-status-grid__totals {
+  display: flex;
+  gap: 0.5rem;
   align-items: center;
+}
+
+.pill {
+  padding: 0.25rem 0.625rem;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.pill--ok { background: #dcfce7; color: #166534; }
+.pill--warn { background: #fef3c7; color: #92400e; }
+.pill--error { background: #fee2e2; color: #991b1b; }
+
+.agent-status-grid__cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 0.75rem;
 }
 
-.title {
+.agent-status-card {
+  border: 1px solid #e5e7eb;
+  border-left-width: 4px;
+  border-radius: 0.75rem;
+  padding: 0.875rem;
+  background: #fff;
+}
+
+.agent-status-card--ok { border-left-color: #16a34a; }
+.agent-status-card--warning { border-left-color: #d97706; }
+.agent-status-card--error { border-left-color: #dc2626; }
+
+.agent-status-card__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.agent-status-card__name {
   margin: 0;
-  font-size: 1.1rem;
-  font-weight: 700;
+  font-size: 1rem;
 }
 
-.sort-button {
-  border: 1px solid #cfd8e3;
-  background: #f8fbff;
-  color: #1a2c42;
-  border-radius: 8px;
-  padding: 0.45rem 0.75rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.sort-button:hover {
-  background: #eef5ff;
-}
-
-.sort-indicator {
-  font-size: 0.72rem;
-  letter-spacing: 0.04em;
-  opacity: 0.8;
-}
-
-.cards-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 0.85rem;
-}
-
-.agent-card {
-  border: 1px solid #dce4ef;
-  border-radius: 12px;
-  background: #ffffff;
-  padding: 0.8rem;
-  display: grid;
-  gap: 0.5rem;
-}
-
-.card-row {
-  display: grid;
-  grid-template-columns: 92px 1fr;
-  align-items: center;
-  column-gap: 0.5rem;
-}
-
-.label {
-  color: #5a6b7f;
-  font-size: 0.8rem;
-}
-
-.value {
-  color: #16202b;
-  font-size: 0.86rem;
-  min-width: 0;
-}
-
-.task {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.status-pill {
-  justify-self: start;
-  display: inline-flex;
-  border-radius: 999px;
-  padding: 0.2rem 0.55rem;
+.agent-status-card__badge {
   font-size: 0.75rem;
   font-weight: 700;
-  border: 1px solid transparent;
-  text-transform: capitalize;
 }
 
-.status-pill[data-status='online'],
-.status-pill[data-status='active'] {
-  color: #0d6b39;
-  border-color: #8ce0b5;
-  background: #e9f9f0;
+.agent-status-card__detail {
+  margin: 0.625rem 0;
+  min-height: 2.4em;
 }
 
-.status-pill[data-status='busy'] {
-  color: #8a5300;
-  border-color: #ffd08a;
-  background: #fff4e5;
-}
-
-.status-pill[data-status='idle'],
-.status-pill[data-status='paused'] {
-  color: #284b8f;
-  border-color: #aac2f0;
-  background: #edf3ff;
-}
-
-.status-pill[data-status='offline'],
-.status-pill[data-status='error'],
-.status-pill[data-status='unknown'] {
-  color: #6a2d35;
-  border-color: #efb0ba;
-  background: #fff0f3;
-}
-
-.empty-state {
+.agent-status-card__meta {
   margin: 0;
-  padding: 1rem;
-  border: 1px dashed #cfd8e3;
-  border-radius: 10px;
-  color: #58687c;
-  font-size: 0.9rem;
+  display: grid;
+  gap: 0.25rem;
 }
 
-@media (max-width: 640px) {
-  .grid-header {
-    flex-direction: column;
-    align-items: stretch;
-  }
+.agent-status-card__meta div {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8125rem;
+}
 
-  .card-row {
-    grid-template-columns: 1fr;
-    gap: 0.15rem;
-  }
+.agent-status-card__meta dt {
+  opacity: 0.65;
+}
+
+.agent-status-card__meta dd {
+  margin: 0;
+  font-weight: 500;
+}
+
+.agent-status-card__actions {
+  margin-top: 0.75rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.agent-status-card__actions button {
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
+  border-radius: 0.5rem;
+  padding: 0.375rem 0.625rem;
+  cursor: pointer;
+}
+
+.agent-status-card__actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.agent-status-grid__empty {
+  margin: 0;
+  opacity: 0.75;
 }
 </style>
