@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BLUN Insights</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #060b12;
+      --panel: #101927;
+      --panel-soft: #0d1421;
+      --line: #1f2d43;
+      --text: #edf4ff;
+      --muted: #8d9ec0;
+      --accent: #43c8ff;
+      --ok: #4ee7a3;
+      --warn: #ffc560;
+      --danger: #ff6d88;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      color: var(--text);
+      font-family: "Space Grotesk", "Segoe UI", sans-serif;
+      background:
+        radial-gradient(900px 620px at 88% -12%, #1b2f52 0%, transparent 62%),
+        radial-gradient(800px 580px at -20% 118%, #1b2a45 0%, transparent 60%),
+        var(--bg);
+      padding: 24px;
+    }
+
+    .shell {
+      width: min(1140px, 100%);
+      margin: 0 auto;
+      display: grid;
+      gap: 18px;
+    }
+
+    .head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 14px;
+    }
+
+    h1 {
+      font-size: clamp(1.35rem, 2.2vw, 2rem);
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+
+    .sub {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .stamp {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(12, 19, 31, 0.82);
+      color: var(--muted);
+      font-size: 0.82rem;
+      padding: 9px 12px;
+      white-space: nowrap;
+    }
+
+    .pulse {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 0 0 rgba(67, 200, 255, 0.45);
+      animation: pulse 1.7s infinite;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(67, 200, 255, 0.42); }
+      70% { box-shadow: 0 0 0 12px rgba(67, 200, 255, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(67, 200, 255, 0); }
+    }
+
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .tile {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: linear-gradient(180deg, rgba(18, 28, 44, 0.94), rgba(13, 20, 33, 0.95));
+      padding: 14px;
+    }
+
+    .tile-label {
+      color: var(--muted);
+      font-size: 0.78rem;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      margin-bottom: 7px;
+    }
+
+    .tile-value {
+      font-size: clamp(1.25rem, 2.1vw, 1.85rem);
+      font-weight: 700;
+      line-height: 1.1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .tile-value.accent { color: var(--accent); }
+    .tile-value.ok { color: var(--ok); }
+    .tile-value.warn { color: var(--warn); }
+    .tile-value.danger { color: var(--danger); }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(17, 25, 39, 0.92), rgba(11, 17, 28, 0.95));
+      overflow: hidden;
+    }
+
+    .panel-head {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .panel-head h2 {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .panel-meta {
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .list {
+      list-style: none;
+    }
+
+    .task-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      padding: 13px 16px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .task-row:last-child {
+      border-bottom: none;
+    }
+
+    .task-title {
+      font-size: 0.93rem;
+      font-weight: 500;
+      color: #f3f7ff;
+      margin-bottom: 4px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .task-meta {
+      color: var(--muted);
+      font-size: 0.79rem;
+    }
+
+    .task-time {
+      color: var(--muted);
+      font-size: 0.78rem;
+      white-space: nowrap;
+    }
+
+    .empty,
+    .error {
+      padding: 18px 16px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .error {
+      color: #ffbbca;
+      background: rgba(113, 30, 50, 0.25);
+      border-top: 1px solid rgba(162, 50, 76, 0.45);
+    }
+
+    @media (max-width: 980px) {
+      .kpis {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 640px) {
+      body {
+        padding: 14px;
+      }
+
+      .head {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .stamp {
+        width: fit-content;
+      }
+
+      .kpis {
+        grid-template-columns: 1fr;
+      }
+
+      .task-row {
+        grid-template-columns: 1fr;
+        gap: 6px;
+      }
+
+      .task-title {
+        white-space: normal;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="head">
+      <div>
+        <h1>Insights</h1>
+        <p class="sub">KPI-Livebild und letzte abgeschlossene Tasks</p>
+      </div>
+      <div class="stamp">
+        <span class="pulse" aria-hidden="true"></span>
+        <span id="last-update">Lade Daten...</span>
+      </div>
+    </header>
+
+    <section class="kpis">
+      <article class="tile">
+        <p class="tile-label">Tasks Heute</p>
+        <p id="kpi-tasks-today" class="tile-value accent">-</p>
+      </article>
+      <article class="tile">
+        <p class="tile-label">Avg Dauer</p>
+        <p id="kpi-avg-duration" class="tile-value warn">-</p>
+      </article>
+      <article class="tile">
+        <p class="tile-label">Erfolgsrate</p>
+        <p id="kpi-success-rate" class="tile-value ok">-</p>
+      </article>
+      <article class="tile">
+        <p class="tile-label">Aktive Agents</p>
+        <p id="kpi-active-agents" class="tile-value">-</p>
+      </article>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Letzte 10 Completed Tasks</h2>
+        <span id="task-count" class="panel-meta">0 Eintraege</span>
+      </div>
+      <ul id="task-list" class="list">
+        <li class="empty">Warte auf Daten...</li>
+      </ul>
+      <div id="error" class="error" style="display:none"></div>
+    </section>
+  </main>
+
+  <script>
+    var API_URL = "/api/organisator/stats";
+    var POLL_MS = 30000;
+
+    function esc(value) {
+      return String(value == null ? "" : value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function pick(obj, keys) {
+      if (!obj || typeof obj !== "object") return null;
+      for (var i = 0; i < keys.length; i++) {
+        var key = keys[i];
+        if (Object.prototype.hasOwnProperty.call(obj, key) && obj[key] != null) {
+          return obj[key];
+        }
+      }
+      return null;
+    }
+
+    function num(v) {
+      var n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    }
+
+    function formatInt(value) {
+      var n = num(value);
+      if (n === null) return "-";
+      return Math.round(n).toLocaleString("de-DE");
+    }
+
+    function formatPercent(value) {
+      var n = num(value);
+      if (n === null) return "-";
+      if (n <= 1) n = n * 100;
+      return n.toFixed(1).replace(".", ",") + "%";
+    }
+
+    function formatDuration(value) {
+      var n = num(value);
+      if (n === null) return "-";
+      if (n <= 0) return "0s";
+      if (n > 5000) n = n / 1000;
+      if (n < 60) return Math.round(n) + "s";
+      var mins = Math.floor(n / 60);
+      var secs = Math.round(n % 60);
+      if (mins < 60) return mins + "m " + secs + "s";
+      var hrs = Math.floor(mins / 60);
+      mins = mins % 60;
+      return hrs + "h " + mins + "m";
+    }
+
+    function formatDateTime(value) {
+      if (!value) return "-";
+      var d = new Date(value);
+      if (Number.isNaN(d.getTime())) return "-";
+      return d.toLocaleString("de-DE", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    }
+
+    function renderKpis(stats) {
+      var tasksToday = pick(stats, ["tasks_today", "tasksToday", "today_tasks", "completed_today", "completedTasksToday"]);
+      var avgDuration = pick(stats, ["avg_duration", "avgDuration", "average_duration", "averageDuration", "avg_task_duration", "avgTaskDuration"]);
+      var successRate = pick(stats, ["success_rate", "successRate", "task_success_rate", "taskSuccessRate"]);
+      var activeAgents = pick(stats, ["active_agents", "activeAgents"]);
+
+      document.getElementById("kpi-tasks-today").textContent = formatInt(tasksToday);
+      document.getElementById("kpi-avg-duration").textContent = formatDuration(avgDuration);
+      document.getElementById("kpi-success-rate").textContent = formatPercent(successRate);
+      document.getElementById("kpi-active-agents").textContent = formatInt(activeAgents);
+    }
+
+    function extractCompletedTasks(stats) {
+      var list = pick(stats, [
+        "recent_completed_tasks",
+        "completed_tasks_recent",
+        "completedTasksRecent",
+        "last_completed_tasks",
+        "lastCompletedTasks",
+        "completed_tasks",
+        "completedTasks",
+        "tasks"
+      ]);
+
+      if (!Array.isArray(list)) return [];
+
+      return list
+        .filter(function(item) {
+          if (item && typeof item === "object" && item.status) {
+            return String(item.status).toLowerCase() === "completed";
+          }
+          return true;
+        })
+        .slice(0, 10);
+    }
+
+    function normalizeTask(task, index) {
+      if (typeof task === "string") {
+        return {
+          title: task,
+          agent: "-",
+          completedAt: null,
+          key: "string-" + index
+        };
+      }
+
+      var title = pick(task, ["task", "title", "content", "name", "text"]) || "(ohne Titel)";
+      var agent = pick(task, ["agent_name", "agentName", "agent", "assigned_to", "assignedTo"]) || "-";
+      var completedAt = pick(task, ["completed_at", "completedAt", "finished_at", "finishedAt", "updated_at", "updatedAt", "created_at", "createdAt"]);
+      var id = pick(task, ["id", "task_id", "taskId"]);
+
+      return {
+        title: title,
+        agent: agent,
+        completedAt: completedAt,
+        key: id != null ? String(id) : "task-" + index
+      };
+    }
+
+    function renderTasks(stats) {
+      var items = extractCompletedTasks(stats).map(normalizeTask);
+      var list = document.getElementById("task-list");
+      var count = document.getElementById("task-count");
+      count.textContent = items.length + " Eintraege";
+
+      if (!items.length) {
+        list.innerHTML = '<li class="empty">Keine Completed Tasks in /api/organisator/stats gefunden.</li>';
+        return;
+      }
+
+      list.innerHTML = items.map(function(item) {
+        return '' +
+          '<li class="task-row" data-key="' + esc(item.key) + '">' +
+            '<div>' +
+              '<p class="task-title">' + esc(item.title) + '</p>' +
+              '<p class="task-meta">Agent: ' + esc(item.agent) + '</p>' +
+            '</div>' +
+            '<time class="task-time">' + esc(formatDateTime(item.completedAt)) + '</time>' +
+          '</li>';
+      }).join('');
+    }
+
+    function showError(message) {
+      var node = document.getElementById("error");
+      if (!message) {
+        node.style.display = "none";
+        node.textContent = "";
+        return;
+      }
+      node.style.display = "block";
+      node.textContent = message;
+    }
+
+    async function loadStats() {
+      try {
+        var response = await fetch(API_URL, {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            "Accept": "application/json"
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error("HTTP " + response.status + " beim Laden von " + API_URL);
+        }
+
+        var stats = await response.json();
+        renderKpis(stats);
+        renderTasks(stats);
+        showError("");
+
+        document.getElementById("last-update").textContent = "Update: " + new Date().toLocaleTimeString("de-DE");
+      } catch (err) {
+        showError(err && err.message ? err.message : "Unbekannter Fehler");
+        document.getElementById("last-update").textContent = "Fehler beim Laden";
+      }
+    }
+
+    loadStats();
+    setInterval(loadStats, POLL_MS);
+  </script>
+</body>
+</html>
