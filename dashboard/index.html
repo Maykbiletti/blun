@@ -3189,13 +3189,13 @@ window.toggleNotificationCenter = function() {
 
 
 <script>
-// Auto-Sidebar Enricher: zieht alle pages/*.html und haengt sie an die Sidebar an
+// Auto-Sidebar Enricher: zieht alle pages/*.html und integriert sie in .sidebar-nav
 (function autoSidebarEnrich(){
+  function titleCase(s) { return s.split(' ').map(function(w){ return w.charAt(0).toUpperCase() + w.slice(1); }).join(' '); }
   function go() {
     try {
-      var sidebar = document.querySelector('.sidebar nav, .sidebar-nav, nav.sidebar, aside nav');
-      if (!sidebar) sidebar = document.querySelector('.sidebar');
-      if (!sidebar) return;
+      var nav = document.querySelector('.sidebar-nav');
+      if (!nav) return;
       var headers = { 'Content-Type': 'application/json' };
       var token = localStorage.getItem('blun_token');
       if (token) headers['Authorization'] = 'Bearer ' + token;
@@ -3217,13 +3217,13 @@ window.toggleNotificationCenter = function() {
           d.pages.forEach(function(p){
             var a = document.createElement('a');
             a.href = p.url;
-            a.textContent = p.label;
+            a.textContent = titleCase(p.label.toLowerCase());
             a.style.cssText = 'display:block;padding:7px 16px;color:#94a3b8;text-decoration:none;font-size:13px;border-radius:4px;margin:1px 6px;transition:background 0.15s';
             a.onmouseover = function(){ a.style.background = '#1e293b'; a.style.color = '#e2e8f0'; };
             a.onmouseout = function(){ a.style.background = ''; a.style.color = '#94a3b8'; };
             sec.appendChild(a);
           });
-          sidebar.appendChild(sec);
+          nav.appendChild(sec);
         }).catch(function(){});
     } catch(e) {}
   }
