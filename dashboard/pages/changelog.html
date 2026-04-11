@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BLUN Changelog</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      text-align: center;
+      color: white;
+      margin-bottom: 50px;
+      font-size: 2.5em;
+      font-weight: 300;
+      letter-spacing: 1px;
+    }
+
+    .timeline {
+      position: relative;
+    }
+
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 2px;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .timeline-entry {
+      margin-bottom: 50px;
+      position: relative;
+    }
+
+    .timeline-entry:nth-child(odd) .date {
+      text-align: right;
+      padding-right: 60px;
+    }
+
+    .timeline-entry:nth-child(odd) .content {
+      margin-left: auto;
+      margin-right: 0;
+    }
+
+    .timeline-entry:nth-child(even) .date {
+      text-align: left;
+      padding-left: 60px;
+    }
+
+    .timeline-entry:nth-child(even) .content {
+      margin-right: auto;
+      margin-left: 0;
+    }
+
+    .date {
+      font-size: 0.95em;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.9);
+      margin-bottom: 10px;
+      min-height: 24px;
+    }
+
+    .content {
+      width: 45%;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      position: relative;
+    }
+
+    .content ul {
+      list-style: none;
+    }
+
+    .content li {
+      padding: 6px 0;
+      color: #333;
+      font-size: 0.95em;
+      line-height: 1.5;
+    }
+
+    .content li::before {
+      content: '▸ ';
+      color: #667eea;
+      font-weight: bold;
+      margin-right: 8px;
+    }
+
+    .timeline-dot {
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      background: #667eea;
+      border: 3px solid rgba(255, 255, 255, 0.9);
+      border-radius: 50%;
+      left: 50%;
+      transform: translateX(-50%);
+      top: 35px;
+      z-index: 10;
+      box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.2);
+    }
+
+    .loading {
+      text-align: center;
+      color: white;
+      font-size: 1.1em;
+    }
+
+    .error {
+      text-align: center;
+      color: #ff6b6b;
+      font-size: 1em;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 20px;
+      border-radius: 8px;
+      backdrop-filter: blur(10px);
+    }
+
+    @media (max-width: 768px) {
+      h1 {
+        font-size: 2em;
+      }
+
+      .timeline::before {
+        left: 20px;
+      }
+
+      .timeline-entry:nth-child(odd) .date,
+      .timeline-entry:nth-child(even) .date {
+        text-align: left;
+        padding-left: 60px;
+        padding-right: 0;
+      }
+
+      .content {
+        width: calc(100% - 60px);
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+      }
+
+      .timeline-dot {
+        left: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>BLUN Changelog</h1>
+    <div id="timeline" class="timeline">
+      <div class="loading">Loading changelog...</div>
+    </div>
+  </div>
+
+  <script>
+    async function loadChangelog() {
+      try {
+        const response = await fetch('/memory/blun_changelog.md');
+        if (!response.ok) throw new Error(`Failed to load changelog: ${response.status}`);
+
+        const text = await response.text();
+        const entries = parseChangelog(text);
+        const lastEntries = entries.slice(0, 30);
+
+        renderTimeline(lastEntries);
+      } catch (error) {
+        document.getElementById('timeline').innerHTML = `<div class="error">Error loading changelog: ${error.message}</div>`;
+      }
+    }
+
+    function parseChangelog(text) {
+      const lines = text.split('\n');
+      const entries = [];
+      let currentDate = null;
+      let currentItems = [];
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+
+        if (line.startsWith('## ')) {
+          if (currentDate) {
+            entries.push({ date: currentDate, items: currentItems });
+          }
+          currentDate = line.substring(3).trim();
+          currentItems = [];
+        } else if (line.startsWith('- ') && currentDate) {
+          const item = line.substring(2).trim();
+          if (item) currentItems.push(item);
+        }
+      }
+
+      if (currentDate && currentItems.length > 0) {
+        entries.push({ date: currentDate, items: currentItems });
+      }
+
+      return entries;
+    }
+
+    function renderTimeline(entries) {
+      const timeline = document.getElementById('timeline');
+      timeline.innerHTML = '';
+
+      entries.forEach((entry, index) => {
+        const entryDiv = document.createElement('div');
+        entryDiv.className = 'timeline-entry';
+
+        const dateDiv = document.createElement('div');
+        dateDiv.className = 'date';
+        dateDiv.textContent = entry.date;
+
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'content';
+
+        const ul = document.createElement('ul');
+        entry.items.forEach(item => {
+          const li = document.createElement('li');
+          li.textContent = item;
+          ul.appendChild(li);
+        });
+
+        contentDiv.appendChild(ul);
+
+        const dotDiv = document.createElement('div');
+        dotDiv.className = 'timeline-dot';
+
+        entryDiv.appendChild(dateDiv);
+        entryDiv.appendChild(contentDiv);
+        entryDiv.appendChild(dotDiv);
+
+        timeline.appendChild(entryDiv);
+      });
+    }
+
+    loadChangelog();
+  </script>
+</body>
+</html>
