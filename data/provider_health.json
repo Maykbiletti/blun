@@ -1,0 +1,18 @@
+{
+  "anthropic": {
+    "ok": 136,
+    "fail": 111,
+    "last_error": "auth_401",
+    "last_at": "2026-04-11T08:50:10.429Z",
+    "last_agent": "Rolf",
+    "last_ok_at": "2026-04-11T08:50:31.995Z"
+  },
+  "openai": {
+    "ok": 103,
+    "fail": 24,
+    "last_ok_at": "2026-04-11T08:48:22.728Z",
+    "last_error": "rate_limit",
+    "last_at": "2026-04-11T08:49:10.538Z",
+    "last_agent": "Greta"
+  }
+}

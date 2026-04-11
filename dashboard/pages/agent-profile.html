@@ -1,231 +1,40 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#0a0a0a">
-<title>Agent Profil - BLUN</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-:root{
-  --bg:#07090d;
-  --bg-grad-a:#0f1624;
-  --bg-grad-b:#0b1019;
-  --card:#121926;
-  --card-soft:#0f1520;
-  --border:#273247;
-  --fg:#f4f7ff;
-  --fg2:#aeb8cc;
-  --fg3:#7f8ba3;
-  --blue:#4c8dff;
-  --blue-2:#2f6fe4;
-  --ok:#2fcf8f;
-  --err:#ff5f7a;
-  --radius:14px;
-  --shadow:0 14px 40px rgba(0,0,0,.35);
-}
-html,body{min-height:100%;font-family:"Inter",-apple-system,sans-serif;background:radial-gradient(900px 520px at 5% -10%,var(--bg-grad-a),transparent 60%),radial-gradient(700px 430px at 100% 0%,#10182a,transparent 60%),linear-gradient(145deg,var(--bg),var(--bg-grad-b));color:var(--fg)}
-body{padding:28px}
-a{color:inherit;text-decoration:none}
-.shell{max-width:1060px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
-.headline{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.brand{font-size:22px;font-weight:800;letter-spacing:.02em}
-.brand span{color:var(--blue)}
-.head-tools{display:flex;align-items:center;gap:8px;color:var(--fg2);font-size:13px}
-.btn{border:1px solid var(--border);background:var(--card-soft);color:var(--fg2);padding:8px 12px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer}
-.btn:hover{border-color:var(--blue);color:var(--fg)}
-.card{background:linear-gradient(180deg,var(--card),#0f1521);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
-.profile-card{display:grid;grid-template-columns:110px 1fr;gap:16px;padding:22px}
-.avatar{width:86px;height:86px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#2a4475,#24468d);border:1px solid #4769a4;color:#fff;font-size:28px;font-weight:800;letter-spacing:.04em}
-.identity{display:flex;flex-direction:column;justify-content:center;min-width:0}
-.name{font-size:28px;font-weight:800;line-height:1.15;word-break:break-word}
-.role{margin-top:6px;color:var(--fg2);font-size:15px}
-.meta{margin-top:8px;color:var(--fg3);font-size:12px}
-.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
-.stat{padding:16px 18px;border-radius:12px;border:1px solid var(--border);background:var(--card-soft)}
-.stat .label{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--fg3)}
-.stat .value{margin-top:6px;font-size:32px;font-weight:800;font-variant-numeric:tabular-nums}
-.tasks-card{padding:18px}
-.tasks-title{font-size:14px;font-weight:700;color:var(--fg2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.03em}
-.tasks{display:flex;flex-direction:column;gap:8px}
-.task{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;border:1px solid var(--border);border-radius:10px;background:var(--card-soft);padding:10px 12px}
-.task-text{color:var(--fg);font-size:14px;line-height:1.35;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.task-status{font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.04em}
-.st-pending{background:#24334e;color:#7eb0ff}
-.st-processing,.st-in_progress{background:#3a2d12;color:#fbbf24}
-.st-completed{background:#133525;color:#6ee7b7}
-.st-failed,.st-error{background:#3b1622;color:#ff96ab}
-.task-time{font-size:12px;color:var(--fg3);font-variant-numeric:tabular-nums}
-.center{display:flex;align-items:center;justify-content:center;min-height:260px;padding:24px;text-align:center;color:var(--fg2);font-size:14px}
-.error{color:var(--err)}
-@media (max-width:760px){
-  body{padding:14px}
-  .profile-card{grid-template-columns:1fr;justify-items:start}
-  .grid{grid-template-columns:1fr}
-  .task{grid-template-columns:1fr}
-  .task-text{white-space:normal}
-}
-</style>
-</head>
-<body>
-<div class="shell">
-  <div class="headline">
-    <div class="brand"><span>BL</span>UN Agent Profil</div>
-    <div class="head-tools">
-      <span id="agent-id-label">id: -</span>
-      <button class="btn" id="refresh">Neu laden</button>
+<div class="page-frag" data-page-slug="agent-profile">
+  <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px">
+    <div style="width:64px;height:64px;border-radius:50%;background:var(--bg3);border:1px solid var(--brd);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;color:var(--tx)">A</div>
+    <div>
+      <div style="font-size:22px;font-weight:700;color:var(--tx)" id="apName">Agent Profil</div>
+      <div style="color:var(--tx2);font-size:13px" id="apRole">Wird geladen…</div>
     </div>
   </div>
-
-  <div id="content" class="card center">Lade Agent...</div>
+  <div class="stats-row" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">
+    <div class="stat-card"><div class="stat-label">Tasks gesamt</div><div class="stat-val" id="apStatTotal">–</div></div>
+    <div class="stat-card"><div class="stat-label">Erledigt</div><div class="stat-val" id="apStatDone">–</div></div>
+    <div class="stat-card"><div class="stat-label">Offen</div><div class="stat-val" id="apStatOpen">–</div></div>
+    <div class="stat-card"><div class="stat-label">Fehlgeschlagen</div><div class="stat-val" id="apStatFail">–</div></div>
+  </div>
+  <div class="card">
+    <div class="card-head"><div class="card-title">Letzte Aktivitaet</div></div>
+    <div id="apActivity" style="color:var(--tx2);font-size:13px">Lade…</div>
+  </div>
 </div>
-
 <script>
-(function () {
-  var BASE = "/api/organisator";
-  var content = document.getElementById("content");
-  var idLabel = document.getElementById("agent-id-label");
-  var refreshBtn = document.getElementById("refresh");
-
-  function getIdFromQuery() {
-    var params = new URLSearchParams(window.location.search);
-    var raw = params.get("id");
-    if (!raw) return null;
-    var n = Number(raw);
-    if (!Number.isFinite(n)) return null;
-    return String(Math.trunc(n));
-  }
-
-  function esc(v) {
-    return String(v == null ? "" : v)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/\"/g, "&quot;")
-      .replace(/'/g, "&#39;");
-  }
-
-  function initials(name) {
-    var s = String(name || "").trim();
-    if (!s) return "--";
-    var parts = s.split(/\s+/).filter(Boolean);
-    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  }
-
-  function fmtDate(ts) {
-    if (!ts) return "-";
-    var d = new Date(ts);
-    if (isNaN(d.getTime())) return "-";
-    return d.toLocaleString("de-DE", { hour12: false });
-  }
-
-  function isToday(ts) {
-    if (!ts) return false;
-    var d = new Date(ts);
-    if (isNaN(d.getTime())) return false;
-    var now = new Date();
-    return d.getFullYear() === now.getFullYear() &&
-      d.getMonth() === now.getMonth() &&
-      d.getDate() === now.getDate();
-  }
-
-  function statusClass(status) {
-    var s = String(status || "pending").toLowerCase();
-    if (s === "in progress") s = "in_progress";
-    return "st-" + s;
-  }
-
-  function showMessage(text, isError) {
-    content.className = "card center" + (isError ? " error" : "");
-    content.textContent = text;
-  }
-
-  async function fetchJson(path) {
-    var res = await fetch(BASE + path, { headers: { "Content-Type": "application/json" } });
-    var data;
-    try { data = await res.json(); } catch (_) { data = null; }
-    if (!res.ok) {
-      var msg = data && data.error ? data.error : ("HTTP " + res.status);
-      throw new Error(msg);
-    }
-    return data;
-  }
-
-  function render(agent, tasks) {
-    var total = tasks.length;
-    var today = tasks.filter(function (t) { return isToday(t.created_at); }).length;
-    var last5 = tasks.slice(0, 5);
-
-    content.className = "";
-    content.innerHTML =
-      '<div class="card profile-card">' +
-        '<div class="avatar">' + esc(initials(agent.name)) + '</div>' +
-        '<div class="identity">' +
-          '<div class="name">' + esc(agent.name || "Unbenannter Agent") + '</div>' +
-          '<div class="role">' + esc(agent.role || "assistant") + '</div>' +
-          '<div class="meta">Modell: ' + esc(agent.model || "-") + ' · Status: ' + esc(agent.status || "-") + '</div>' +
-        '</div>' +
-      '</div>' +
-
-      '<div class="grid">' +
-        '<div class="card stat">' +
-          '<div class="label">Tasks Total</div>' +
-          '<div class="value">' + total + '</div>' +
-        '</div>' +
-        '<div class="card stat">' +
-          '<div class="label">Tasks Heute</div>' +
-          '<div class="value">' + today + '</div>' +
-        '</div>' +
-      '</div>' +
-
-      '<div class="card tasks-card">' +
-        '<div class="tasks-title">Letzte 5 Tasks</div>' +
-        '<div class="tasks">' +
-          (last5.length ? last5.map(function (t) {
-            return '<div class="task">' +
-              '<div class="task-text" title="' + esc(t.task || "") + '">' + esc(t.task || "(ohne Text)") + '</div>' +
-              '<span class="task-status ' + statusClass(t.status) + '">' + esc(t.status || "pending") + '</span>' +
-              '<div class="task-time">' + esc(fmtDate(t.created_at)) + '</div>' +
-            '</div>';
-          }).join("") : '<div class="task"><div class="task-text">Keine Tasks gefunden.</div><div></div><div></div></div>') +
-        '</div>' +
-      '</div>';
-  }
-
-  async function load() {
-    var id = getIdFromQuery();
-    idLabel.textContent = "id: " + (id || "-");
-
-    if (!id) {
-      showMessage("Fehlender oder ungueltiger Query-Parameter ?id=N", true);
-      return;
-    }
-
-    showMessage("Lade Agent...", false);
-
-    try {
-      var agents = await fetchJson("/agents");
-      var agent = (Array.isArray(agents) ? agents : []).find(function (a) {
-        return String(a.id) === id;
-      });
-
-      if (!agent) {
-        showMessage("Agent mit id=" + id + " nicht gefunden.", true);
-        return;
-      }
-
-      var tasks = await fetchJson("/agents/" + encodeURIComponent(id) + "/tasks");
-      render(agent, Array.isArray(tasks) ? tasks : []);
-    } catch (err) {
-      showMessage("Fehler beim Laden: " + (err && err.message ? err.message : String(err)), true);
-    }
-  }
-
-  refreshBtn.addEventListener("click", load);
-  load();
+(function(){
+  var slug='agent-profile';
+  if(typeof api!=='function') return;
+  api('/api/organisator/agents').then(function(list){
+    var a=(list||[])[0]; if(!a) return;
+    var n=document.getElementById('apName'); if(n) n.textContent=a.name||'Agent';
+    var r=document.getElementById('apRole'); if(r) r.textContent=a.role||'';
+    api('/api/organisator/agents/'+a.id+'/tasks').then(function(t){
+      var arr=t||[];
+      var done=arr.filter(function(x){return x.status==='completed'}).length;
+      var open=arr.filter(function(x){return x.status==='pending'||x.status==='processing'||x.status==='in_progress'}).length;
+      var fail=arr.filter(function(x){return x.status==='failed'}).length;
+      var set=function(id,v){var e=document.getElementById(id); if(e) e.textContent=v;};
+      set('apStatTotal',arr.length); set('apStatDone',done); set('apStatOpen',open); set('apStatFail',fail);
+      var act=document.getElementById('apActivity');
+      if(act) act.innerHTML=arr.slice(0,10).map(function(x){return '<div style="padding:6px 0;border-bottom:1px solid var(--brd)">#'+x.id+' <span class="tag">'+x.status+'</span> '+(x.task||'').slice(0,80)+'</div>'}).join('') || '<div>Keine Tasks</div>';
+    }).catch(function(){});
+  }).catch(function(){});
 })();
 </script>
-</body>
-</html>

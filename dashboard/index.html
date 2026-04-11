@@ -1775,6 +1775,51 @@ function filterChatAgents(q) {
   });
 }
 function openChat(agentId) { openAgentWorkspace(agentId); loadAgentCanvas(agentId); }
+// ===== Slash Commands =====
+function slashHelp(){
+  return [
+    '<b>Slash-Befehle:</b>',
+    '<code>/task &lt;Beschreibung&gt;</code> — legt sofort einen Task fuer diesen Agent an',
+    '<code>/issues</code> — zeigt offene Tasks dieses Agenten',
+    '<code>/help</code> — diese Liste'
+  ].join('<br>');
+}
+function appendChatMsg(msgs, html, color){
+  var el=document.createElement('div');el.className='msg msg-ai';
+  if(color) el.style.color=color;
+  el.innerHTML=html;
+  msgs.appendChild(el);msgs.scrollTop=msgs.scrollHeight;
+  return el;
+}
+function handleSlashCommand(msg, msgs, agent){
+  if(!msg || msg.charAt(0)!=='/') return false;
+  if(!agent){ appendChatMsg(msgs,'Kein Agent ausgewaehlt.','var(--red)'); return true; }
+  var parts=msg.match(/^\/(\w+)\s*(.*)$/);
+  if(!parts){ return false; }
+  var cmd=parts[1].toLowerCase(); var rest=(parts[2]||'').trim();
+  if(cmd==='help'){ appendChatMsg(msgs, slashHelp(),'var(--text-muted)'); return true; }
+  if(cmd==='task'){
+    if(!rest){ appendChatMsg(msgs,'Nutzung: <code>/task &lt;Beschreibung&gt;</code>','var(--text-muted)'); return true; }
+    var pending=appendChatMsg(msgs,'<span class="thinking-dots"><span></span><span></span><span></span></span> lege Task an...');
+    api('/api/organisator/agents/'+agent.id+'/task',{method:'POST',body:JSON.stringify({task:rest})}).then(function(t){
+      pending.innerHTML='Task #'+t.id+' angelegt fuer '+esc(agent.name||'Agent')+': '+esc(rest);
+      if(typeof loadAll==='function') loadAll();
+      if(typeof loadWsTasks==='function' && window.currentAgent && window.currentAgent.id===agent.id) loadWsTasks(agent.id);
+    }).catch(function(e){ pending.style.color='var(--red)'; pending.textContent='Fehler: '+e.message; });
+    return true;
+  }
+  if(cmd==='issues'){
+    var p=appendChatMsg(msgs,'<span class="thinking-dots"><span></span><span></span><span></span></span> lade Tasks...');
+    api('/api/organisator/agents/'+agent.id+'/tasks').then(function(list){
+      var open=(list||[]).filter(function(x){return x.status==='pending'||x.status==='in_progress'||x.status==='processing';});
+      if(!open.length){ p.innerHTML='Keine offenen Tasks fuer '+esc(agent.name||'Agent'); return; }
+      p.innerHTML='<b>Offene Tasks ('+open.length+'):</b><br>'+open.slice(0,15).map(function(t){return '#'+t.id+' ['+t.status+'] '+esc((t.task||'').slice(0,80));}).join('<br>');
+    }).catch(function(e){ p.style.color='var(--red)'; p.textContent='Fehler: '+e.message; });
+    return true;
+  }
+  appendChatMsg(msgs,'Unbekannter Befehl: <code>'+esc(msg)+'</code> — <code>/help</code> fuer Liste','var(--text-muted)');
+  return true;
+}
 function sendChat() {
   if(!chatAgent) return;
   var input=document.getElementById('chatInput');
@@ -1784,24 +1829,7 @@ function sendChat() {
   var now=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
   var userEl=document.createElement('div');userEl.className='msg msg-user';userEl.innerHTML=esc(msg)+'<span class="msg-ts">'+now+'</span>';msgs.appendChild(userEl);
   msgs.scrollTop=msgs.scrollHeight;
-  // /task slash-command: create agent task directly from chat
-  if(msg.indexOf('/task')===0){
-    var taskText=msg.replace(/^\/task\s*/,'').trim();
-    if(!taskText){
-      var hint=document.createElement('div');hint.className='msg msg-ai';hint.style.color='var(--text-muted)';hint.textContent='Nutzung: /task <Beschreibung>';msgs.appendChild(hint);msgs.scrollTop=msgs.scrollHeight;return;
-    }
-    var pending=document.createElement('div');pending.className='msg msg-ai';pending.innerHTML='<span class="thinking-dots"><span></span><span></span><span></span></span> lege Task an...';msgs.appendChild(pending);
-    api('/api/organisator/agents/'+chatAgent.id+'/task',{method:'POST',body:JSON.stringify({task:taskText})}).then(function(t){
-      var ok=document.createElement('div');ok.className='msg msg-ai';ok.innerHTML='Task #'+t.id+' angelegt fuer '+esc(chatAgent.name||'Agent')+': '+esc(taskText);
-      pending.parentNode.replaceChild(ok,pending);
-      msgs.scrollTop=msgs.scrollHeight;
-      if(typeof loadAll==='function') loadAll();
-    }).catch(function(e){
-      var err=document.createElement('div');err.className='msg msg-ai';err.style.color='var(--red)';err.textContent='Fehler beim Anlegen: '+e.message;
-      pending.parentNode.replaceChild(err,pending);
-    });
-    return;
-  }
+  if(handleSlashCommand(msg, msgs, chatAgent)) return;
   var localThink=document.createElement('div');localThink.className='msg msg-ai';localThink.innerHTML='<span class="thinking-dots"><span></span><span></span><span></span></span>';msgs.appendChild(localThink);
   msgs.scrollTop=msgs.scrollHeight;
   document.getElementById('chatSendBtn').disabled=true;
@@ -2262,6 +2290,16 @@ function loadWsChat(id) {
     msgs.scrollTop=msgs.scrollHeight;
   }
   if(cached.length){renderMsgs(cached);}else{msgs.innerHTML='<div class="spinner"></div>';}
+  // Show slash-help banner once per session per agent
+  try{
+    var hintKey='blun_slash_hint_'+id;
+    if(!sessionStorage.getItem(hintKey)){
+      var b=document.createElement('div');b.className='msg msg-ai';b.style.cssText='background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.25);font-size:12px';
+      b.innerHTML='Tipp: '+slashHelp();
+      msgs.insertBefore(b, msgs.firstChild);
+      sessionStorage.setItem(hintKey,'1');
+    }
+  }catch(e){}
   api('/api/organisator/agents/'+id+'/conversations').then(function(d){
     if(!Array.isArray(d)){return;} // keep cached view on unexpected shape
     // Merge: prefer DB, but keep any cached entries newer than the latest DB row
@@ -2285,6 +2323,8 @@ function sendWsChat() {
   _cache.push({role:'user',content:msg,created_at:new Date().toISOString()});
   try{localStorage.setItem(_cacheKey, JSON.stringify(_cache.slice(-100)));}catch(e){}
   var userEl=document.createElement('div');userEl.className='msg msg-user';userEl.innerHTML=esc(msg)+'<span class="msg-ts">'+now+'</span>';msgs.appendChild(userEl);
+  msgs.scrollTop=msgs.scrollHeight;
+  if(handleSlashCommand(msg, msgs, currentAgent)) return;
   var thinkEl=document.createElement('div');thinkEl.className='msg msg-ai';thinkEl.innerHTML='<span class="thinking-dots"><span></span><span></span><span></span></span>';msgs.appendChild(thinkEl);
   msgs.scrollTop=msgs.scrollHeight;
   document.getElementById('wsChatSendBtn').disabled=true;
@@ -3212,21 +3252,26 @@ window.toggleNotificationCenter = function() {
 (function(){
   var loadedFrags = {};
 
-  function ensureFragHost(slug, url) {
+  function stripFragment(html) {
+    // Remove DOCTYPE/html/head/body wrappers, inline <style>, <link rel=stylesheet>
+    html = html.replace(/<!DOCTYPE[\s\S]*?>/gi, '');
+    html = html.replace(/<html[\s\S]*?>/gi, '').replace(/<\/html>/gi, '');
+    html = html.replace(/<head[\s\S]*?<\/head>/gi, '');
+    html = html.replace(/<body[\s\S]*?>/i, '').replace(/<\/body>/gi, '');
+    html = html.replace(/<style[\s\S]*?<\/style>/gi, '');
+    html = html.replace(/<link[^>]*rel=["']?stylesheet[^>]*>/gi, '');
+    return html.trim();
+  }
+  function ensureFragHost(slug) {
     var id = 'page-frag-' + slug;
     var el = document.getElementById(id);
     if (!el) {
       el = document.createElement('div');
       el.id = id;
       el.className = 'page';
-      el.style.cssText = 'padding:0;overflow:hidden';
+      el.style.cssText = 'overflow-y:auto;padding:16px';
       var main = document.querySelector('.main') || document.body;
       main.appendChild(el);
-      var ifr = document.createElement('iframe');
-      ifr.src = url;
-      ifr.setAttribute('data-frag-iframe','1');
-      ifr.style.cssText = 'width:100%;height:100%;border:0;display:block;background:transparent';
-      el.appendChild(ifr);
     }
     return el;
   }
@@ -3243,15 +3288,36 @@ window.toggleNotificationCenter = function() {
   }
 
   window.loadFragment = function(slug, url, label) {
-    var host = ensureFragHost(slug, url);
-    showFrag(host);
-    setActiveSidebar(slug);
-    var t = document.getElementById('topbarTitle');
-    if (t && label) t.textContent = label;
-    try { history.pushState(null, '', '/dashboard/p/' + slug); } catch(e){}
-    if (window.innerWidth <= 768) {
-      var sb = document.getElementById('sidebar'); if (sb) sb.classList.remove('open');
-    }
+    var host = ensureFragHost(slug);
+    var done = function(){
+      showFrag(host);
+      setActiveSidebar(slug);
+      var t = document.getElementById('topbarTitle');
+      if (t && label) t.textContent = label;
+      try { history.pushState(null, '', '/dashboard/p/' + slug); } catch(e){}
+      if (window.innerWidth <= 768) {
+        var sb = document.getElementById('sidebar'); if (sb) sb.classList.remove('open');
+      }
+    };
+    if (loadedFrags[slug]) { done(); return; }
+    fetch(url, { credentials: 'same-origin' })
+      .then(function(r){ return r.text(); })
+      .then(function(html){
+        host.innerHTML = stripFragment(html);
+        loadedFrags[slug] = true;
+        // re-execute inline scripts so page logic runs in shell context
+        host.querySelectorAll('script').forEach(function(s){
+          var ns = document.createElement('script');
+          if (s.src) ns.src = s.src; else ns.textContent = s.textContent;
+          document.body.appendChild(ns);
+          s.remove();
+        });
+        done();
+      })
+      .catch(function(e){
+        host.innerHTML = '<div style="padding:24px;color:var(--red)">Seite konnte nicht geladen werden: ' + (e.message || e) + '</div>';
+        done();
+      });
   };
 
   // popstate: handle back/forward to /dashboard/p/<slug>

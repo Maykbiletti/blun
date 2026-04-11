@@ -151,13 +151,67 @@ function buildCompletedResultPayload(agent, task, cliName, cliResult, validation
   return payload;
 }
 
+
+function detectProviderError(output, code) {
+  if (!output) return null;
+  var o = String(output).toLowerCase();
+  // Anthropic / Claude
+  if (o.indexOf("401") !== -1 && o.indexOf("anthropic") !== -1) return { provider: "anthropic", reason: "auth_401" };
+  if (o.indexOf("invalid api key") !== -1 || o.indexOf("invalid_request_error") !== -1 && o.indexOf("api key") !== -1) return { provider: "anthropic", reason: "auth_invalid" };
+  if (o.indexOf("529") !== -1 || o.indexOf("overloaded_error") !== -1 || o.indexOf("overloaded") !== -1) return { provider: "anthropic", reason: "overloaded" };
+  if (o.indexOf("rate_limit_error") !== -1 || o.indexOf("rate limit") !== -1) return { provider: "anthropic", reason: "rate_limit" };
+  if (o.indexOf("dangerously-skip-permissions cannot be used") !== -1) return { provider: "anthropic", reason: "sandbox_missing" };
+  // OpenAI / Codex
+  if (o.indexOf("openai") !== -1 && (o.indexOf("401") !== -1 || o.indexOf("unauthorized") !== -1)) return { provider: "openai", reason: "auth_401" };
+  if (o.indexOf("insufficient_quota") !== -1) return { provider: "openai", reason: "quota" };
+  if (o.indexOf("429") !== -1 && o.indexOf("openai") !== -1) return { provider: "openai", reason: "rate_limit" };
+  return null;
+}
+
+function logProviderHealth(provider, reason, agentName) {
+  try {
+    var fs2 = require("fs");
+    var dir = "/root/blun/data";
+    try { fs2.mkdirSync(dir, { recursive: true }); } catch (e) {}
+    var path = dir + "/provider_health.json";
+    var current = {};
+    try { current = JSON.parse(fs2.readFileSync(path, "utf8")); } catch (e) {}
+    current[provider] = current[provider] || { ok: 0, fail: 0, last_error: null, last_at: null };
+    current[provider].fail = (current[provider].fail || 0) + 1;
+    current[provider].last_error = reason;
+    current[provider].last_at = new Date().toISOString();
+    current[provider].last_agent = agentName;
+    fs2.writeFileSync(path, JSON.stringify(current, null, 2));
+  } catch (e) { console.log("[task-runner] provider health log failed: " + e.message); }
+}
+
+function logProviderOk(provider) {
+  try {
+    var fs2 = require("fs");
+    var path = "/root/blun/data/provider_health.json";
+    var current = {};
+    try { current = JSON.parse(fs2.readFileSync(path, "utf8")); } catch (e) {}
+    current[provider] = current[provider] || { ok: 0, fail: 0 };
+    current[provider].ok = (current[provider].ok || 0) + 1;
+    current[provider].last_ok_at = new Date().toISOString();
+    fs2.writeFileSync(path, JSON.stringify(current, null, 2));
+  } catch (e) {}
+}
+
+function fallbackCLI(cliName) {
+  if (cliName === "claude") return "codex";
+  if (cliName === "codex") return "claude";
+  if (cliName === "gemini") return "codex";
+  return null;
+}
+
 function runCLI(cliName, model, prompt, agentDir) {
   return new Promise(function (resolve) {
     var args, env, stdinPrompt = null;
     var baseEnv = Object.assign({}, process.env, { HOME: "/root" });
 
     if (cliName === "claude") {
-      args = ["--print", "-", "--output-format", "text", "--max-turns", "10", "--dangerously-skip-permissions"];
+      args = ["--print", "-", "--output-format", "text", "--max-turns", "10", "--dangerously-skip-permissions", "--add-dir", agentDir];
       if (model && model.indexOf("claude") === 0) args.push("--model", model);
       env = Object.assign(baseEnv, { DISABLE_INTERACTIVITY: "1", IS_SANDBOX: "1" });
       stdinPrompt = prompt;
@@ -215,6 +269,28 @@ async function executeTask(agent, task, queryFn) {
   }
 
   var result = await runCLI(cliName, agent.model, prompt, agentDir);
+  // PROVIDER FALLBACK: detect Anthropic/OpenAI failures and retry once with the alternate CLI
+  var provErr = detectProviderError(result.output, result.code);
+  if (provErr) {
+    logProviderHealth(provErr.provider, provErr.reason, agent.name);
+    var fbCli = fallbackCLI(cliName);
+    console.log("[task-runner] " + agent.name + " PROVIDER ERROR " + provErr.provider + "/" + provErr.reason + " — falling back from " + cliName + " to " + fbCli);
+    if (fbCli && fbCli !== cliName) {
+      var fbResult = await runCLI(fbCli, null, prompt, agentDir);
+      var fbErr = detectProviderError(fbResult.output, fbResult.code);
+      if (!fbErr) {
+        logProviderOk(fbCli === "claude" ? "anthropic" : (fbCli === "codex" ? "openai" : fbCli));
+        cliName = fbCli;
+        result = fbResult;
+      } else {
+        logProviderHealth(fbErr.provider, fbErr.reason, agent.name);
+        console.log("[task-runner] " + agent.name + " FALLBACK also failed: " + fbErr.provider + "/" + fbErr.reason);
+      }
+    }
+  } else if (result.code === 0) {
+    var okProv = cliName === "claude" ? "anthropic" : (cliName === "codex" ? "openai" : cliName);
+    logProviderOk(okProv);
+  }
 
   var validation = await validateOutput(agentDir);
 

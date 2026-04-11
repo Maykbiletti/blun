@@ -428,6 +428,6 @@ start();
 
 
 // Dashboard SPA routes - serve index.html for all /dashboard/* paths
-['agents','operator','chat','livelog','models','settings','companies','kanban','projects','marketplace','university','affiliate','help-center','erledigt'].forEach(function(p){
+['agents','operator','chat','livelog','models','settings','companies','kanban','projects','marketplace','university','affiliate','help-center','erledigt','tagebuch'].forEach(function(p){
   app.get('/dashboard/'+p, function(req,res){ res.set('Cache-Control','no-cache,no-store'); res.sendFile(__dirname+'/dashboard/index.html'); });
 });

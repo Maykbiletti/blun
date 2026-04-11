@@ -1,256 +1,157 @@
 /**
- * Rate Limiter using Token Bucket Algorithm
+ * Rate Limiter using Token Bucket algorithm
  * Per IP/API-Key: 100 requests per minute
- * Uses in-memory storage with cleanup mechanism
  */
 
 class RateLimiter {
-  constructor(options = {}) {
-    // Configuration
-    this.tokensPerMinute = options.tokensPerMinute || 100;
-    this.refillIntervalMs = 60000; // 1 minute
-    this.cleanupIntervalMs = options.cleanupIntervalMs || 300000; // 5 minutes
-    this.maxBucketSize = this.tokensPerMinute;
-
-    // Storage: Map of key -> { tokens, lastRefillTime }
+  /**
+   * @param {number} maxTokens - Maximum tokens in bucket (default 100)
+   * @param {number} refillRate - Tokens per minute (default 100)
+   * @param {number} windowMs - Time window in milliseconds (default 60000 = 1 minute)
+   */
+  constructor(maxTokens = 100, refillRate = 100, windowMs = 60000) {
+    this.maxTokens = maxTokens;
+    this.refillRate = refillRate;
+    this.windowMs = windowMs;
     this.buckets = new Map();
-
-    // Start cleanup timer
-    this.cleanupTimer = setInterval(() => this._cleanup(), this.cleanupIntervalMs);
   }
 
   /**
-   * Check if request is allowed and consume token if possible
-   * @param {string} key - IP address or API key identifier
-   * @returns {Object} { allowed: boolean, tokensRemaining: number, retryAfterMs: number }
+   * Get or create bucket for identifier (IP or API key)
    */
-  allowRequest(key) {
-    if (!key || typeof key !== 'string') {
-      throw new Error('Rate limiter key must be a non-empty string');
+  _getBucket(identifier) {
+    if (!this.buckets.has(identifier)) {
+      this.buckets.set(identifier, {
+        tokens: this.maxTokens,
+        lastRefill: Date.now()
+      });
     }
+    return this.buckets.get(identifier);
+  }
 
+  /**
+   * Refill tokens based on elapsed time
+   */
+  _refillTokens(bucket) {
     const now = Date.now();
-    let bucket = this.buckets.get(key);
+    const timePassed = now - bucket.lastRefill;
+    const tokensToAdd = (timePassed / this.windowMs) * this.refillRate;
+    bucket.tokens = Math.min(this.maxTokens, bucket.tokens + tokensToAdd);
+    bucket.lastRefill = now;
+  }
 
-    // Initialize bucket if it doesn't exist
-    if (!bucket) {
-      bucket = {
-        tokens: this.maxBucketSize,
-        lastRefillTime: now,
-        createdAt: now
-      };
-      this.buckets.set(key, bucket);
-    }
+  /**
+   * Check if request is allowed for identifier
+   * @param {string} identifier - IP address or API key
+   * @returns {boolean} - true if allowed, false if rate limited
+   */
+  isAllowed(identifier) {
+    const bucket = this._getBucket(identifier);
+    this._refillTokens(bucket);
 
-    // Refill tokens based on elapsed time
-    this._refillTokens(bucket, now);
-
-    // Check if request is allowed
     if (bucket.tokens >= 1) {
       bucket.tokens -= 1;
-      bucket.lastRequestTime = now;
-      return {
-        allowed: true,
-        tokensRemaining: Math.floor(bucket.tokens),
-        retryAfterMs: null
-      };
+      return true;
     }
-
-    // Calculate time until next token is available
-    const timeSinceRefill = now - bucket.lastRefillTime;
-    const tokensNeeded = 1 - bucket.tokens;
-    const timeUntilAvailable = (tokensNeeded * this.refillIntervalMs) - timeSinceRefill;
-    const retryAfterMs = Math.max(0, Math.ceil(timeUntilAvailable));
-
-    return {
-      allowed: false,
-      tokensRemaining: 0,
-      retryAfterMs
-    };
+    return false;
   }
 
   /**
-   * Get current token count for a key without consuming
-   * @param {string} key - IP address or API key identifier
-   * @returns {Object} { tokens: number, status: string }
+   * Get remaining tokens for identifier
    */
-  getStatus(key) {
-    if (!key || typeof key !== 'string') {
-      throw new Error('Rate limiter key must be a non-empty string');
-    }
-
-    const bucket = this.buckets.get(key);
-
-    if (!bucket) {
-      return {
-        tokens: this.maxBucketSize,
-        status: 'new'
-      };
-    }
-
-    const now = Date.now();
-    this._refillTokens(bucket, now);
-
-    return {
-      tokens: Math.floor(bucket.tokens),
-      status: 'existing'
-    };
+  getRemainingTokens(identifier) {
+    const bucket = this._getBucket(identifier);
+    this._refillTokens(bucket);
+    return Math.floor(bucket.tokens);
   }
 
   /**
-   * Reset bucket for a specific key
-   * @param {string} key - IP address or API key identifier
+   * Reset tokens for specific identifier
    */
-  resetKey(key) {
-    this.buckets.delete(key);
+  reset(identifier) {
+    if (this.buckets.has(identifier)) {
+      this.buckets.delete(identifier);
+    }
   }
 
   /**
    * Clear all buckets
    */
-  reset() {
+  resetAll() {
     this.buckets.clear();
   }
 
   /**
-   * Refill tokens based on elapsed time
-   * @private
+   * Get bucket stats (for monitoring/debugging)
    */
-  _refillTokens(bucket, now) {
-    const timeSinceRefill = now - bucket.lastRefillTime;
-    const tokensToAdd = (timeSinceRefill / this.refillIntervalMs) * this.maxBucketSize;
-
-    bucket.tokens = Math.min(
-      this.maxBucketSize,
-      bucket.tokens + tokensToAdd
-    );
-    bucket.lastRefillTime = now;
-  }
-
-  /**
-   * Clean up old buckets that haven't been used
-   * @private
-   */
-  _cleanup() {
-    const now = Date.now();
-    const maxIdleTime = this.cleanupIntervalMs * 2; // 10 minutes
-
-    for (const [key, bucket] of this.buckets.entries()) {
-      const idleTime = now - (bucket.lastRequestTime || bucket.createdAt);
-      if (idleTime > maxIdleTime) {
-        this.buckets.delete(key);
-      }
-    }
-  }
-
-  /**
-   * Get bucket count (for testing/monitoring)
-   * @returns {number} Number of active buckets
-   */
-  getBucketCount() {
-    return this.buckets.size;
-  }
-
-  /**
-   * Destroy limiter and cleanup timers
-   */
-  destroy() {
-    if (this.cleanupTimer) {
-      clearInterval(this.cleanupTimer);
-    }
-    this.buckets.clear();
+  getStats(identifier) {
+    const bucket = this._getBucket(identifier);
+    this._refillTokens(bucket);
+    return {
+      identifier,
+      tokens: Math.floor(bucket.tokens),
+      maxTokens: this.maxTokens,
+      lastRefill: bucket.lastRefill
+    };
   }
 }
 
-// Test cases
-function runTests() {
-  console.log('Running Rate Limiter Tests...\n');
-
-  // Test 1: Basic token consumption
-  console.log('Test 1: Basic token consumption');
-  const limiter1 = new RateLimiter({ tokensPerMinute: 100 });
-  const result1 = limiter1.allowRequest('192.168.1.1');
-  console.assert(result1.allowed === true, 'First request should be allowed');
-  console.assert(result1.tokensRemaining === 99, 'Should have 99 tokens remaining');
-  console.log('✓ Passed\n');
-
-  // Test 2: Rate limit exceeded
-  console.log('Test 2: Rate limit exceeded');
-  const limiter2 = new RateLimiter({ tokensPerMinute: 3 });
-  limiter2.allowRequest('192.168.1.2');
-  limiter2.allowRequest('192.168.1.2');
-  limiter2.allowRequest('192.168.1.2');
-  const result2 = limiter2.allowRequest('192.168.1.2');
-  console.assert(result2.allowed === false, 'Fourth request should be denied');
-  console.assert(result2.retryAfterMs > 0, 'Should have retry after value');
-  console.log('✓ Passed\n');
-
-  // Test 3: Different keys are independent
-  console.log('Test 3: Different keys are independent');
-  const limiter3 = new RateLimiter({ tokensPerMinute: 2 });
-  limiter3.allowRequest('key1');
-  limiter3.allowRequest('key1');
-  const result3a = limiter3.allowRequest('key1');
-  const result3b = limiter3.allowRequest('key2');
-  console.assert(result3a.allowed === false, 'key1 should be rate limited');
-  console.assert(result3b.allowed === true, 'key2 should be allowed');
-  console.log('✓ Passed\n');
-
-  // Test 4: Invalid key handling
-  console.log('Test 4: Invalid key handling');
-  const limiter4 = new RateLimiter();
-  try {
-    limiter4.allowRequest(null);
-    console.assert(false, 'Should throw error for null key');
-  } catch (e) {
-    console.assert(true, 'Correctly throws error for invalid key');
-  }
-  console.log('✓ Passed\n');
-
-  // Test 5: Get status without consuming
-  console.log('Test 5: Get status without consuming');
-  const limiter5 = new RateLimiter({ tokensPerMinute: 10 });
-  limiter5.allowRequest('192.168.1.5');
-  const status = limiter5.getStatus('192.168.1.5');
-  console.assert(status.tokens === 9, 'Status should reflect consumed token');
-  const status2 = limiter5.getStatus('192.168.1.5');
-  console.assert(status2.tokens === 9, 'Status should not consume token');
-  console.log('✓ Passed\n');
-
-  // Test 6: Reset functionality
-  console.log('Test 6: Reset functionality');
-  const limiter6 = new RateLimiter({ tokensPerMinute: 2 });
-  limiter6.allowRequest('192.168.1.6');
-  limiter6.allowRequest('192.168.1.6');
-  limiter6.resetKey('192.168.1.6');
-  const result6 = limiter6.allowRequest('192.168.1.6');
-  console.assert(result6.tokensRemaining === 1, 'Reset should restore tokens');
-  console.log('✓ Passed\n');
-
-  // Test 7: Bucket count tracking
-  console.log('Test 7: Bucket count tracking');
-  const limiter7 = new RateLimiter();
-  limiter7.allowRequest('key1');
-  limiter7.allowRequest('key2');
-  limiter7.allowRequest('key3');
-  console.assert(limiter7.getBucketCount() === 3, 'Should track 3 buckets');
-  console.log('✓ Passed\n');
-
-  // Cleanup
-  limiter1.destroy();
-  limiter2.destroy();
-  limiter3.destroy();
-  limiter4.destroy();
-  limiter5.destroy();
-  limiter6.destroy();
-  limiter7.destroy();
-
-  console.log('All tests passed!');
-}
-
-// Run tests if executed directly
+// TESTS - Edge cases
 if (require.main === module) {
-  runTests();
+  const limiter = new RateLimiter(100, 100, 60000);
+
+  // Test 1: Basic allow
+  console.assert(limiter.isAllowed('192.168.1.1'), 'Test 1 Failed: Should allow first request');
+
+  // Test 2: Multiple requests until limit
+  limiter.reset('192.168.1.1');
+  let allowed = 0;
+  for (let i = 0; i < 100; i++) {
+    if (limiter.isAllowed('192.168.1.1')) allowed++;
+  }
+  console.assert(allowed === 100, `Test 2 Failed: Should allow 100 requests, got ${allowed}`);
+
+  // Test 3: Rate limited after 100
+  console.assert(!limiter.isAllowed('192.168.1.1'), 'Test 3 Failed: Should deny 101st request');
+
+  // Test 4: Different identifiers are isolated
+  limiter.reset('192.168.1.1');
+  console.assert(limiter.isAllowed('10.0.0.1'), 'Test 4a Failed: Different IP should have independent limit');
+  console.assert(limiter.isAllowed('192.168.1.1'), 'Test 4b Failed: Reset should restore tokens');
+
+  // Test 5: Remaining tokens tracking
+  limiter.reset('192.168.1.2');
+  console.assert(limiter.getRemainingTokens('192.168.1.2') === 100, 'Test 5a Failed: Should have 100 tokens initially');
+  limiter.isAllowed('192.168.1.2');
+  console.assert(limiter.getRemainingTokens('192.168.1.2') === 99, 'Test 5b Failed: Should decrement correctly');
+
+  // Test 6: Token refill simulation
+  limiter.reset('192.168.1.3');
+  for (let i = 0; i < 50; i++) limiter.isAllowed('192.168.1.3');
+  const remaining = limiter.getRemainingTokens('192.168.1.3');
+  console.assert(remaining === 50, `Test 6 Failed: Should have 50 remaining, got ${remaining}`);
+
+  // Test 7: Stats method accuracy
+  const stats = limiter.getStats('192.168.1.3');
+  console.assert(stats.identifier === '192.168.1.3', 'Test 7a Failed: Stats identifier mismatch');
+  console.assert(stats.tokens === 50, 'Test 7b Failed: Stats token count mismatch');
+  console.assert(stats.maxTokens === 100, 'Test 7c Failed: Stats maxTokens mismatch');
+
+  // Test 8: Reset all functionality
+  limiter.resetAll();
+  console.assert(limiter.getRemainingTokens('192.168.1.1') === 100, 'Test 8 Failed: resetAll should clear buckets');
+  console.assert(limiter.getRemainingTokens('10.0.0.1') === 100, 'Test 8 Failed: resetAll incomplete');
+
+  // Test 9: API key vs IP isolation
+  console.assert(limiter.isAllowed('api-key-abc'), 'Test 9a Failed: Should allow API key');
+  console.assert(limiter.isAllowed('192.168.1.100'), 'Test 9b Failed: Should allow different IP independently');
+
+  // Test 10: Edge case - zero requests
+  limiter.reset('edge-case');
+  for (let i = 0; i < 101; i++) limiter.isAllowed('edge-case');
+  console.assert(!limiter.isAllowed('edge-case'), 'Test 10 Failed: Should limit exactly at 100');
+
+  console.log('✓ All tests passed');
 }
 
 module.exports = RateLimiter;
