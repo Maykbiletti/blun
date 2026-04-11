@@ -2937,6 +2937,19 @@ function loadAgentCanvas(agentId) {
       html += '<div style="color:var(--tx2);line-height:1.4">' + esc((t.task || '').substring(0, 120)) + '</div>';
       if (files) html += '<div style="color:var(--green);font-size:11px;margin-top:2px">' + files + '</div>';
       if (t.score) html += '<div style="font-size:11px;margin-top:2px">Score: ' + t.score + '/10</div>';
+      try{
+        var r3=typeof t.result==='string'?JSON.parse(t.result):t.result;
+        if(r3&&t.status==='completed'){
+          var c3=r3.commits>0||r3.commit_shas&&r3.commit_shas.length>0||(r3.changed_files_count||0)>0;
+          var p3=r3.latest_stat&&r3.latest_stat.length>0;
+          html+='<div style="display:flex;gap:3px;margin-top:3px">';
+          if(c3) html+='<span style="font-size:9px;padding:1px 5px;background:rgba(34,197,94,.2);color:#22c55e;border-radius:4px">Committed</span>';
+          if(p3) html+='<span style="font-size:9px;padding:1px 5px;background:rgba(59,130,246,.2);color:#3b82f6;border-radius:4px">Pushed</span>';
+          if(r3.deployed) html+='<span style="font-size:9px;padding:1px 5px;background:rgba(168,85,247,.2);color:#a855f7;border-radius:4px">Deployed</span>';
+          if(r3.live) html+='<span style="font-size:9px;padding:1px 5px;background:rgba(245,158,11,.2);color:#f59e0b;border-radius:4px">Live</span>';
+          html+='</div>';
+        }
+      }catch(e){}
       html += '</div>';
     });
     feed.innerHTML = html;
@@ -3647,6 +3660,10 @@ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded'
         <div style="font-size:11px;color:var(--tx2);margin-bottom:4px">QA Score</div>
         <div id="tmScore" style="font-size:18px;font-weight:700"></div>
       </div>
+      <div id="tmPipelineWrap" style="display:none;margin-bottom:12px">
+        <div style="font-size:11px;color:var(--tx2);margin-bottom:6px">Pipeline Status</div>
+        <div id="tmPipeline" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+      </div>
       <div style="border-top:1px solid var(--brd);padding-top:12px;margin-top:8px">
         <div style="font-size:11px;color:var(--tx2);margin-bottom:6px">Aenderungswunsch / Korrektur</div>
         <textarea id="tmFeedback" rows="3" style="width:100%;background:var(--bg);color:var(--tx);border:1px solid var(--brd);border-radius:6px;padding:8px;font-size:13px;resize:vertical" placeholder="Was soll anders sein?"></textarea>
@@ -3685,6 +3702,21 @@ function openTaskModal(taskId,agentId){
       if(r&&r.cli_output_excerpt){
         document.getElementById('tmDiff').textContent=r.cli_output_excerpt;
         document.getElementById('tmDiffWrap').style.display='block';
+      }
+    }catch(e){}
+    // Pipeline badges (Committed=gruen, Pushed=blau, Deployed=lila, Live=gold)
+    var pipe=document.getElementById('tmPipeline');
+    var pipeWrap=document.getElementById('tmPipelineWrap');
+    try{
+      var r2=typeof t.result==='string'?JSON.parse(t.result):t.result;
+      var hasCommit=r2&&(r2.commits>0||r2.commit_shas&&r2.commit_shas.length>0||(r2.changed_files_count||0)>0);
+      var hasPush=r2&&r2.latest_stat&&r2.latest_stat.length>0;
+      var isDeployed=r2&&r2.deployed;
+      var isLive=r2&&r2.live;
+      if(t.status==='completed'||hasCommit){
+        pipeWrap.style.display='block';
+        function pb(label,active,bgOn,colOn){return '<span style="padding:5px 12px;border-radius:8px;font-size:12px;font-weight:600;'+(active?'background:'+bgOn+';color:'+colOn:'background:var(--bg);color:var(--tx2);opacity:.4')+'">'+label+' '+(active?'\u2713':'\u2717')+'</span>';}
+        pipe.innerHTML=pb('Committed',hasCommit,'rgba(34,197,94,.2)','#22c55e')+pb('Pushed',hasPush,'rgba(59,130,246,.2)','#3b82f6')+pb('Deployed',isDeployed,'rgba(168,85,247,.2)','#a855f7')+pb('Live',isLive,'rgba(245,158,11,.2)','#f59e0b');
       }
     }catch(e){}
     if(t.score){
