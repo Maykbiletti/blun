@@ -80,7 +80,7 @@ async function loadSmartMemory(agentId, userMessage, maxChars) {
   maxChars = maxChars || 8000;
   var rows = await query("SELECT key, content as value, updated_at FROM agent_memory WHERE agent_id = $1 ORDER BY updated_at DESC", [agentId]);
   if (!rows.length) return "";
-  var priority = ["identity", "personality", "rules", "security", "rename", "vision", "skill_"];
+  var priority = ["identity", "personality", "rules", "security", "rename", "vision", "skill_", "task_", "zuletzt_", "direct_"];
   var selected = [];
   var totalChars = 0;
   var msg = (userMessage || "").toLowerCase();
@@ -92,6 +92,14 @@ async function loadSmartMemory(agentId, userMessage, maxChars) {
     if (dominated && totalChars + rows[i].value.length < maxChars) {
       selected.push(rows[i]);
       totalChars += rows[i].value.length;
+    }
+  }
+  // Always load last 10 completed tasks into context
+  for (var ti = 0; ti < rows.length && ti < 20; ti++) {
+    if (rows[ti].key.indexOf("task_") === 0 && totalChars + rows[ti].value.length < maxChars) {
+      var alreadyThere = false;
+      for (var st = 0; st < selected.length; st++) { if (selected[st].key === rows[ti].key) { alreadyThere = true; break; } }
+      if (!alreadyThere) { selected.push(rows[ti]); totalChars += rows[ti].value.length; }
     }
   }
   if (msg.length > 5) {

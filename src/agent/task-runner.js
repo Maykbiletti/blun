@@ -62,7 +62,7 @@ function buildPrompt(agent, task, agentDir, memory) {
     "4. Git add + commit wenn fertig\n" +
     "5. KEINE Erklaerungen, KEINE Reviews, KEIN Smalltalk — NUR CODE\n" +
     "6. NIEMALS agent-engine.js, server.js, index.html, db.js aendern" +
-    (memory && memory.length ? "\n\nDEINE MEMORY (abgeschlossene Tasks und Wissen):\n" + memory.map(function(m){ return "- [" + m.key + "] " + m.value; }).join("\n") : "");
+    (memory && memory.length ? "\n\nDEINE MEMORY (abgeschlossene Tasks und Wissen):\n" + memory.map(function(m){ return "- [" + m.key + "] " + m.content; }).join("\n") : "");
 }
 
 function sanitizeText(value, maxLen) {
