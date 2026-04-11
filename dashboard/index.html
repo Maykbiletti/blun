@@ -208,9 +208,9 @@ textarea{resize:vertical;min-height:80px}
 .model-meta{font-size:11px;color:var(--tx2)}
 
 /* MODAL */
-.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000;display:none}
-.modal-bg.open{display:flex;align-items:center;justify-content:center}.modal-bg.open>.modal{visibility:visible!important;opacity:1!important}
-.modal{background:var(--bg3);border:1px solid var(--brd);border-radius:14px;padding:24px;width:90%;max-width:500px;max-height:80vh;overflow-y:auto;margin:auto}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:none;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:var(--bg3);border:1px solid var(--brd);border-radius:14px;padding:24px;width:90%;max-width:500px;max-height:80vh;overflow-y:auto}
 .modal h3{font-size:17px;font-weight:700;margin-bottom:16px}
 .modal label{display:block;font-size:12px;color:var(--tx2);margin-bottom:4px;margin-top:12px}
 .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
