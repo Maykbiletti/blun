@@ -17,21 +17,62 @@ router.use("/", function(req, res, next) {
   });
 });
 
-// Company context from header or query
+
+// TENANT SCOPING 2026-04-10: force non-admin users to their active company
+// Admin users may still pass x-company-id header to browse specific companies.
 function getCompanyId(req) {
+  if (req.user && req.user.role !== "admin") {
+    // Non-admin: ALWAYS force active company; ignore header spoofing.
+    return req.activeCompanyId || -1;
+  }
   var cid = req.headers["x-company-id"] || req.query.company_id;
-  return cid ? parseInt(cid) : null;
+  if (cid) return parseInt(cid);
+  if (req.activeCompanyId) return req.activeCompanyId;
+  return null;
 }
 
+// Helper: returns array of company_ids the user has access to.
+// For admins returns null (meaning no filter / all companies).
+function userCompanyIds(req) {
+  if (!req.user) return [];
+  if (req.user.role === "admin") return null;
+  return req.companyIds || [];
+}
+
+// Helper: guard middleware that ensures the agent in :id belongs to user's companies.
+async function assertAgentAccess(req, res, next) {
+  try {
+    if (req.user && req.user.role === "admin") return next();
+    var cids = req.companyIds || [];
+    if (cids.length === 0) return res.status(403).json({ error: "no company access" });
+    var a = await queryOne("SELECT company_id FROM blun_agents WHERE id = $1", [req.params.id]);
+    if (!a) return res.status(404).json({ error: "Agent not found" });
+    if (cids.indexOf(a.company_id) === -1) return res.status(403).json({ error: "access denied" });
+    next();
+  } catch (e) { res.status(500).json({ error: e.message }); }
+}
+
+
+// Tenant guard for all /agents/:id/* sub-routes. Placed BEFORE routes so Express
+// runs it first for any matching path.
+router.use("/agents/:id", assertAgentAccess);
 
 // === COMPANIES ===
 router.get("/companies", async function(req, res) {
   try {
     var userId = req.user ? req.user.id : null;
-    var companies = await query(
-      "SELECT c.*, (SELECT COUNT(*) FROM blun_agents WHERE company_id = c.id) as agent_count FROM companies c WHERE c.owner_id = $1 ORDER BY c.name",
-      [userId]
-    );
+    if (!userId) return res.status(401).json({ error: "auth required" });
+    var sql, params;
+    if (req.user.role === "admin" && req.query.all === "1") {
+      sql = "SELECT c.*, (SELECT COUNT(*) FROM blun_agents WHERE company_id = c.id) as agent_count FROM companies c ORDER BY c.name";
+      params = [];
+    } else {
+      sql = "SELECT c.*, (SELECT COUNT(*) FROM blun_agents WHERE company_id = c.id) as agent_count " +
+            "FROM companies c JOIN company_members cm ON cm.company_id = c.id " +
+            "WHERE cm.user_id = $1 ORDER BY c.name";
+      params = [userId];
+    }
+    var companies = await query(sql, params);
     res.json(companies);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -40,8 +81,28 @@ router.post("/companies", async function(req, res) {
   try {
     var { name, description } = req.body;
     if (!name) return res.status(400).json({ error: "name required" });
-    var ownerId = req.user ? req.user.id : null; if (!ownerId) return res.status(401).json({ error: "auth required" }); var c = await queryOne("INSERT INTO companies (name, config, owner_id) VALUES ($1, $2, $3) RETURNING *", [name, { description: description || "" }, ownerId]);
-    res.json(c);
+    var ownerId = req.user ? req.user.id : null;
+    if (!ownerId) return res.status(401).json({ error: "auth required" });
+    // Transaction: create company + membership
+    var client = await require("../db").pool.connect();
+    try {
+      await client.query("BEGIN");
+      var c = (await client.query(
+        "INSERT INTO companies (name, config, owner_id) VALUES ($1, $2, $3) RETURNING *",
+        [name, { description: description || "" }, ownerId]
+      )).rows[0];
+      await client.query(
+        "INSERT INTO company_members (user_id, company_id, role) VALUES ($1, $2, 'owner') ON CONFLICT DO NOTHING",
+        [ownerId, c.id]
+      );
+      await client.query("COMMIT");
+      res.json(c);
+    } catch (txE) {
+      await client.query("ROLLBACK");
+      throw txE;
+    } finally {
+      client.release();
+    }
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -288,10 +349,10 @@ router.get("/stats", async function(req, res) {
     var uid = req.user ? req.user.id : null;
     if (!uid) return res.status(401).json({ error: "auth required" });
     var [agents, tasks, costs, companies] = await Promise.all([
-      query("SELECT a.status, COUNT(*)::int as count FROM blun_agents a JOIN companies c ON c.id = a.company_id WHERE c.owner_id = $1 GROUP BY a.status", [uid]),
-      queryOne("SELECT (SELECT COUNT(*)::int FROM agent_tasks at JOIN blun_agents a ON a.id = at.agent_id JOIN companies c ON c.id = a.company_id WHERE c.owner_id = $1 AND at.status = 'completed') as total", [uid]),
-      queryOne("SELECT COALESCE(SUM(h.cost),0)::numeric as total FROM agent_heartbeats h JOIN blun_agents a ON a.id = h.agent_id JOIN companies c ON c.id = a.company_id WHERE c.owner_id = $1 AND h.created_at > NOW() - INTERVAL '30 days'", [uid]),
-      queryOne("SELECT COUNT(*)::int as total FROM companies WHERE owner_id = $1", [uid]),
+      query("SELECT a.status, COUNT(*)::int as count FROM blun_agents a JOIN company_members cm ON cm.company_id = a.company_id WHERE cm.user_id = $1 GROUP BY a.status", [uid]),
+      queryOne("SELECT (SELECT COUNT(*)::int FROM agent_tasks at JOIN blun_agents a ON a.id = at.agent_id JOIN company_members cm ON cm.company_id = a.company_id WHERE cm.user_id = $1 AND at.status = 'completed') as total", [uid]),
+      queryOne("SELECT COALESCE(SUM(h.cost),0)::numeric as total FROM agent_heartbeats h JOIN blun_agents a ON a.id = h.agent_id JOIN company_members cm ON cm.company_id = a.company_id WHERE cm.user_id = $1 AND h.created_at > NOW() - INTERVAL '30 days'", [uid]),
+      queryOne("SELECT COUNT(*)::int as total FROM company_members WHERE user_id = $1", [uid]),
     ]);
     var total = 0, active = 0;
     agents.forEach(function(r) { total += r.count; if (r.status === "active" || r.status === "working") active += r.count; });
@@ -334,18 +395,27 @@ require("./skills-route")(router, query, queryOne);
 // Livefeed: combined activity stream
 router.get('/livefeed', async function(req, res) {
   try {
+    var cids = userCompanyIds(req);
+    var scope, params;
+    if (cids === null) { scope = ""; params = []; }
+    else if (cids.length === 0) { return res.json([]); }
+    else { scope = " WHERE a.company_id = ANY($1)"; params = [cids]; }
+
     var chats = await query(
-      "SELECT c.id, c.agent_id, a.name as agent_name, c.role, LEFT(c.content, 120) as content, c.created_at, 'chat' as type FROM agent_conversations c LEFT JOIN blun_agents a ON a.id = c.agent_id ORDER BY c.created_at DESC LIMIT 30"
+      "SELECT c.id, c.agent_id, a.name as agent_name, c.role, LEFT(c.content, 120) as content, c.created_at, 'chat' as type FROM agent_conversations c JOIN blun_agents a ON a.id = c.agent_id" + scope + " ORDER BY c.created_at DESC LIMIT 30",
+      params
     );
     var tasks = await query(
-      "SELECT t.id, t.agent_id, a.name as agent_name, LEFT(t.task, 120) as content, t.status, t.created_at, t.completed_at, 'task' as type FROM agent_tasks t LEFT JOIN blun_agents a ON a.id = t.agent_id ORDER BY t.created_at DESC LIMIT 20"
+      "SELECT t.id, t.agent_id, a.name as agent_name, LEFT(t.task, 120) as content, t.status, t.created_at, t.completed_at, 'task' as type FROM agent_tasks t JOIN blun_agents a ON a.id = t.agent_id" + scope + " ORDER BY t.created_at DESC LIMIT 20",
+      params
     );
     var beats = await query(
-      "SELECT h.id, h.agent_id, a.name as agent_name, h.status, h.tokens_used, h.cost, h.created_at, 'heartbeat' as type FROM agent_heartbeats h LEFT JOIN blun_agents a ON a.id = h.agent_id ORDER BY h.created_at DESC LIMIT 20"
+      "SELECT h.id, h.agent_id, a.name as agent_name, h.status, h.tokens_used, h.cost, h.created_at, 'heartbeat' as type FROM agent_heartbeats h JOIN blun_agents a ON a.id = h.agent_id" + scope + " ORDER BY h.created_at DESC LIMIT 20",
+      params
     );
-    var activity = await query(
-      "SELECT id, user_id, action, details, created_at, ip_address, 'activity' as type FROM activity_log ORDER BY created_at DESC LIMIT 10"
-    );
+    var activity = (cids === null)
+      ? await query("SELECT id, user_id, action, details, created_at, ip_address, 'activity' as type FROM activity_log ORDER BY created_at DESC LIMIT 10")
+      : await query("SELECT id, user_id, action, details, created_at, ip_address, 'activity' as type FROM activity_log WHERE user_id = $1 ORDER BY created_at DESC LIMIT 10", [req.user.id]);
     var all = [].concat(
       chats.map(function(r){ return {type:'chat', agent:r.agent_name||'?', role:r.role, content:r.content, ts:r.created_at}; }),
       tasks.map(function(r){ return {type:'task', agent:r.agent_name||'?', status:r.status, content:r.content, ts:r.completed_at||r.created_at}; }),
@@ -363,9 +433,18 @@ router.get('/livefeed', async function(req, res) {
 // === CEO-PANEL: OVERVIEW (All Tasks + Comments) ===
 router.get("/overview", async function(req, res) {
   try {
-    var tasks = await query(
-      "SELECT id, task as title, status, assigned_to, created_at, updated_at FROM agent_tasks ORDER BY created_at DESC"
-    );
+    var cids = userCompanyIds(req);
+    var tasks;
+    if (cids === null) {
+      tasks = await query("SELECT t.id, t.task as title, t.status, t.created_at, t.updated_at FROM agent_tasks t ORDER BY t.created_at DESC");
+    } else if (cids.length === 0) {
+      tasks = [];
+    } else {
+      tasks = await query(
+        "SELECT t.id, t.task as title, t.status, t.created_at, t.updated_at FROM agent_tasks t JOIN blun_agents a ON a.id = t.agent_id WHERE a.company_id = ANY($1) ORDER BY t.created_at DESC",
+        [cids]
+      );
+    }
     res.json({ tasks: tasks });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });

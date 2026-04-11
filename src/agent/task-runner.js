@@ -157,7 +157,7 @@ function runCLI(cliName, model, prompt, agentDir) {
     var baseEnv = Object.assign({}, process.env, { HOME: "/root" });
 
     if (cliName === "claude") {
-      args = ["--print", "-", "--output-format", "text", "--max-turns", "10"];
+      args = ["--print", "-", "--output-format", "text", "--max-turns", "10", "--dangerously-skip-permissions"];
       if (model && model.indexOf("claude") === 0) args.push("--model", model);
       env = Object.assign(baseEnv, { DISABLE_INTERACTIVITY: "1" });
       stdinPrompt = prompt;

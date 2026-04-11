@@ -30,7 +30,7 @@ async function apiKeyAuth(req, res, next) {
 // ============================================================================
 // POST /api/v1/register (NO AUTH REQUIRED)
 // ============================================================================
-router.post('/api/v1/register', async (req, res) => {
+router.post("/api/v1/register", async (req, res) => {
   const { email, password, name } = req.body;
 
   // Validation
@@ -57,19 +57,46 @@ router.post('/api/v1/register', async (req, res) => {
     // Generate API key
     const apiKey = crypto.randomBytes(32).toString('hex');
 
-    // Insert user
-    const result = await pool.query(
-      `INSERT INTO users (email, password, name, plan, role, api_key, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, NOW())
-       RETURNING id, email, api_key`,
-      [email, hashedPassword, name || email, 'free', 'tenant', apiKey]
-    );
+    // Insert user + create personal company + membership in a transaction
+    const client = await pool.connect();
+    let user;
+    let companyId;
+    try {
+      await client.query('BEGIN');
+      const u = await client.query(
+        `INSERT INTO users (email, password_hash, name, plan, role, api_key, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, NOW())
+         RETURNING id, email, api_key`,
+        [email, hashedPassword, name || email, 'free', 'user', apiKey]
+      );
+      user = u.rows[0];
 
-    const user = result.rows[0];
+      const companyName = (name || email.split('@')[0]) + "'s Workspace";
+      const c = await client.query(
+        `INSERT INTO companies (name, owner_id, config, created_at)
+         VALUES ($1, $2, $3, NOW()) RETURNING id`,
+        [companyName, user.id, { description: 'Auto-created on registration' }]
+      );
+      companyId = c.rows[0].id;
+
+      await client.query(
+        `INSERT INTO company_members (user_id, company_id, role) VALUES ($1, $2, 'owner')`,
+        [user.id, companyId]
+      );
+
+      await client.query('COMMIT');
+    } catch (txErr) {
+      await client.query('ROLLBACK');
+      throw txErr;
+    } finally {
+      client.release();
+    }
+
     return res.status(201).json({
       user_id: user.id,
       api_key: user.api_key,
-      email: user.email
+      email: user.email,
+      company_id: companyId
     });
   } catch (err) {
     console.error('[tenant-api] Register error:', err.message);
@@ -96,8 +123,8 @@ router.post('/api/v1/projects', async (req, res) => {
 
   try {
     const result = await pool.query(
-      `INSERT INTO software_projects (name, description, owner_user_id, created_at)
-       VALUES ($1, $2, $3, NOW())
+      `INSERT INTO software_projects (name, description, user_id, owner_user_id, created_at)
+       VALUES ($1, $2, $3, $3, NOW())
        RETURNING id, name, created_at`,
       [name, description || null, userId]
     );
