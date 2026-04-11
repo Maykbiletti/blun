@@ -61,10 +61,21 @@ textarea{resize:vertical;min-height:80px}
 .main{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden}
 .topbar{height:52px;background:var(--bg2);border-bottom:1px solid var(--brd);display:flex;align-items:center;padding:0 20px;flex-shrink:0;gap:12px}
 .topbar-title{font-size:16px;font-weight:700}
+.topbar-help-btn{width:24px;height:24px;border-radius:999px;border:1px solid rgba(59,130,246,.45);background:rgba(59,130,246,.14);color:#bfdbfe;font-size:12px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s}
+.topbar-help-btn:hover{background:rgba(59,130,246,.25);border-color:rgba(59,130,246,.7)}
 .topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px}
 .topbar-search{background:var(--bg3);border:1px solid var(--brd);border-radius:8px;padding:6px 12px;color:var(--tx);font-size:13px;width:240px}
 .ws-dot{width:8px;height:8px;border-radius:50%;background:var(--red);transition:background .3s}
 .ws-dot.on{background:var(--green)}
+.help-mini-popup{position:fixed;display:none;width:min(340px,calc(100vw - 24px));background:linear-gradient(180deg,#121a29,#0f1623);border:1px solid rgba(59,130,246,.35);border-radius:10px;padding:12px;box-shadow:0 20px 40px rgba(0,0,0,.45);z-index:9998}
+.help-mini-popup.open{display:block}
+.help-mini-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.help-mini-head strong{font-size:13px}
+.help-mini-close{background:transparent;color:var(--tx2);padding:0 4px;font-size:16px;line-height:1}
+.help-mini-close:hover{color:var(--tx)}
+.help-mini-popup p{font-size:12px;line-height:1.5;color:#cbd5e1;margin-bottom:10px}
+.help-mini-link{font-size:12px;color:#93c5fd;text-decoration:none}
+.help-mini-link:hover{text-decoration:underline}
 
 .page{display:none;flex:1;overflow:hidden}
 .page.active{display:flex;flex-direction:column}
@@ -493,6 +504,7 @@ Profil
 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
 </button>
 <div class="topbar-title" id="topbarTitle">Agents</div>
+<button class="topbar-help-btn" id="sectionHelpBtn" onclick="openSectionHelpPopup(event)" title="Hilfe zu diesem Bereich" aria-label="Bereichshilfe">?</button>
 <div class="topbar-right">
 <input class="topbar-search" id="searchInput" placeholder="Suchen..." oninput="onSearch(this.value)">
 <div class="notification-bell" id="notificationBell" onclick="toggleNotificationCenter()">
@@ -504,6 +516,15 @@ Profil
 </div>
 <div class="ws-dot" id="wsDot" title="Server-Verbindung"></div>
 </div>
+</div>
+
+<div id="sectionHelpPopup" class="help-mini-popup" role="dialog" aria-modal="false" aria-label="Bereichshilfe">
+  <div class="help-mini-head">
+    <strong id="sectionHelpPopupTitle">Hilfe</strong>
+    <button class="help-mini-close" onclick="closeSectionHelpPopup()" aria-label="Schliessen">&times;</button>
+  </div>
+  <p id="sectionHelpPopupText">Kurzinfo wird geladen...</p>
+  <a id="sectionHelpPopupLink" class="help-mini-link" href="/dashboard/pages/help-center.html" target="_blank" rel="noopener">Zum Help Center</a>
 </div>
 
 <!-- PAGE: AGENTS -->

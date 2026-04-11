@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BLUN Help Center</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0a0a0a;--bg2:#111;--bg3:#171717;--brd:#2a2a2a;--tx:#e5e5e5;--tx2:#9ca3af;--blue:#3b82f6;--blue2:#2563eb}
+body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:radial-gradient(circle at top right,#111827 0,#0a0a0a 45%),var(--bg);color:var(--tx);padding:28px 16px 40px}
+.wrap{max-width:980px;margin:0 auto}
+.head{margin-bottom:20px}
+.kicker{display:inline-block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--tx2);border:1px solid var(--brd);padding:4px 8px;border-radius:999px;margin-bottom:10px}
+h1{font-size:30px;line-height:1.15;margin-bottom:8px}
+.sub{color:var(--tx2);max-width:760px;line-height:1.5}
+.quick{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 24px}
+.quick a{font-size:12px;color:#cfe1ff;background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.35);padding:6px 10px;border-radius:999px;text-decoration:none}
+.quick a:hover{background:rgba(59,130,246,.2)}
+.acc{display:flex;flex-direction:column;gap:10px}
+.hc-item{background:linear-gradient(180deg,#151515,#121212);border:1px solid var(--brd);border-radius:12px;overflow:hidden}
+.hc-q{list-style:none;padding:14px 16px;cursor:pointer;display:flex;gap:10px;align-items:center;font-weight:600}
+.hc-q::-webkit-details-marker{display:none}
+.hc-icon{width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;border-radius:6px;background:rgba(59,130,246,.14);color:#bfdbfe;font-weight:700;flex-shrink:0}
+.hc-body{padding:0 16px 16px}
+.hc-body p{color:var(--tx2);line-height:1.5;margin-bottom:14px}
+.hc-shot{border:1px dashed #35507a;background:rgba(59,130,246,.06);border-radius:10px;min-height:180px;display:flex;align-items:center;justify-content:center;color:#93c5fd;font-size:13px;text-align:center;padding:18px;margin-bottom:14px}
+.hc-steps{padding-left:18px;color:#d1d5db;line-height:1.55}
+.hc-steps li{margin-bottom:6px}
+.hc-item[open] .hc-q{border-bottom:1px solid var(--brd);background:rgba(255,255,255,.02)}
+.foot{margin-top:18px;color:#71717a;font-size:12px}
+@media (max-width:640px){h1{font-size:24px}.hc-q{font-size:14px}.hc-shot{min-height:140px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <span class="kicker">BLUN Dokumentation</span>
+    <h1>Help Center</h1>
+    <p class="sub">Kurzanleitungen fuer die wichtigsten Operator-Workflows. Jede Sektion zeigt dir den Zweck, wo du klicken musst und eine klare Schrittfolge.</p>
+    <nav class="quick">
+      <a href="#hc-connections">Verbindungen</a>
+      <a href="#hc-dieter-functions">Dieter Funktionen</a>
+      <a href="#hc-dieter-soul">Dieter Seele</a>
+      <a href="#hc-task-creation">Tasks anlegen</a>
+      <a href="#hc-work-distribution">Verteilung</a>
+    </nav>
+  </header>
+
+  <section class="acc">
+    <details class="hc-item" id="hc-connections" data-help-key="connections" data-mini="API-Keys und OAuth legst du in Connections an. Dort aktivierst du Provider zentral pro Workspace.">
+      <summary class="hc-q"><span class="hc-icon">1</span>Wo lege ich meine Verbindungen (API-Keys, OAuth) an?</summary>
+      <div class="hc-body">
+        <p>Alle Zugaenge liegen gebuendelt in <strong>Connections</strong>. So bleiben Keys zentral, versionierbar und fuer Routing-Logik verfuegbar.</p>
+        <div class="hc-shot">Screenshot Placeholder: Dashboard → Tools → Connections<br>Provider-Liste mit Status, Key-Feldern und OAuth-Buttons</div>
+        <ol class="hc-steps">
+          <li>Im Dashboard links auf <strong>Connections</strong> gehen.</li>
+          <li>Provider auswaehlen (z. B. OpenAI, Anthropic, GitHub, Google).</li>
+          <li>API-Key eintragen oder OAuth-Flow starten und bestaetigen.</li>
+          <li>Status auf <strong>Active</strong> pruefen und mit einem Test-Call validieren.</li>
+        </ol>
+      </div>
+    </details>
+
+    <details class="hc-item" id="hc-dieter-functions" data-help-key="dieter-functions" data-mini="Dieter ist CEO und Dispatch-Instanz: priorisiert Tasks, verteilt Arbeit, steuert Auto-Merge und startet Watchdog-Pruefungen.">
+      <summary class="hc-q"><span class="hc-icon">2</span>Was sind Dieters Funktionen (CEO, Task-Verteilung, Auto-Merge, Watchdog)?</summary>
+      <div class="hc-body">
+        <p>Dieter ist dein Operator-Knoten: Er priorisiert, delegiert, ueberwacht Ergebnisse und kann bei sauberem Zustand automatische Merges triggern.</p>
+        <div class="hc-shot">Screenshot Placeholder: Operator-Ansicht<br>Queue, Routing-Regeln, Merge-Gates, Watchdog-Status</div>
+        <ol class="hc-steps">
+          <li>In <strong>Agents</strong> den Operator-Banner oeffnen und auf <strong>Steuern</strong> klicken.</li>
+          <li>Im Tab <strong>Tasks</strong> Prioritaeten und Zielagenten kontrollieren.</li>
+          <li>In den Operator-Einstellungen Auto-Merge nur mit Checks/Gates aktivieren.</li>
+          <li>Watchdog-Checks beobachten und bei Fehlern Fallback/Neuverteilung starten.</li>
+        </ol>
+      </div>
+    </details>
+
+    <details class="hc-item" id="hc-dieter-soul" data-help-key="dieter-soul" data-mini="Dieter bekommt seine Seele in den Einstellungen: Persoenlichkeit, Tonfall, Werte und harte Entscheidungsregeln.">
+      <summary class="hc-q"><span class="hc-icon">3</span>Wie gebe ich Dieter eine Seele (Einstellungen: Persoenlichkeit, Tonfall, Werte)?</summary>
+      <div class="hc-body">
+        <p>Die "Seele" steckt in Prompt + Personality + SOUL/Werte-Memory. Damit laufen Entscheidungen konsistent ueber alle Aufgaben.</p>
+        <div class="hc-shot">Screenshot Placeholder: Operator → Einstellungen<br>System Prompt, Personality, Soul/Werte Felder</div>
+        <ol class="hc-steps">
+          <li>Auf <strong>Operator</strong> wechseln und den Tab <strong>Einstellungen</strong> oeffnen.</li>
+          <li><strong>System Prompt</strong> fuer Zielbild und Entscheidungslogik anpassen.</li>
+          <li><strong>Personality/Tonfall</strong> und <strong>SOUL/Werte</strong> konkret ausformulieren.</li>
+          <li>Speichern und mit 2-3 realen Aufgaben pruefen, ob Verhalten stabil ist.</li>
+        </ol>
+      </div>
+    </details>
+
+    <details class="hc-item" id="hc-task-creation" data-help-key="task-creation" data-mini="Tasks legst du ueber Kanban, direkt im Operator oder per API an; Prioritaet, Kontext und Zielagent sind Pflichtfelder.">
+      <summary class="hc-q"><span class="hc-icon">4</span>Wie lege ich Tasks an (Kanban, Operator, API)?</summary>
+      <div class="hc-body">
+        <p>Du kannst Tasks visuell im Kanban, operativ im Operator-Panel oder automatisiert ueber API erzeugen. Strukturierte Inputs verbessern das Routing.</p>
+        <div class="hc-shot">Screenshot Placeholder: Kanban + Operator Task-Input + API Request Beispiel</div>
+        <ol class="hc-steps">
+          <li><strong>Kanban:</strong> Karte erstellen, Beschreibung, Deadline und Prioritaet setzen.</li>
+          <li><strong>Operator:</strong> Task direkt im Task-Tab eingeben und zuweisen.</li>
+          <li><strong>API:</strong> Task mit Kontext, Skill-Hinweis und Zielkriterium posten.</li>
+          <li>Task-Status beobachten und bei Blockern frueh neu priorisieren.</li>
+        </ol>
+      </div>
+    </details>
+
+    <details class="hc-item" id="hc-work-distribution" data-help-key="work-distribution" data-mini="Verteilung laeuft ueber Skill-Routing, aktuelle Auslastung und Fallback-Regeln bei ueberlasteten oder fehlenden Agents.">
+      <summary class="hc-q"><span class="hc-icon">5</span>Wie werden Arbeiten verteilt (Skill-Routing, Auslastung, Fallback)?</summary>
+      <div class="hc-body">
+        <p>Das System kombiniert Skill-Match, Verfuegbarkeit und Last. Wenn kein idealer Agent frei ist, greift eine definierte Fallback-Kette.</p>
+        <div class="hc-shot">Screenshot Placeholder: Routing-Matrix mit Skills, Load und Fallback-Pfad</div>
+        <ol class="hc-steps">
+          <li>Skill-Matrix im Operator laden und Agenten Skills sauber zuweisen.</li>
+          <li>Auslastung in Agents/Monitor beobachten und Engpaesse markieren.</li>
+          <li>Fallback-Regeln definieren (z. B. Team-Lead, Operator, Queue-Puffer).</li>
+          <li>Regelmaessig Ergebnisse pruefen und Routing anhand Real-Performance nachschaerfen.</li>
+        </ol>
+      </div>
+    </details>
+  </section>
+
+  <p class="foot">Tipp: Die gleichen Kurztexte werden als Mini-Help-Popup im Dashboard genutzt.</p>
+</div>
+
+<script>
+document.querySelectorAll('.hc-item').forEach(function(item){
+  item.addEventListener('toggle', function(){
+    if(!item.open) return;
+    document.querySelectorAll('.hc-item').forEach(function(other){
+      if(other !== item) other.open = false;
+    });
+  });
+});
+</script>
+</body>
+</html>
