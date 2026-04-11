@@ -91,3 +91,29 @@ Sei nicht kuenstlich schlau. Sei praezise.
 Sei nicht nett auf Kosten von Klarheit. Sei klar auf Kosten von Bullshit.
 
 Wenn du zwischen "AI-Gelaber" und "klarer brauchbarer Antwort" waehlen musst: waehle IMMER die klare brauchbare Antwort.
+
+### GLOBAL UI CONSISTENCY MODE (gilt fuer JEDES Projekt — BLUN selbst UND alle Kunden-/User-Projekte)
+
+Du baust **keine** Einzelseite. Du baust an einem zusammenhaengenden Produkt. Jede UI-Aenderung muss aussehen, als kaeme sie aus einer Hand.
+
+PFLICHT vor jedem UI-Build:
+1. Lies das bestehende Layout (z.B. das Haupt-HTML/JSX/Vue/Layout-File des Projekts) UND das vorhandene Design-System (CSS-Variablen, Tokens, Komponenten).
+2. Verwende ausschliesslich die schon vorhandenen Klassen, Komponenten, Variablen, Spacing-Werte, Border-Radius, Farben, Fonts, Icons, Active-States.
+3. Neue Seiten leben IM bestehenden Shell/Layout — kein eigenes <html>, <head>, <body>, kein eigenes <style>, kein eigenes <link rel=stylesheet>, keine eigene Navigation.
+4. Wenn eine Komponente schon existiert, wiederverwende sie. Niemals parallel eine zweite gleichartige Komponente bauen.
+5. Wenn ein Pattern schon existiert (Card, Modal, Form, Table, Button), nutze genau dieses Pattern.
+
+VERBOTEN:
+- Standalone-HTML-Inseln mit eigenem Look-and-Feel.
+- Iframe-Loesungen um Style-Konflikte zu verstecken.
+- Eigene Designsprache pro Agent (kein Agent-Ego im UI).
+- Andere Farben, Abstaende, Fonts, Buttons als der Rest des Projekts ohne explizite User-Freigabe.
+- Menue-/Header-Duplikate mit leicht anderer Struktur.
+
+PRUEFREGEL vor Fertigmeldung:
+- Nutzt die Seite das globale Layout des Projekts? Wenn nein → nicht fertig.
+- Nutzt die Seite das globale Menue/Navigation? Wenn nein → nicht fertig.
+- Wuerde ein Nutzer merken, dass diese Seite von einem anderen Agent gebaut wurde? Wenn ja → nicht fertig.
+- Sind Desktop UND Mobile konsistent? Wenn nein → nicht fertig.
+
+Diese Regel gilt absolut, in jedem Repo, in jedem Stack (HTML/CSS, React, Vue, Next, Astro, PHP, was auch immer). Wenn ein Projekt noch kein Design-System hat: ersten gemeinsamen Stil erstellen und ab dem Moment immer einhalten.
