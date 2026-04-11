@@ -1,103 +1,58 @@
-const { Router } = require("express");
-const { query } = require("../../db");
+// BLUN - Health API Route
 
-const router = Router();
-const startTime = Date.now();
+var express = require("express");
+var router = express.Router();
+var db = require("../../db");
 
-async function fetchHealthFromBlunTables() {
-  const agentsSql = `
-    SELECT COUNT(*) AS count
-    FROM blun_agents
-    WHERE status = 'active'
-  `;
-
-  const pendingTasksSql = `
-    SELECT COUNT(*) AS count
-    FROM agent_tasks
-    WHERE status = 'pending'
-  `;
-
-  const processingTasksSql = `
-    SELECT COUNT(*) AS count
-    FROM agent_tasks
-    WHERE status = 'processing'
-  `;
-
-  const agentsResult = await query(agentsSql);
-  const pendingResult = await query(pendingTasksSql);
-  const processingResult = await query(processingTasksSql);
-
-  return {
-    agents_online: parseInt(agentsResult[0]?.count || 0, 10),
-    pending_tasks: parseInt(pendingResult[0]?.count || 0, 10),
-    processing_tasks: parseInt(processingResult[0]?.count || 0, 10)
-  };
-}
-
-async function fetchHealthFromCoreTables() {
-  const agentsSql = `
-    SELECT COUNT(*) AS count
-    FROM agents
-    WHERE status = 'active'
-  `;
-
-  const pendingTasksSql = `
-    SELECT COUNT(*) AS count
-    FROM tasks
-    WHERE status = 'pending'
-  `;
-
-  const processingTasksSql = `
-    SELECT COUNT(*) AS count
-    FROM tasks
-    WHERE status = 'processing'
-  `;
-
-  const agentsResult = await query(agentsSql);
-  const pendingResult = await query(pendingTasksSql);
-  const processingResult = await query(processingTasksSql);
-
-  return {
-    agents_online: parseInt(agentsResult[0]?.count || 0, 10),
-    pending_tasks: parseInt(pendingResult[0]?.count || 0, 10),
-    processing_tasks: parseInt(processingResult[0]?.count || 0, 10)
-  };
-}
-
-async function loadHealth() {
-  try {
-    return await fetchHealthFromBlunTables();
-  } catch (err) {
-    const message = String(err && err.message ? err.message : "").toLowerCase();
-    const missingBlunTable =
-      message.includes("relation \"blun_agents\"") ||
-      message.includes("relation \"agent_tasks\"");
-
-    if (!missingBlunTable) {
-      throw err;
-    }
-
-    return fetchHealthFromCoreTables();
+function toSafeInt(value) {
+  var parsed = Number(value);
+  if (!isFinite(parsed) || parsed < 0) {
+    return 0;
   }
+  return Math.floor(parsed);
 }
 
-router.get("/", async function getHealth(req, res) {
-  try {
-    const health = await loadHealth();
-    const uptime = Math.floor((Date.now() - startTime) / 1000);
+function getUptimeSeconds() {
+  var uptime = Number(process.uptime());
+  if (!isFinite(uptime) || uptime < 0) {
+    return 0;
+  }
+  return Math.floor(uptime);
+}
 
-    res.json({
-      status: "up",
-      uptime: uptime,
-      agents_online: health.agents_online,
-      pending_tasks: health.pending_tasks,
-      processing_tasks: health.processing_tasks
+function buildHealthQuery() {
+  return [
+    "SELECT",
+    "  COALESCE((SELECT COUNT(*) FROM blun_agents WHERE status = 'active'), 0)::int AS agents_online,",
+    "  COALESCE((SELECT COUNT(*) FROM agent_tasks WHERE status = 'pending'), 0)::int AS pending_tasks,",
+    "  COALESCE((SELECT COUNT(*) FROM agent_tasks WHERE status IN ('processing', 'in_progress')), 0)::int AS processing_tasks"
+  ].join(" ");
+}
+
+router.get("/api/health", async function(req, res) {
+  try {
+    var rows = await db.query(buildHealthQuery());
+    var stats = Array.isArray(rows) && rows.length > 0 ? rows[0] : {};
+
+    return res.json({
+      status: "ok",
+      uptime: getUptimeSeconds(),
+      agents_online: toSafeInt(stats.agents_online),
+      pending_tasks: toSafeInt(stats.pending_tasks),
+      processing_tasks: toSafeInt(stats.processing_tasks)
     });
-  } catch (err) {
-    console.error("[health] GET /api/health failed:", err.message);
-    res.status(503).json({
-      status: "down",
-      error: "Health check failed"
+  } catch (error) {
+    console.error(
+      "GET /api/health failed:",
+      error && error.message ? error.message : error
+    );
+
+    return res.status(503).json({
+      status: "degraded",
+      uptime: getUptimeSeconds(),
+      agents_online: 0,
+      pending_tasks: 0,
+      processing_tasks: 0
     });
   }
 });

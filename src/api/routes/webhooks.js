@@ -1,230 +1,414 @@
-const express = require('express');
-const crypto = require('crypto');
+// BLUN - Webhooks API Route
 
-const router = express.Router();
+var express = require("express");
+var crypto = require("crypto");
+var router = express.Router();
+var db = require("../../db");
 
-const subscriptions = [];
+var DEFAULT_EVENT_TYPE = "task.completed";
+var TABLE_NAME = "webhook_subscriptions";
+var IN_MEMORY_SUBSCRIPTIONS = [];
+var tableReady = false;
+var tableUnsupported = false;
 
-function nowIso() {
-  return new Date().toISOString();
+function generateId() {
+  if (typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return crypto.randomBytes(16).toString("hex");
+}
+
+function generateSecret() {
+  return crypto.randomBytes(24).toString("hex");
+}
+
+function normalizeEventType(value) {
+  if (!value || typeof value !== "string") {
+    return DEFAULT_EVENT_TYPE;
+  }
+
+  var normalized = value.trim().toLowerCase();
+  if (normalized === "task-completion" || normalized === "task_completion") {
+    return DEFAULT_EVENT_TYPE;
+  }
+
+  return normalized;
+}
+
+function isAllowedEventType(value) {
+  return value === DEFAULT_EVENT_TYPE;
+}
+
+function pickTargetUrl(body) {
+  if (!body || typeof body !== "object") {
+    return "";
+  }
+
+  return body.url || body.target_url || body.webhook_url || "";
 }
 
 function isValidHttpUrl(value) {
-  if (typeof value !== 'string' || value.trim().length === 0) {
+  if (!value || typeof value !== "string") {
     return false;
   }
 
   try {
-    const parsed = new URL(value);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-  } catch (_) {
+    var parsed = new URL(value);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch (_err) {
     return false;
   }
 }
 
-function normalizeEvents(events) {
-  if (!events) {
-    return ['task.completed'];
-  }
-
-  if (!Array.isArray(events)) {
+function buildPublicSubscription(row) {
+  if (!row) {
     return null;
   }
-
-  const normalized = events
-    .map((eventName) => (typeof eventName === 'string' ? eventName.trim() : ''))
-    .filter(Boolean);
-
-  return normalized.length > 0 ? [...new Set(normalized)] : null;
-}
-
-function buildSignature(payloadString, secret) {
-  if (!secret) {
-    return null;
-  }
-
-  return crypto
-    .createHmac('sha256', secret)
-    .update(payloadString)
-    .digest('hex');
-}
-
-async function deliverWebhook(subscription, payload) {
-  if (typeof fetch !== 'function') {
-    throw new Error('Global fetch is not available in this Node runtime');
-  }
-
-  const body = JSON.stringify(payload);
-  const signature = buildSignature(body, subscription.secret);
-
-  const headers = {
-    'Content-Type': 'application/json',
-    'User-Agent': 'blun-webhooks/1.0',
-    'X-BLUN-Webhook-Event': payload.type,
-    'X-BLUN-Webhook-Id': payload.id,
-    'X-BLUN-Webhook-Timestamp': payload.created_at
-  };
-
-  if (signature) {
-    headers['X-BLUN-Signature'] = `sha256=${signature}`;
-  }
-
-  const response = await fetch(subscription.url, {
-    method: 'POST',
-    headers,
-    body
-  });
-
-  const text = await response.text();
 
   return {
-    ok: response.ok,
-    status: response.status,
-    statusText: response.statusText,
-    body: text.slice(0, 1000)
+    id: row.id,
+    target_url: row.target_url,
+    event_type: row.event_type,
+    enabled: !!row.enabled,
+    created_at: row.created_at || null,
+    updated_at: row.updated_at || null,
+    last_test_at: row.last_test_at || null,
+    last_test_status: row.last_test_status || null
   };
 }
 
-router.post('/subscribe', async (req, res) => {
-  try {
-    const url = typeof req.body?.url === 'string' ? req.body.url.trim() : '';
-    const secret = typeof req.body?.secret === 'string' ? req.body.secret : null;
-    const events = normalizeEvents(req.body?.events);
-
-    if (!isValidHttpUrl(url)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid webhook url. Expected http:// or https:// URL.'
-      });
-    }
-
-    if (!events) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid events. Expected a non-empty string array.'
-      });
-    }
-
-    const existing = subscriptions.find((item) => item.url === url);
-
-    if (existing) {
-      existing.events = events;
-      existing.secret = secret;
-      existing.active = true;
-      existing.updated_at = nowIso();
-
-      return res.status(200).json({
-        success: true,
-        updated: true,
-        data: existing
-      });
-    }
-
-    const record = {
-      id: crypto.randomUUID(),
-      url,
-      events,
-      secret,
-      active: true,
-      created_at: nowIso(),
-      updated_at: nowIso()
-    };
-
-    subscriptions.push(record);
-
-    return res.status(201).json({
-      success: true,
-      data: record
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to subscribe webhook',
-      message: error.message
-    });
+function buildCreatedSubscription(row) {
+  var out = buildPublicSubscription(row);
+  if (!out) {
+    return null;
   }
-});
 
-router.post('/test', async (req, res) => {
+  out.secret = row.secret;
+  return out;
+}
+
+async function ensureTable() {
+  if (tableReady) {
+    return true;
+  }
+
+  if (tableUnsupported) {
+    return false;
+  }
+
   try {
-    const subscriptionId = typeof req.body?.subscription_id === 'string'
-      ? req.body.subscription_id
-      : null;
+    await db.query([
+      "CREATE TABLE IF NOT EXISTS " + TABLE_NAME + " (",
+      "  id TEXT PRIMARY KEY,",
+      "  target_url TEXT NOT NULL,",
+      "  event_type TEXT NOT NULL,",
+      "  secret TEXT NOT NULL,",
+      "  enabled BOOLEAN NOT NULL DEFAULT TRUE,",
+      "  last_test_at TIMESTAMPTZ,",
+      "  last_test_status TEXT,",
+      "  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),",
+      "  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()",
+      ")"
+    ].join(" "));
 
-    let targets = subscriptions.filter((item) => item.active);
-
-    if (subscriptionId) {
-      targets = targets.filter((item) => item.id === subscriptionId);
-    }
-
-    if (targets.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: 'No matching active webhook subscription found.'
-      });
-    }
-
-    const eventType = typeof req.body?.event_type === 'string' && req.body.event_type.trim()
-      ? req.body.event_type.trim()
-      : 'task.completed';
-
-    const payload = {
-      id: crypto.randomUUID(),
-      type: eventType,
-      created_at: nowIso(),
-      data: {
-        task_id: req.body?.task_id || 'test-task-001',
-        task_title: req.body?.task_title || 'Webhook test task',
-        status: 'completed',
-        completed_at: nowIso(),
-        source: 'webhooks.test'
-      }
-    };
-
-    const results = await Promise.all(
-      targets.map(async (subscription) => {
-        try {
-          const response = await deliverWebhook(subscription, payload);
-
-          return {
-            subscription_id: subscription.id,
-            url: subscription.url,
-            delivered: response.ok,
-            status: response.status,
-            status_text: response.statusText,
-            response_body: response.body
-          };
-        } catch (err) {
-          return {
-            subscription_id: subscription.id,
-            url: subscription.url,
-            delivered: false,
-            error: err.message
-          };
-        }
-      })
+    await db.query(
+      "CREATE INDEX IF NOT EXISTS idx_webhook_subscriptions_event_type ON " + TABLE_NAME + " (event_type)"
     );
 
-    return res.status(200).json({
-      success: true,
-      event: payload,
-      results
+    tableReady = true;
+    return true;
+  } catch (error) {
+    tableUnsupported = true;
+    console.error(
+      "[webhooks] table setup failed, using in-memory fallback:",
+      error && error.message ? error.message : error
+    );
+    return false;
+  }
+}
+
+async function insertSubscription(subscription) {
+  var hasTable = await ensureTable();
+  if (!hasTable) {
+    IN_MEMORY_SUBSCRIPTIONS.unshift(subscription);
+    return subscription;
+  }
+
+  var rows = await db.query(
+    [
+      "INSERT INTO " + TABLE_NAME + " (id, target_url, event_type, secret, enabled)",
+      "VALUES ($1, $2, $3, $4, $5)",
+      "RETURNING id, target_url, event_type, secret, enabled, created_at, updated_at, last_test_at, last_test_status"
+    ].join(" "),
+    [
+      subscription.id,
+      subscription.target_url,
+      subscription.event_type,
+      subscription.secret,
+      subscription.enabled
+    ]
+  );
+
+  return rows[0];
+}
+
+async function listSubscriptions() {
+  var hasTable = await ensureTable();
+  if (!hasTable) {
+    return IN_MEMORY_SUBSCRIPTIONS.slice();
+  }
+
+  return await db.query(
+    [
+      "SELECT id, target_url, event_type, secret, enabled, created_at, updated_at, last_test_at, last_test_status",
+      "FROM " + TABLE_NAME,
+      "ORDER BY created_at DESC"
+    ].join(" ")
+  );
+}
+
+async function findSubscriptionById(subscriptionId) {
+  if (!subscriptionId) {
+    return null;
+  }
+
+  var hasTable = await ensureTable();
+  if (!hasTable) {
+    for (var i = 0; i < IN_MEMORY_SUBSCRIPTIONS.length; i += 1) {
+      if (IN_MEMORY_SUBSCRIPTIONS[i].id === subscriptionId) {
+        return IN_MEMORY_SUBSCRIPTIONS[i];
+      }
+    }
+    return null;
+  }
+
+  var rows = await db.query(
+    [
+      "SELECT id, target_url, event_type, secret, enabled, created_at, updated_at, last_test_at, last_test_status",
+      "FROM " + TABLE_NAME,
+      "WHERE id = $1",
+      "LIMIT 1"
+    ].join(" "),
+    [subscriptionId]
+  );
+
+  return rows[0] || null;
+}
+
+async function updateTestStatus(subscription, statusText) {
+  if (!subscription || !subscription.id) {
+    return;
+  }
+
+  var hasTable = await ensureTable();
+  if (!hasTable) {
+    for (var i = 0; i < IN_MEMORY_SUBSCRIPTIONS.length; i += 1) {
+      if (IN_MEMORY_SUBSCRIPTIONS[i].id === subscription.id) {
+        IN_MEMORY_SUBSCRIPTIONS[i].last_test_at = new Date().toISOString();
+        IN_MEMORY_SUBSCRIPTIONS[i].last_test_status = statusText;
+        IN_MEMORY_SUBSCRIPTIONS[i].updated_at = new Date().toISOString();
+        return;
+      }
+    }
+    return;
+  }
+
+  await db.query(
+    [
+      "UPDATE " + TABLE_NAME,
+      "SET last_test_at = NOW(), last_test_status = $1, updated_at = NOW()",
+      "WHERE id = $2"
+    ].join(" "),
+    [statusText, subscription.id]
+  );
+}
+
+function createSignature(secret, rawPayload) {
+  if (!secret) {
+    return "";
+  }
+
+  return crypto.createHmac("sha256", secret).update(rawPayload).digest("hex");
+}
+
+router.post("/webhooks/subscribe", async function(req, res) {
+  var body = req.body || {};
+  var targetUrl = pickTargetUrl(body);
+
+  if (!isValidHttpUrl(targetUrl)) {
+    return res.status(400).json({ error: "Valid target URL is required (http/https)." });
+  }
+
+  var eventType = normalizeEventType(body.event_type || body.event);
+  if (!isAllowedEventType(eventType)) {
+    return res.status(400).json({
+      error: "Unsupported event type.",
+      allowed: [DEFAULT_EVENT_TYPE]
+    });
+  }
+
+  var userSecret = typeof body.secret === "string" ? body.secret.trim() : "";
+
+  var subscription = {
+    id: generateId(),
+    target_url: targetUrl,
+    event_type: eventType,
+    secret: userSecret || generateSecret(),
+    enabled: body.enabled !== false,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    last_test_at: null,
+    last_test_status: null
+  };
+
+  try {
+    var created = await insertSubscription(subscription);
+    return res.status(201).json({
+      ok: true,
+      subscription: buildCreatedSubscription(created)
     });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to send webhook test event',
-      message: error.message
+    console.error(
+      "POST /webhooks/subscribe failed:",
+      error && error.message ? error.message : error
+    );
+    return res.status(500).json({ error: "Failed to create webhook subscription." });
+  }
+});
+
+router.post("/webhooks/test", async function(req, res) {
+  if (typeof fetch !== "function") {
+    return res.status(500).json({ error: "Fetch API not available in current Node runtime." });
+  }
+
+  var input = req.body || {};
+  var subscription = null;
+
+  try {
+    var subscriptionId = input.subscription_id || input.id;
+    if (subscriptionId) {
+      subscription = await findSubscriptionById(subscriptionId);
+      if (!subscription) {
+        return res.status(404).json({ error: "Subscription not found." });
+      }
+    }
+  } catch (error) {
+    console.error(
+      "POST /webhooks/test lookup failed:",
+      error && error.message ? error.message : error
+    );
+    return res.status(500).json({ error: "Failed to load webhook subscription." });
+  }
+
+  if (!subscription) {
+    var directUrl = pickTargetUrl(input);
+    if (!isValidHttpUrl(directUrl)) {
+      return res.status(400).json({ error: "Provide subscription_id or valid target URL." });
+    }
+
+    subscription = {
+      id: null,
+      target_url: directUrl,
+      event_type: DEFAULT_EVENT_TYPE,
+      secret: typeof input.secret === "string" ? input.secret : "",
+      enabled: true
+    };
+  }
+
+  if (!subscription.enabled) {
+    return res.status(400).json({ error: "Subscription is disabled." });
+  }
+
+  var payload = {
+    event: DEFAULT_EVENT_TYPE,
+    test: true,
+    timestamp: new Date().toISOString(),
+    data: {
+      task_id: input.task_id || "test-task",
+      agent_id: input.agent_id || "test-agent",
+      status: "completed",
+      summary: input.summary || "This is a test task completion event"
+    }
+  };
+
+  var rawPayload = JSON.stringify(payload);
+  var signature = createSignature(subscription.secret, rawPayload);
+
+  var controller = new AbortController();
+  var timeout = setTimeout(function() {
+    controller.abort();
+  }, 8000);
+
+  try {
+    var response = await fetch(subscription.target_url, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-blun-event": DEFAULT_EVENT_TYPE,
+        "x-blun-test": "true",
+        "x-blun-signature": signature
+      },
+      body: rawPayload,
+      signal: controller.signal
+    });
+
+    clearTimeout(timeout);
+
+    var responseText = "";
+    try {
+      responseText = await response.text();
+    } catch (_err) {
+      responseText = "";
+    }
+
+    var statusText = response.ok ? "success" : "http_" + String(response.status || 0);
+    if (subscription.id) {
+      await updateTestStatus(subscription, statusText);
+    }
+
+    return res.status(response.ok ? 200 : 502).json({
+      ok: response.ok,
+      delivered_to: subscription.target_url,
+      status: response.status,
+      status_text: response.statusText || "",
+      response_preview: responseText ? responseText.slice(0, 500) : ""
+    });
+  } catch (error) {
+    clearTimeout(timeout);
+
+    if (subscription.id) {
+      await updateTestStatus(subscription, "failed");
+    }
+
+    console.error(
+      "POST /webhooks/test delivery failed:",
+      error && error.message ? error.message : error
+    );
+
+    return res.status(502).json({
+      ok: false,
+      delivered_to: subscription.target_url,
+      error: error && error.message ? error.message : "Webhook test failed"
     });
   }
 });
 
-router.get('/', async (_req, res) => {
-  return res.status(200).json({
-    success: true,
-    count: subscriptions.length,
-    data: subscriptions
-  });
+router.get("/webhooks", async function(req, res) {
+  try {
+    var rows = await listSubscriptions();
+    var subscriptions = Array.isArray(rows) ? rows.map(buildPublicSubscription) : [];
+
+    return res.json({
+      count: subscriptions.length,
+      subscriptions: subscriptions
+    });
+  } catch (error) {
+    console.error(
+      "GET /webhooks failed:",
+      error && error.message ? error.message : error
+    );
+    return res.status(500).json({ error: "Failed to load webhook subscriptions." });
+  }
 });
 
 module.exports = router;

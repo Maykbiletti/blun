@@ -10,41 +10,11 @@ const { startAgent, stopAgent, restartAgent, getProcessStatus } = require('../ag
 const { sendToAgent } = require('../ws');
 const { v4: uuid } = require('uuid');
 const { requireAuth } = require('../middleware/auth');
+const systemStatusRoutes = require('./system-status');
 
 const router = Router();
 
-function parsePositiveInt(value, fallback, maxValue) {
-  var n = parseInt(value, 10);
-  if (!Number.isFinite(n) || n <= 0) return fallback;
-  if (typeof maxValue === 'number' && n > maxValue) return maxValue;
-  return n;
-}
-
-function parseSinceDate(value) {
-  if (!value) return null;
-  var d = new Date(value);
-  if (Number.isNaN(d.getTime())) return null;
-  return d;
-}
-
-async function resolveTableAvailability(tableNames) {
-  var rows = await query(
-    'SELECT name AS table_name, to_regclass(name) IS NOT NULL AS exists FROM unnest($1::text[]) AS name',
-    [tableNames]
-  );
-  var map = {};
-  rows.forEach(function (r) {
-    map[r.table_name] = r.exists === true;
-  });
-  return map;
-}
-
-function sortFeedDesc(a, b) {
-  var at = new Date(a.timestamp).getTime();
-  var bt = new Date(b.timestamp).getTime();
-  return bt - at;
-}
-
+router.use('/system/status', systemStatusRoutes);
 
 router.get("/health", async function (req, res) {
   try {
