@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BLUN Test Runner</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #0a0a0f;
+      color: #e0e0e0;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid #1a1a2e;
+    }
+
+    .header h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .header h1 span {
+      color: #6c63ff;
+    }
+
+    .controls {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8rem;
+      color: #888;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #444;
+      transition: background 0.3s;
+    }
+
+    .status-dot.active {
+      background: #4ade80;
+      box-shadow: 0 0 6px #4ade8066;
+    }
+
+    .status-dot.running {
+      background: #facc15;
+      box-shadow: 0 0 6px #facc1566;
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .btn {
+      padding: 0.5rem 1.2rem;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: #6c63ff;
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: #5a52e0;
+    }
+
+    .btn-primary:disabled {
+      background: #3a3560;
+      color: #666;
+      cursor: not-allowed;
+    }
+
+    .results-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .result-item {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.8rem 1.2rem;
+      background: #12121c;
+      border: 1px solid #1a1a2e;
+      border-radius: 8px;
+      transition: border-color 0.2s;
+    }
+
+    .result-item:hover {
+      border-color: #2a2a4e;
+    }
+
+    .result-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 56px;
+      padding: 0.25rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .result-badge.pass {
+      background: #0f2a1a;
+      color: #4ade80;
+      border: 1px solid #1a4a2a;
+    }
+
+    .result-badge.fail {
+      background: #2a0f0f;
+      color: #f87171;
+      border: 1px solid #4a1a1a;
+    }
+
+    .result-message {
+      flex: 1;
+      font-size: 0.9rem;
+      color: #ccc;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .result-time {
+      font-size: 0.75rem;
+      color: #555;
+      white-space: nowrap;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 4rem 1rem;
+      color: #555;
+    }
+
+    .empty-state p {
+      font-size: 1rem;
+      margin-top: 0.5rem;
+    }
+
+    .error-banner {
+      padding: 0.8rem 1.2rem;
+      background: #2a0f0f;
+      border: 1px solid #4a1a1a;
+      border-radius: 8px;
+      color: #f87171;
+      font-size: 0.85rem;
+      margin-bottom: 1rem;
+      display: none;
+    }
+
+    .countdown {
+      font-size: 0.75rem;
+      color: #555;
+      font-variant-numeric: tabular-nums;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1><span>BLUN</span> Test Runner</h1>
+    <div class="controls">
+      <div class="status-indicator">
+        <div class="status-dot" id="statusDot"></div>
+        <span id="statusText">Idle</span>
+      </div>
+      <span class="countdown" id="countdown"></span>
+      <button class="btn btn-primary" id="runBtn" onclick="runTests()">Run Tests</button>
+    </div>
+  </div>
+
+  <div class="error-banner" id="errorBanner"></div>
+
+  <div id="resultsList" class="results-list">
+    <div class="empty-state">
+      <p>No test results yet. Hit <strong>Run Tests</strong> to start.</p>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = window.location.origin;
+    const REFRESH_INTERVAL = 30;
+    let countdown = REFRESH_INTERVAL;
+    let timer = null;
+    let isRunning = false;
+
+    function setStatus(state, text) {
+      const dot = document.getElementById('statusDot');
+      const label = document.getElementById('statusText');
+      dot.className = 'status-dot ' + state;
+      label.textContent = text;
+    }
+
+    function showError(msg) {
+      const banner = document.getElementById('errorBanner');
+      banner.textContent = msg;
+      banner.style.display = 'block';
+      setTimeout(() => { banner.style.display = 'none'; }, 8000);
+    }
+
+    function formatTime(ts) {
+      if (!ts) return '';
+      const d = new Date(ts);
+      if (isNaN(d.getTime())) return ts;
+      return d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+        + ' ' + d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+    }
+
+    function renderResults(results) {
+      const container = document.getElementById('resultsList');
+
+      if (!results || results.length === 0) {
+        container.innerHTML = '<div class="empty-state"><p>No test results found.</p></div>';
+        return;
+      }
+
+      container.innerHTML = results.slice(0, 30).map(r => {
+        const status = (r.status || r.result || '').toLowerCase();
+        const passed = status === 'pass' || status === 'passed' || status === 'success' || status === 'ok';
+        const badge = passed ? 'pass' : 'fail';
+        const label = passed ? 'Pass' : 'Fail';
+        const msg = r.message || r.name || r.test || r.description || 'No message';
+        const time = formatTime(r.timestamp || r.time || r.created_at || r.date);
+
+        return '<div class="result-item">'
+          + '<span class="result-badge ' + badge + '">' + label + '</span>'
+          + '<span class="result-message" title="' + msg.replace(/"/g, '&quot;') + '">' + msg + '</span>'
+          + '<span class="result-time">' + time + '</span>'
+          + '</div>';
+      }).join('');
+    }
+
+    async function fetchResults() {
+      try {
+        const res = await fetch(API_BASE + '/api/test/results');
+        if (!res.ok) return;
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : (data.results || data.data || []);
+        renderResults(list);
+      } catch (e) {
+        // silent on fetch — results might not exist yet
+      }
+    }
+
+    async function runTests() {
+      if (isRunning) return;
+      isRunning = true;
+
+      const btn = document.getElementById('runBtn');
+      btn.disabled = true;
+      setStatus('running', 'Running...');
+
+      try {
+        const res = await fetch(API_BASE + '/api/test/run', { method: 'POST' });
+
+        if (!res.ok) {
+          const text = await res.text();
+          showError('Test run failed: ' + (text || res.statusText));
+          setStatus('', 'Error');
+        } else {
+          const data = await res.json().catch(() => null);
+          if (data) {
+            const list = Array.isArray(data) ? data : (data.results || data.data || []);
+            if (list.length > 0) {
+              renderResults(list);
+            } else {
+              await fetchResults();
+            }
+          } else {
+            await fetchResults();
+          }
+          setStatus('active', 'Done');
+        }
+      } catch (e) {
+        showError('Connection error: ' + e.message);
+        setStatus('', 'Offline');
+      }
+
+      btn.disabled = false;
+      isRunning = false;
+      resetCountdown();
+    }
+
+    function resetCountdown() {
+      countdown = REFRESH_INTERVAL;
+    }
+
+    function tick() {
+      countdown--;
+      document.getElementById('countdown').textContent = 'Refresh in ' + countdown + 's';
+
+      if (countdown <= 0) {
+        fetchResults();
+        resetCountdown();
+      }
+    }
+
+    // Init
+    fetchResults();
+    timer = setInterval(tick, 1000);
+  </script>
+
+</body>
+</html>
