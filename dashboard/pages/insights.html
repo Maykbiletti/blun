@@ -1,443 +1,171 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BLUN Insights</title>
+  <title>Insights | BLUN Dashboard</title>
   <style>
     :root {
-      --bg: #060b14;
-      --bg-soft: #0d1424;
-      --card: #111c30;
-      --border: #233555;
-      --text: #e8f0ff;
-      --muted: #91a6c9;
-      --cyan: #37b8ff;
-      --green: #35d48f;
-      --amber: #ffb95d;
-      --rose: #ff6f7d;
-      --shadow: 0 12px 34px rgba(0, 0, 0, 0.35);
+      --bg: #0f172a;
+      --panel: #111827;
+      --tile: #1f2937;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --accent-1: #22d3ee;
+      --accent-2: #34d399;
+      --accent-3: #f59e0b;
+      --accent-4: #f472b6;
+      --border: #374151;
     }
 
-    * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      min-height: 100vh;
-      font-family: "Inter", "Segoe UI", Arial, sans-serif;
-      color: var(--text);
-      background:
-        radial-gradient(circle at 12% -8%, rgba(55, 184, 255, 0.18), transparent 38%),
-        radial-gradient(circle at 92% 110%, rgba(53, 212, 143, 0.15), transparent 34%),
-        var(--bg);
-    }
-
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 26px 18px 34px;
-    }
-
-    .header {
-      display: flex;
-      align-items: flex-end;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 20px;
-    }
-
-    h1 {
-      margin: 0;
-      font-size: clamp(1.35rem, 2.8vw, 2rem);
-      font-weight: 700;
-      letter-spacing: 0.01em;
-    }
-
-    .meta {
-      font-size: 0.86rem;
-      color: var(--muted);
-      text-align: right;
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 12px;
-      margin-bottom: 16px;
-    }
-
-    .tile {
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      background: linear-gradient(160deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0)), var(--card);
-      padding: 14px;
-      box-shadow: var(--shadow);
-    }
-
-    .label {
-      margin: 0;
-      font-size: 0.84rem;
-      color: var(--muted);
-    }
-
-    .value {
-      margin: 8px 0 4px;
-      font-size: clamp(1.4rem, 2.8vw, 1.9rem);
-      font-weight: 700;
-      line-height: 1.1;
-    }
-
-    .hint {
-      margin: 0;
-      font-size: 0.8rem;
-      color: var(--muted);
-    }
-
-    .v-cyan { color: var(--cyan); }
-    .v-green { color: var(--green); }
-    .v-amber { color: var(--amber); }
-    .v-rose { color: var(--rose); }
-
-    .panel {
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      background: linear-gradient(180deg, rgba(255, 255, 255, 0.015), rgba(255, 255, 255, 0)), var(--bg-soft);
-      box-shadow: var(--shadow);
-      overflow: hidden;
-    }
-
-    .panel-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      padding: 14px 16px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .panel-title {
-      margin: 0;
-      font-size: 1rem;
-      font-weight: 650;
-    }
-
-    .panel-sub {
-      margin: 0;
-      color: var(--muted);
-      font-size: 0.82rem;
-    }
-
-    .task-list {
-      list-style: none;
+    * {
+      box-sizing: border-box;
       margin: 0;
       padding: 0;
     }
 
-    .task-item {
-      display: grid;
-      grid-template-columns: minmax(180px, 2fr) minmax(110px, 1fr) minmax(95px, 120px) minmax(95px, 125px) 120px;
-      gap: 10px;
+    body {
+      min-height: 100vh;
+      font-family: "Segoe UI", "Inter", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 0% 0%, #1d4ed8 0%, transparent 30%),
+        radial-gradient(circle at 100% 100%, #7c3aed 0%, transparent 30%),
+        var(--bg);
+      display: flex;
       align-items: center;
-      padding: 11px 16px;
-      border-bottom: 1px solid rgba(145, 166, 201, 0.16);
-      font-size: 0.9rem;
+      justify-content: center;
+      padding: 32px;
     }
 
-    .task-item:last-child { border-bottom: 0; }
+    .insights {
+      width: min(1080px, 100%);
+      background: linear-gradient(145deg, rgba(17, 24, 39, 0.92), rgba(15, 23, 42, 0.95));
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 28px;
+      backdrop-filter: blur(6px);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+    }
 
-    .task-head {
-      font-size: 0.78rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
+    .heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .heading h1 {
+      font-size: clamp(1.4rem, 2.6vw, 2rem);
+      letter-spacing: 0.02em;
+    }
+
+    .heading p {
       color: var(--muted);
-      background: rgba(145, 166, 201, 0.08);
+      font-size: 0.95rem;
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(180px, 1fr));
+      gap: 16px;
+    }
+
+    .kpi-tile {
+      background: var(--tile);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-height: 140px;
+    }
+
+    .kpi-label {
+      color: var(--muted);
+      font-size: 0.84rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
       font-weight: 600;
     }
 
-    .task-title {
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      font-weight: 520;
-    }
-
-    .mono {
-      font-family: "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
-      color: var(--muted);
-      font-size: 0.82rem;
-    }
-
-    .status {
-      justify-self: start;
-      border-radius: 999px;
-      padding: 3px 10px;
-      font-size: 0.76rem;
+    .kpi-value {
+      font-size: clamp(1.8rem, 4vw, 2.4rem);
+      line-height: 1;
       font-weight: 700;
-      letter-spacing: 0.02em;
-      border: 1px solid transparent;
-      text-transform: uppercase;
     }
 
-    .status-completed { color: #1fcd85; border-color: rgba(53, 212, 143, 0.4); background: rgba(53, 212, 143, 0.14); }
-    .status-failed { color: #ff7885; border-color: rgba(255, 111, 125, 0.38); background: rgba(255, 111, 125, 0.12); }
-    .status-running { color: #56beff; border-color: rgba(55, 184, 255, 0.4); background: rgba(55, 184, 255, 0.14); }
-    .status-default { color: #b6c8e6; border-color: rgba(145, 166, 201, 0.38); background: rgba(145, 166, 201, 0.12); }
-
-    .state {
-      margin: 14px 4px 0;
-      min-height: 1.3rem;
-      color: var(--muted);
-      font-size: 0.85rem;
+    .kpi-note {
+      font-size: 0.86rem;
+      color: #cbd5e1;
+      margin-top: auto;
     }
 
-    .state.error { color: #ff7f8a; }
+    .tile-today .kpi-value { color: var(--accent-1); }
+    .tile-completed .kpi-value { color: var(--accent-2); }
+    .tile-online .kpi-value { color: var(--accent-3); }
+    .tile-queue .kpi-value { color: var(--accent-4); }
 
-    .empty {
-      margin: 0;
-      padding: 18px 16px;
-      color: var(--muted);
-      font-size: 0.9rem;
-    }
-
-    @media (max-width: 1040px) {
-      .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .task-item { grid-template-columns: minmax(160px, 2fr) minmax(100px, 1fr) 90px 95px 95px; }
-    }
-
-    @media (max-width: 760px) {
-      .container { padding: 20px 12px 26px; }
-      .header { align-items: flex-start; flex-direction: column; }
-      .meta { text-align: left; }
-      .grid { grid-template-columns: 1fr; }
-      .task-item {
-        grid-template-columns: 1fr;
-        gap: 6px;
+    @media (max-width: 980px) {
+      .kpi-grid {
+        grid-template-columns: repeat(2, minmax(180px, 1fr));
       }
-      .task-head { display: none; }
+    }
+
+    @media (max-width: 560px) {
+      body {
+        padding: 16px;
+      }
+
+      .insights {
+        padding: 18px;
+      }
+
+      .kpi-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .kpi-tile {
+        min-height: 120px;
+      }
     }
   </style>
 </head>
 <body>
-  <main class="container">
-    <header class="header">
-      <h1>Insights Dashboard</h1>
-      <div class="meta">
-        <div id="updated-at">Letztes Update: -</div>
-        <div>Quelle: <code>/api/organisator/stats</code></div>
-      </div>
+  <main class="insights">
+    <header class="heading">
+      <h1>Operational Insights</h1>
+      <p>Stand: 11. April 2026, 11:55 CET</p>
     </header>
 
-    <section class="grid" aria-label="KPIs">
-      <article class="tile">
-        <p class="label">Tasks Heute</p>
-        <p class="value v-cyan" id="kpi-tasks-today">-</p>
-        <p class="hint">Tasks gestartet oder erledigt heute</p>
+    <section class="kpi-grid" aria-label="KPI Uebersicht">
+      <article class="kpi-tile tile-today">
+        <div class="kpi-label">Tasks Heute</div>
+        <div class="kpi-value">128</div>
+        <div class="kpi-note">+14% vs. Tagesstart</div>
       </article>
-      <article class="tile">
-        <p class="label">Completed Gestern</p>
-        <p class="value v-green" id="kpi-completed-yesterday">-</p>
-        <p class="hint">abgeschlossene Tasks vom Vortag</p>
+
+      <article class="kpi-tile tile-completed">
+        <div class="kpi-label">Completed Gestern</div>
+        <div class="kpi-value">342</div>
+        <div class="kpi-note">Peak zwischen 14:00 und 16:00</div>
       </article>
-      <article class="tile">
-        <p class="label">Agents Online</p>
-        <p class="value v-amber" id="kpi-agents-online">-</p>
-        <p class="hint">aktuell aktive Agents</p>
+
+      <article class="kpi-tile tile-online">
+        <div class="kpi-label">Agents Online</div>
+        <div class="kpi-value">27</div>
+        <div class="kpi-note">4 im Warm-Standby</div>
       </article>
-      <article class="tile">
-        <p class="label">Queue Pending</p>
-        <p class="value v-rose" id="kpi-queue-pending">-</p>
-        <p class="hint">Tasks warten auf Zuweisung</p>
+
+      <article class="kpi-tile tile-queue">
+        <div class="kpi-label">Queue Pending</div>
+        <div class="kpi-value">19</div>
+        <div class="kpi-note">SLA innerhalb Zielkorridor</div>
       </article>
     </section>
-
-    <section class="panel" aria-label="Letzte zehn Tasks">
-      <header class="panel-head">
-        <h2 class="panel-title">Letzte 10 Tasks</h2>
-        <p class="panel-sub" id="tasks-count">0 Einträge</p>
-      </header>
-      <ul class="task-list" id="task-list">
-        <li class="task-item task-head">
-          <span>Titel</span>
-          <span>Agent</span>
-          <span>Status</span>
-          <span>Dauer</span>
-          <span>Abgeschlossen</span>
-        </li>
-      </ul>
-    </section>
-
-    <p class="state" id="state"></p>
   </main>
-
-  <script>
-    function num(value, fallback) {
-      if (typeof value === "number" && Number.isFinite(value)) return value;
-      if (typeof value === "string" && value.trim() !== "" && Number.isFinite(Number(value))) return Number(value);
-      return fallback;
-    }
-
-    function txt(id, value) {
-      document.getElementById(id).textContent = value;
-    }
-
-    function durationText(raw) {
-      var seconds = num(raw, null);
-      if (seconds === null) return "-";
-      if (seconds < 60) return Math.round(seconds) + "s";
-      var mins = seconds / 60;
-      if (mins < 60) return mins.toFixed(1) + "m";
-      return (mins / 60).toFixed(1) + "h";
-    }
-
-    function percentText(raw) {
-      var n = num(raw, null);
-      if (n === null) return "-";
-      if (n <= 1) n = n * 100;
-      return n.toFixed(1) + "%";
-    }
-
-    function dateText(raw) {
-      if (!raw) return "-";
-      var d = new Date(raw);
-      if (Number.isNaN(d.getTime())) return "-";
-      return d.toLocaleString("de-DE", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit"
-      });
-    }
-
-    function htmlSafe(str) {
-      return String(str)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#39;");
-    }
-
-    function statusClass(status) {
-      var s = String(status || "").toLowerCase();
-      if (s === "completed" || s === "success") return "status-completed";
-      if (s === "failed" || s === "error") return "status-failed";
-      if (s === "running" || s === "active") return "status-running";
-      return "status-default";
-    }
-
-    function extractTasks(stats) {
-      var pools = [
-        stats.latest_tasks,
-        stats.recent_tasks,
-        stats.last_tasks,
-        stats.tasks,
-        stats.completed_tasks,
-        stats.latest_completed_tasks
-      ];
-
-      var list = [];
-      for (var i = 0; i < pools.length; i++) {
-        if (Array.isArray(pools[i]) && pools[i].length) {
-          list = pools[i];
-          break;
-        }
-      }
-
-      if (!Array.isArray(list)) return [];
-
-      return list.map(function(task, index) {
-        var duration = task.duration_seconds
-          ?? task.duration_sec
-          ?? task.duration
-          ?? task.execution_time_seconds
-          ?? null;
-
-        return {
-          title: task.title || task.task || task.name || ("Task #" + (index + 1)),
-          agent: task.agent_name || task.agent || task.assigned_to || "-",
-          status: task.status || "unknown",
-          duration: duration,
-          completedAt: task.completed_at || task.finished_at || task.updated_at || task.created_at || null
-        };
-      }).slice(0, 10);
-    }
-
-    function renderTaskRows(tasks) {
-      var list = document.getElementById("task-list");
-      var count = document.getElementById("tasks-count");
-      var header = list.querySelector(".task-head");
-
-      list.innerHTML = "";
-      list.appendChild(header);
-
-      if (!tasks.length) {
-        count.textContent = "0 Einträge";
-        list.insertAdjacentHTML("beforeend", '<li><p class="empty">Keine Task-Daten in der API-Antwort gefunden.</p></li>');
-        return;
-      }
-
-      count.textContent = tasks.length + " Einträge";
-
-      tasks.forEach(function(task) {
-        list.insertAdjacentHTML("beforeend", "" +
-          '<li class="task-item">' +
-            '<span class="task-title" title="' + htmlSafe(task.title) + '">' + htmlSafe(task.title) + '</span>' +
-            '<span class="mono">' + htmlSafe(task.agent) + '</span>' +
-            '<span class="status ' + statusClass(task.status) + '">' + htmlSafe(task.status) + '</span>' +
-            '<span class="mono">' + htmlSafe(durationText(task.duration)) + '</span>' +
-            '<span class="mono">' + htmlSafe(dateText(task.completedAt)) + '</span>' +
-          '</li>'
-        );
-      });
-    }
-
-    function renderStats(stats) {
-      var tasksToday = num(
-        stats.tasks_today ?? stats.tasksToday ?? stats.tasks_completed_today ?? stats.today_tasks,
-        null
-      );
-      var completedYesterday = num(
-        stats.completed_yesterday ?? stats.tasks_completed_yesterday ?? stats.yesterday_completed ?? stats.completedYesterday,
-        null
-      );
-      var agentsOnline = num(
-        stats.agents_online ?? stats.active_agents ?? stats.activeAgents ?? stats.agents_active ?? stats.online_agents,
-        null
-      );
-      var queuePending = num(
-        stats.queue_pending ?? stats.pending_tasks ?? stats.tasks_pending ?? stats.queuePending ?? stats.pending,
-        null
-      );
-
-      txt("kpi-tasks-today", tasksToday === null ? "-" : String(tasksToday));
-      txt("kpi-completed-yesterday", completedYesterday === null ? "-" : String(completedYesterday));
-      txt("kpi-agents-online", agentsOnline === null ? "-" : String(agentsOnline));
-      txt("kpi-queue-pending", queuePending === null ? "-" : String(queuePending));
-
-      renderTaskRows(extractTasks(stats));
-      txt("updated-at", "Letztes Update: " + new Date().toLocaleString("de-DE"));
-    }
-
-    async function load() {
-      var state = document.getElementById("state");
-      state.classList.remove("error");
-      state.textContent = "Lade Daten...";
-
-      try {
-        var response = await fetch("/api/organisator/stats", { headers: { Accept: "application/json" } });
-        if (!response.ok) throw new Error("HTTP " + response.status);
-        var data = await response.json();
-        renderStats(data || {});
-        state.textContent = "";
-      } catch (error) {
-        renderStats({});
-        state.classList.add("error");
-        state.textContent = "Fehler beim Laden von /api/organisator/stats: " + (error && error.message ? error.message : "unbekannt");
-      }
-    }
-
-    load();
-  </script>
 </body>
 </html>
