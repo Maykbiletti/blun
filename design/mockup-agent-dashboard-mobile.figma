@@ -1,0 +1,262 @@
+{
+  "document": {
+    "type": "FIGMA_MOCKUP",
+    "name": "Agent Dashboard Mobile",
+    "meta": {
+      "version": "1.0.0",
+      "author": "Hanno",
+      "platform": "mobile",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "theme": "light"
+    },
+    "designTokens": {
+      "colors": {
+        "bg": "#F5F7FB",
+        "surface": "#FFFFFF",
+        "surfaceMuted": "#EEF2FA",
+        "primary": "#0D6EFD",
+        "primaryDark": "#084298",
+        "success": "#16A34A",
+        "warning": "#D97706",
+        "danger": "#DC2626",
+        "text": "#0F172A",
+        "textMuted": "#64748B",
+        "stroke": "#D6DEEB"
+      },
+      "radius": {
+        "sm": 10,
+        "md": 16,
+        "lg": 24,
+        "pill": 999
+      },
+      "spacing": {
+        "xs": 4,
+        "sm": 8,
+        "md": 12,
+        "lg": 16,
+        "xl": 20,
+        "xxl": 24
+      },
+      "typography": {
+        "family": "Sora",
+        "styles": {
+          "h1": { "size": 28, "lineHeight": 34, "weight": 700 },
+          "h2": { "size": 22, "lineHeight": 28, "weight": 600 },
+          "h3": { "size": 18, "lineHeight": 24, "weight": 600 },
+          "body": { "size": 15, "lineHeight": 22, "weight": 400 },
+          "bodyStrong": { "size": 15, "lineHeight": 22, "weight": 600 },
+          "caption": { "size": 12, "lineHeight": 16, "weight": 500 }
+        }
+      }
+    },
+    "components": [
+      {
+        "id": "statusChip",
+        "type": "chip",
+        "variants": {
+          "online": { "bg": "#DCFCE7", "text": "#166534", "dot": "#16A34A" },
+          "busy": { "bg": "#FEF3C7", "text": "#92400E", "dot": "#D97706" },
+          "error": { "bg": "#FEE2E2", "text": "#991B1B", "dot": "#DC2626" }
+        }
+      },
+      {
+        "id": "kpiCard",
+        "type": "card",
+        "layout": {
+          "padding": 16,
+          "radius": 16,
+          "shadow": "0 8 24 0 rgba(15,23,42,0.08)"
+        }
+      },
+      {
+        "id": "navTab",
+        "type": "bottomTab",
+        "items": ["Overview", "Agents", "Settings"]
+      }
+    ],
+    "screens": [
+      {
+        "id": "overview",
+        "name": "Overview",
+        "frame": {
+          "width": 390,
+          "height": 844,
+          "background": "#F5F7FB"
+        },
+        "layout": [
+          {
+            "type": "header",
+            "position": { "x": 20, "y": 56 },
+            "content": {
+              "title": "Agent Control",
+              "subtitle": "12 active agents"
+            }
+          },
+          {
+            "type": "alertBanner",
+            "position": { "x": 20, "y": 124 },
+            "size": { "w": 350, "h": 56 },
+            "style": { "bg": "#DBEAFE", "text": "#1E3A8A", "radius": 14 },
+            "content": "2 agents need attention"
+          },
+          {
+            "type": "kpiGrid",
+            "position": { "x": 20, "y": 196 },
+            "columns": 2,
+            "gap": 12,
+            "cards": [
+              { "title": "Online", "value": "10", "tone": "success" },
+              { "title": "Busy", "value": "2", "tone": "warning" },
+              { "title": "Queued", "value": "37", "tone": "primary" },
+              { "title": "Errors", "value": "1", "tone": "danger" }
+            ]
+          },
+          {
+            "type": "section",
+            "position": { "x": 20, "y": 432 },
+            "title": "Top Agents",
+            "list": [
+              { "name": "Ava", "role": "Support", "status": "online", "load": "74%" },
+              { "name": "Kai", "role": "Ops", "status": "busy", "load": "91%" },
+              { "name": "Mila", "role": "QA", "status": "online", "load": "65%" }
+            ]
+          },
+          {
+            "type": "bottomNav",
+            "position": { "x": 0, "y": 776 },
+            "size": { "w": 390, "h": 68 },
+            "active": "Overview"
+          }
+        ]
+      },
+      {
+        "id": "detail",
+        "name": "Agent Detail",
+        "frame": {
+          "width": 390,
+          "height": 844,
+          "background": "#F5F7FB"
+        },
+        "layout": [
+          {
+            "type": "topBar",
+            "position": { "x": 20, "y": 56 },
+            "content": {
+              "back": true,
+              "title": "Agent Ava"
+            }
+          },
+          {
+            "type": "profileCard",
+            "position": { "x": 20, "y": 108 },
+            "size": { "w": 350, "h": 154 },
+            "content": {
+              "avatar": "AV",
+              "status": "online",
+              "role": "Support Specialist",
+              "uptime": "99.2%",
+              "responseTime": "320ms"
+            }
+          },
+          {
+            "type": "timeline",
+            "position": { "x": 20, "y": 280 },
+            "title": "Recent Events",
+            "items": [
+              { "time": "09:42", "event": "Resolved ticket #2184", "kind": "success" },
+              { "time": "09:27", "event": "Escalated billing issue", "kind": "warning" },
+              { "time": "09:15", "event": "Started session", "kind": "primary" }
+            ]
+          },
+          {
+            "type": "actions",
+            "position": { "x": 20, "y": 612 },
+            "buttons": [
+              { "label": "Pause Agent", "style": "secondary" },
+              { "label": "Send Command", "style": "primary" }
+            ]
+          },
+          {
+            "type": "bottomNav",
+            "position": { "x": 0, "y": 776 },
+            "size": { "w": 390, "h": 68 },
+            "active": "Agents"
+          }
+        ]
+      },
+      {
+        "id": "settings",
+        "name": "Settings",
+        "frame": {
+          "width": 390,
+          "height": 844,
+          "background": "#F5F7FB"
+        },
+        "layout": [
+          {
+            "type": "header",
+            "position": { "x": 20, "y": 56 },
+            "content": {
+              "title": "Settings",
+              "subtitle": "Dashboard Preferences"
+            }
+          },
+          {
+            "type": "group",
+            "position": { "x": 20, "y": 128 },
+            "title": "Notifications",
+            "items": [
+              { "label": "Error alerts", "control": "toggle", "value": true },
+              { "label": "Daily report", "control": "toggle", "value": true },
+              { "label": "Queue warnings", "control": "toggle", "value": false }
+            ]
+          },
+          {
+            "type": "group",
+            "position": { "x": 20, "y": 338 },
+            "title": "Display",
+            "items": [
+              { "label": "Refresh interval", "control": "select", "value": "15 sec" },
+              { "label": "Density", "control": "select", "value": "Compact" },
+              { "label": "Chart style", "control": "select", "value": "Bars" }
+            ]
+          },
+          {
+            "type": "group",
+            "position": { "x": 20, "y": 548 },
+            "title": "Security",
+            "items": [
+              { "label": "Require biometrics", "control": "toggle", "value": true },
+              { "label": "Session timeout", "control": "select", "value": "10 min" }
+            ]
+          },
+          {
+            "type": "button",
+            "position": { "x": 20, "y": 700 },
+            "size": { "w": 350, "h": 52 },
+            "label": "Save Changes",
+            "style": "primary"
+          },
+          {
+            "type": "bottomNav",
+            "position": { "x": 0, "y": 776 },
+            "size": { "w": 390, "h": 68 },
+            "active": "Settings"
+          }
+        ]
+      }
+    ],
+    "responsive": {
+      "breakpoints": [320, 360, 390, 428],
+      "rules": [
+        "Maintain 20px side padding on >=390px",
+        "Reduce side padding to 16px on <=360px",
+        "Stack dual action buttons vertically on <=360px",
+        "Keep bottom nav fixed with safe-area padding"
+      ]
+    }
+  }
+}
